@@ -112,7 +112,7 @@ function leerConfiguracion_() {
       umbralAlerta:         cfg['Umbral alerta Telegram']  || 200000,
       alertaPresupuestoPct: cfg['Alerta presupuesto %']    || 0.8,
       diasRecordatorio:     cfg['Dias recordatorio pagos'] || 3,
-      tarjetaCredito:       cfg['Tarjeta credito']         || '*8352',
+      tarjetaCredito:       cfg['Tarjeta credito']         || '',
       tarjetaDebito:        cfg['Tarjeta debito']          || '',
       gmailQuery:           gmailQuery,
       // Exponer claves raw para que detectarBanco_() pueda matchear
@@ -133,7 +133,7 @@ function configuracionPorDefecto_() {
   return {
     presupuestoMensual: 3000000, metaAhorro: 500000, umbralAlerta: 200000,
     alertaPresupuestoPct: 0.8, diasRecordatorio: 3,
-    tarjetaCredito: '*8352', tarjetaDebito: '',
+    tarjetaCredito: '', tarjetaDebito: '',
     gmailQuery: 'from:(@notificacionesbancolombia.com OR @bancolombia.com.co)',
   };
 }
@@ -498,7 +498,7 @@ function sheetConfigurations_(sheet) {
     ['Alerta presupuesto %',        0.8, 'Porcentaje del presupuesto mensual que dispara alerta (0.8 = avisa cuando llevas 80% gastado).'],
     ['Dias recordatorio pagos',       3, 'Dias antes del vencimiento en Pending Payments para enviar recordatorio por Telegram.'],
     ['Banco',               'Bancolombia', 'Banco monitoreado. Solo referencia informativa por ahora.'],
-    ['Tarjeta credito',         '*8352', 'Ultimos 4 digitos de la tarjeta de credito. Usado para filtros en reportes.'],
+    ['Tarjeta credito',         '', 'Ultimos 4 digitos de la tarjeta de credito. Ejemplo: *1234'],
     ['Tarjeta debito',              '',  'Ultimos 4 digitos de la tarjeta debito (opcional).'],
     ['Presupuesto Alimentacion',  800000, 'COP — limite mensual para categoria Alimentacion.'],
     ['Presupuesto Transporte',    300000, 'COP — limite mensual para Transporte.'],
@@ -539,7 +539,7 @@ function sheetPendingPayments_(sheet) {
   ];
   const ejemplos = [
     ['Servicios publicos','Aguas de Manizales','','01/04/2026','31/12/2090','Mensual',3,'Activo','140715','Factura agua Manizales'],
-    ['Salud','Smart Fit Mayorca',94900,'20/04/2026','31/12/2090','Mensual',3,'Activo','','Debito automatico TC *8352'],
+    ['Salud','Smart Fit / Gimnasio',0,'20/04/2026','31/12/2090','Mensual',3,'Activo','','Ejemplo — reemplaza con tus datos'],
     ['Vivienda','Administracion','','05/04/2026','31/12/2090','Mensual',5,'Activo','',''],
     ['Servicios publicos','Internet/Cable','','15/04/2026','31/12/2090','Mensual',3,'Activo','',''],
   ];
@@ -595,7 +595,7 @@ function sheetDataDictionary_(sheet) {
     ['Transactions','Monto','Numero','Valor en COP sin decimales','50000'],
     ['Transactions','Moneda','Texto','Siempre COP','COP'],
     ['Transactions','Comercio/Destino','Texto','Nombre del comercio o destinatario de transferencia','TIENDA D1 MANIZALES'],
-    ['Transactions','Cuenta Origen','Texto','Ultimos 4 digitos de la cuenta o tarjeta que realizo el pago','8352'],
+    ['Transactions','Cuenta Origen','Texto','Ultimos 4 digitos de la cuenta o tarjeta que realizo el pago','1234'],
     ['Transactions','Categoria','Texto','Categoria principal asignada por Gemini','Alimentación'],
     ['Transactions','Subcategoria','Texto','Subcategoria especifica','Supermercados'],
     ['Transactions','Necesidad','Texto','Clasificacion: necesario / prescindible / lujo / n/a','necesario'],
@@ -621,7 +621,7 @@ function sheetDataDictionary_(sheet) {
     ['Pending Payments','DiasAnticipacion','Numero','Dias antes del vencimiento para recibir el recordatorio','3'],
     ['Pending Payments','Estado','Texto','Activo (recordatorio activo) / Inactivo / Pagado','Activo'],
     ['Pending Payments','Referencia','Texto','Codigo de pago, cuenta o referencia del servicio','140715'],
-    ['Pending Payments','Notas','Texto','Observaciones adicionales','Debito automatico TC *8352'],
+    ['Pending Payments','Notas','Texto','Observaciones adicionales','Debito automatico TC *1234'],
     ['Search Products','Producto','Texto','Nombre del producto que quieres comprar','iPhone 15'],
     ['Search Products','Descripcion','Texto','Modelo, marca, especificaciones','128GB, Negro'],
     ['Search Products','Precio Objetivo','Numero','Maximo que pagas en COP','3500000'],
