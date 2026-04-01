@@ -3,6 +3,26 @@
 // ============================================================
 
 // ------------------------------------------------------------
+// RESETEAR OFFSET TELEGRAM
+// Ejecuta esto si el bot está reprocesando mensajes viejos.
+// Marca todos los mensajes actuales como leídos sin procesarlos.
+// ------------------------------------------------------------
+function resetearOffsetTelegram() {
+  const token = CONFIG.TELEGRAM_BOT_TOKEN;
+  const url   = 'https://api.telegram.org/bot' + token + '/getUpdates?offset=-1';
+  const resp  = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const data  = JSON.parse(resp.getContentText());
+  if (data.ok && data.result.length > 0) {
+    const lastId = data.result[data.result.length - 1].update_id;
+    PropertiesService.getScriptProperties().setProperty('TELEGRAM_LAST_UPDATE_ID', String(lastId));
+    Logger.log('✅ Offset reseteado al update_id: ' + lastId + '. Mensajes anteriores ignorados.');
+  } else {
+    Logger.log('ℹ️ No hay mensajes pendientes. Offset reseteado a 0.');
+    PropertiesService.getScriptProperties().setProperty('TELEGRAM_LAST_UPDATE_ID', '0');
+  }
+}
+
+// ------------------------------------------------------------
 // ENTRADA MANUAL POR TELEGRAM
 // Configura un trigger cada 1 minuto para esta función.
 // Escríbele al bot cualquier gasto/ingreso en texto libre:
@@ -65,6 +85,12 @@ function procesarMensajesTelegram() {
     try {
       const transaccion  = parsearTransaccionManual_(msg.text);
       transaccion.fuente = 'telegram';
+
+      if (!transaccion.monto || transaccion.monto <= 0) {
+        enviarMensajeTelegram_('❓ No entendí el monto. Intenta así:\n`gasté 15000 en la frutería`\n`ingresé 200000 de Juan`');
+        return;
+      }
+
       escribirTransaccion_(sheetTxn, transaccion);
 
       const monto = Number(transaccion.monto).toLocaleString('es-CO');
