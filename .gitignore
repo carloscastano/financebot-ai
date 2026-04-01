@@ -1,0 +1,5 @@
+secrets.env
+.env
+*.env
+.clasp.json.bak
+node_modules/
