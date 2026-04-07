@@ -75,8 +75,18 @@ function procesarEmailsBancolombia() {
 
       } catch (e) {
         Logger.log(`❌ Error procesando email ${emailId}: ${e.message}`);
-        registrarError_(sheetErr, e.message, asunto, emailId);
-        message.markRead();
+        // Si es error temporal de servidor (503/502/red), NO marcar como leído
+        // → el trigger lo reintentará automáticamente en la próxima ejecución
+        const esErrorTemporal = e.message.includes('503') ||
+                                e.message.includes('502') ||
+                                e.message.includes('server error') ||
+                                e.message.includes('unavailable');
+        if (esErrorTemporal) {
+          Logger.log(`⏳ Error temporal — email ${emailId} se reintentará en la próxima ejecución.`);
+        } else {
+          registrarError_(sheetErr, e.message, asunto, emailId);
+          message.markRead();
+        }
       }
     }
   }

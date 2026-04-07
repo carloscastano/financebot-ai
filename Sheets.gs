@@ -4,13 +4,14 @@
 
 // Nombres de hojas — referencia centralizada
 const SHEETS = {
-  TRANSACTIONS:      'Transactions',
-  ERRORS:            'Errors',
-  DASHBOARD:         'Dashboard',
-  CONFIGURATIONS:    'Configurations',
-  PENDING_PAYMENTS:  'Pending Payments',
-  SEARCH_PRODUCTS:   'Search Products',
-  DATA_DICTIONARY:   'DataDictionary',
+  TRANSACTIONS:       'Transactions',
+  ERRORS:             'Errors',
+  DASHBOARD:          'Dashboard',
+  CONFIGURATIONS:     'Configurations',
+  PENDING_PAYMENTS:   'Pending Payments',
+  SEARCH_PRODUCTS:    'Search Products',
+  DATA_DICTIONARY:    'DataDictionary',
+  FINANCIAL_INSIGHTS: 'Financial Insights',  // Historial de reportes del Asesor Financiero
 };
 
 // ------------------------------------------------------------
@@ -206,6 +207,7 @@ function configurarSpreadsheet() {
   _crearSiNoExiste(ss, SHEETS.PENDING_PAYMENTS, sheetPendingPayments_);
   _crearSiNoExiste(ss, SHEETS.SEARCH_PRODUCTS,  sheetSearchProducts_);
   _crearSiNoExiste(ss, SHEETS.DATA_DICTIONARY,  sheetDataDictionary_);
+  _crearSiNoExiste(ss, SHEETS.FINANCIAL_INSIGHTS, configurarFinancialInsights_);
 
   let dash = ss.getSheetByName(SHEETS.DASHBOARD);
   if (!dash) dash = ss.insertSheet(SHEETS.DASHBOARD);
@@ -661,7 +663,7 @@ function reordenarHojas() {
 function reordenarHojas_(ss) {
   const orden = [SHEETS.DASHBOARD, SHEETS.TRANSACTIONS, SHEETS.CONFIGURATIONS,
                  SHEETS.PENDING_PAYMENTS, SHEETS.SEARCH_PRODUCTS,
-                 SHEETS.ERRORS, SHEETS.DATA_DICTIONARY];
+                 SHEETS.ERRORS, SHEETS.DATA_DICTIONARY, SHEETS.FINANCIAL_INSIGHTS];
   orden.forEach((nombre, i) => {
     const s = ss.getSheetByName(nombre);
     if (s) { ss.setActiveSheet(s); ss.moveActiveSheet(i + 1); }

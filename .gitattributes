@@ -1,0 +1,6 @@
+# Forzar LF en todos los archivos del proyecto
+# Evita el warning "LF will be replaced by CRLF" en Windows
+*.gs     text eol=lf
+*.json   text eol=lf
+*.md     text eol=lf
+*.env    text eol=lf

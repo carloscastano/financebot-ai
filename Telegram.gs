@@ -42,7 +42,13 @@ function procesarMensajesTelegram() {
 
   const url = 'https://api.telegram.org/bot' + token +
               '/getUpdates?offset=' + (lastUpdate + 1) + '&limit=10&timeout=0';
-  const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  let resp;
+  try {
+    resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  } catch(e) {
+    Logger.log('⚠️ Telegram no disponible (red): ' + e.message);
+    return;
+  }
   if (resp.getResponseCode() !== 200) return;
 
   const data = JSON.parse(resp.getContentText());
@@ -67,6 +73,14 @@ function procesarMensajesTelegram() {
     }
 
     if (!msg.text) return;
+
+    // Comando: "ID X pagada" — marca pago pendiente
+    const matchPago = msg.text.match(/^id\s+(\d+)\s+pagad[ao]/i);
+    if (matchPago) {
+      marcarPagoPendiente_(matchPago[1]);
+      maxId = Math.max(maxId, update.update_id);
+      return;
+    }
 
     // Comandos especiales
     if (msg.text === '/ayuda' || msg.text === '/help') {
@@ -157,15 +171,11 @@ function parsearTransaccionManual_(texto) {
 
 // ------------------------------------------------------------
 // RECORDATORIO DE PAGOS PENDIENTES
-// Ejecutar con un trigger diario (ej: cada día a las 9am).
-// Lee la hoja "Pending Payments" y avisa por Telegram si
-// FechaPago está dentro de DiasAnticipacion días Y Estado=Activo.
-// ------------------------------------------------------------
-// ------------------------------------------------------------
-// RECORDATORIO DE PAGOS PENDIENTES
-// Estructura de la hoja Pending Payments:
+// Estructura de la hoja Pending Payments (9 columnas):
 // Servicio | Monto Aprox | Día Vencimiento | Frecuencia |
-// Cuenta/Referencia | Recordar (días antes) | Estado | Mes | Notas
+// Cuenta/Referencia | Recordar (días antes) | Estado | Notas | Último Pago
+//
+// Responde "ID X pagada" en Telegram para marcar como pagado.
 // ------------------------------------------------------------
 function recordarPagosPendientes() {
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
@@ -177,13 +187,16 @@ function recordarPagosPendientes() {
   const sheet = ss.getSheetByName('Pending Payments');
   if (!sheet || sheet.getLastRow() < 2) return;
 
-  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+  // Asegurar que exista la columna "Último Pago" en el header
+  _asegurarColumnaUltimoPago_(sheet);
+
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
   const hoy   = new Date();
   hoy.setHours(0, 0, 0, 0);
 
   const pagosARecordar = [];
 
-  datos.forEach(function(fila) {
+  datos.forEach(function(fila, idx) {
     const servicio        = fila[0];
     const monto           = fila[1];
     const diaVencimiento  = parseInt(fila[2]);
@@ -192,16 +205,24 @@ function recordarPagosPendientes() {
     const diasAnticipacion= parseInt(fila[5]) || 3;
     const estado          = fila[6];
     const notas           = fila[7];
-    const mes             = hoy.getMonth() + 1;  // siempre mes actual
+    const ultimoPago      = fila[8]; // col I — fecha último pago
+    const filaNum         = idx + 2; // fila real en la hoja (1-indexed, +1 header)
 
     if (!servicio || estado !== 'Activo' || !diaVencimiento) return;
 
-    // Construir fecha de vencimiento con día + mes + año actual
+    // Si ya fue pagado este mes, no recordar
+    if (ultimoPago instanceof Date && !isNaN(ultimoPago)) {
+      if (ultimoPago.getMonth() === hoy.getMonth() && ultimoPago.getFullYear() === hoy.getFullYear()) {
+        Logger.log(`✅ ${servicio}: ya pagado este mes (${Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy')})`);
+        return;
+      }
+    }
+
+    const mes  = hoy.getMonth() + 1;
     const anio = hoy.getFullYear();
     const fechaPago = new Date(anio, mes - 1, diaVencimiento);
     fechaPago.setHours(0, 0, 0, 0);
 
-    // Si la fecha ya pasó este año, proyectar al siguiente mes/año
     if (fechaPago < hoy) {
       fechaPago.setMonth(fechaPago.getMonth() + 1);
     }
@@ -211,7 +232,7 @@ function recordarPagosPendientes() {
     Logger.log(`${servicio}: vence ${Utilities.formatDate(fechaPago,'America/Bogota','dd/MM/yyyy')}, faltan ${diasParaVencer} día(s), umbral ${diasAnticipacion}`);
 
     if (diasParaVencer >= 0 && diasParaVencer <= diasAnticipacion) {
-      pagosARecordar.push({ servicio, monto, fechaPago, diasParaVencer, referencia, notas });
+      pagosARecordar.push({ servicio, monto, fechaPago, diasParaVencer, referencia, notas, filaNum });
     }
   });
 
@@ -220,22 +241,102 @@ function recordarPagosPendientes() {
     return;
   }
 
-  // Construir mensaje Telegram
-  const lineas = pagosARecordar.map(function(p) {
-    const fecha = Utilities.formatDate(p.fechaPago, 'America/Bogota', 'dd/MM/yyyy');
+  // Guardar mapa ID → fila en Script Properties para cuando el usuario responda
+  const mapa = {};
+  pagosARecordar.forEach(function(p, i) { mapa[i + 1] = p.filaNum; });
+  PropertiesService.getScriptProperties().setProperty('PENDING_PAYMENT_MAP', JSON.stringify(mapa));
+
+  // Construir mensaje con IDs
+  const lineas = pagosARecordar.map(function(p, i) {
+    const id       = i + 1;
+    const fecha    = Utilities.formatDate(p.fechaPago, 'America/Bogota', 'dd/MM/yyyy');
     const montoStr = p.monto ? '\n💰 $' + Number(p.monto).toLocaleString('es-CO') + ' COP' : '';
     const ref      = p.referencia ? '\n🔑 Ref: ' + p.referencia : '';
     const dias     = p.diasParaVencer === 0 ? '⚠️ HOY' : 'en ' + p.diasParaVencer + ' día(s)';
-    return '🧾 *' + p.servicio + '*\n📆 Vence: ' + fecha + ' (' + dias + ')' + montoStr + ref;
+    return '🧾 *ID ' + id + ': ' + p.servicio + '*\n📆 Vence: ' + fecha + ' (' + dias + ')' + montoStr + ref;
   });
 
   const mensaje =
     '📅 *Recordatorio de Pagos FinanceBot*\n\n' +
     'Tienes ' + pagosARecordar.length + ' pago(s) próximo(s):\n\n' +
-    lineas.join('\n\n');
+    lineas.join('\n\n') + '\n\n' +
+    '_Responde "ID 1 pagada" para marcar como pagado_';
 
   enviarMensajeTelegram_(mensaje);
   Logger.log('📱 Recordatorio enviado: ' + pagosARecordar.length + ' pago(s).');
+}
+
+// ------------------------------------------------------------
+// MARCA UN PAGO COMO PAGADO
+// Guarda la fecha de hoy en la columna "Último Pago"
+// ------------------------------------------------------------
+function marcarPagoPendiente_(idStr) {
+  const id = parseInt(idStr);
+  Logger.log('💳 marcarPagoPendiente_ llamado con ID: ' + id);
+
+  if (!id || id <= 0) {
+    enviarMensajeTelegram_('❓ ID no válido. Ejemplo: *ID 1 pagada*');
+    return;
+  }
+
+  const mapaStr = PropertiesService.getScriptProperties().getProperty('PENDING_PAYMENT_MAP');
+  Logger.log('🗺️ PENDING_PAYMENT_MAP: ' + mapaStr);
+
+  if (!mapaStr) {
+    enviarMensajeTelegram_('❓ No hay recordatorios activos. Vuelve a ejecutar el recordatorio y luego responde el ID.');
+    return;
+  }
+
+  const mapa    = JSON.parse(mapaStr);
+  const filaNum = mapa[String(id)];
+  Logger.log('📍 Fila encontrada: ' + filaNum);
+
+  if (!filaNum) {
+    enviarMensajeTelegram_('❓ ID ' + id + ' no encontrado. IDs disponibles: ' + Object.keys(mapa).join(', '));
+    return;
+  }
+
+  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Pending Payments');
+  if (!sheet) return;
+
+  // Leer nombre del servicio para confirmar
+  const servicio = sheet.getRange(filaNum, 1).getValue();
+
+  // Escribir fecha de hoy en columna 9 (Último Pago)
+  sheet.getRange(filaNum, 9).setValue(new Date());
+
+  enviarMensajeTelegram_(
+    '✅ *Pago registrado*\n' +
+    '🧾 ' + servicio + '\n' +
+    '📅 Pagado: ' + Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy') + '\n\n' +
+    '_No recibirás recordatorio de este pago hasta el próximo mes._'
+  );
+  Logger.log('✅ Pago marcado: ' + servicio + ' (fila ' + filaNum + ')');
+}
+
+// ------------------------------------------------------------
+// PRUEBA DIRECTA — ejecuta esto desde Apps Script para diagnosticar
+// Simula que el usuario respondió "ID 1 pagada"
+// ------------------------------------------------------------
+function probarMarcarPago() {
+  Logger.log('=== PRUEBA marcarPagoPendiente_ ===');
+  const mapaStr = PropertiesService.getScriptProperties().getProperty('PENDING_PAYMENT_MAP');
+  Logger.log('PENDING_PAYMENT_MAP guardado: ' + mapaStr);
+  if (!mapaStr) {
+    Logger.log('❌ El mapa está vacío. Ejecuta primero recordarPagosPendientes()');
+    return;
+  }
+  marcarPagoPendiente_('1');
+  Logger.log('=== FIN PRUEBA ===');
+}
+
+// Agrega la columna "Último Pago" al header si no existe
+function _asegurarColumnaUltimoPago_(sheet) {
+  const header = sheet.getRange(1, 9).getValue();
+  if (!header || String(header).trim() === '') {
+    sheet.getRange(1, 9).setValue('Último Pago');
+  }
 }
 
 // Parsea fecha en formato DD/MM/YYYY o Date object de Sheets
@@ -253,12 +354,16 @@ function parsearFecha_(valor) {
 // Envía cualquier mensaje de texto a Telegram
 function enviarMensajeTelegram_(texto) {
   const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
-  UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify({ chat_id: CONFIG.TELEGRAM_CHAT_ID, text: texto, parse_mode: 'Markdown' }),
-    muteHttpExceptions: true
-  });
+  try {
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ chat_id: CONFIG.TELEGRAM_CHAT_ID, text: texto, parse_mode: 'Markdown' }),
+      muteHttpExceptions: true
+    });
+  } catch(e) {
+    Logger.log('⚠️ Telegram no disponible al enviar mensaje: ' + e.message);
+  }
 }
 
 // ------------------------------------------------------------
@@ -294,7 +399,13 @@ function enviarTelegram_(txn) {
     muteHttpExceptions: true
   };
 
-  const response = UrlFetchApp.fetch(url, options);
+  let response;
+  try {
+    response = UrlFetchApp.fetch(url, options);
+  } catch(e) {
+    Logger.log('⚠️ Telegram no disponible (alerta): ' + e.message);
+    return;
+  }
   const code = response.getResponseCode();
 
   if (code !== 200) {

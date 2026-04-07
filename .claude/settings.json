@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:lookerstudio.google.com)",
+      "WebFetch(domain:windsor.ai)",
+      "WebFetch(domain:blog.coupler.io)",
+      "WebFetch(domain:bymarketers.co)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:tiller.com)",
+      "WebFetch(domain:twominutereports.com)",
+      "WebFetch(domain:chartud.io)",
+      "WebFetch(domain:bgdn.me)",
+      "WebFetch(domain:www.f9finance.com)"
+    ]
+  }
+}
