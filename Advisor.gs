@@ -1,37 +1,34 @@
 // ============================================================
-// FINANCEBOT AI - ASESOR FINANCIERO PERSONAL
-// Análisis diario de finanzas → Telegram
-// Configura un trigger diario (ej: 8am) para analizarFinanzas()
+// FINANCEBOT AI - ASESOR FINANCIERO PERSONAL v2
+// Módulos: proyección, escenarios, score 0-100, sensibilidad
+// Trigger: diario a las 8am → analizarFinanzas()
 // ============================================================
 
-// ------------------------------------------------------------
-// FUNCIÓN PRINCIPAL — Genera y envía el reporte diario
-// ------------------------------------------------------------
 function analizarFinanzas() {
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
     Logger.log('⚠️ Telegram no configurado.');
     return;
   }
 
-  const ss       = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheet    = ss.getSheetByName(SHEETS.TRANSACTIONS);
-  const lastRow  = sheet ? sheet.getLastRow() : 1;
+  const ss      = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet   = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  const lastRow = sheet ? sheet.getLastRow() : 1;
 
   if (!sheet || lastRow < 2) {
     Logger.log('⚠️ No hay transacciones para analizar.');
     return;
   }
 
-  // Leer todas las transacciones (col A–J: ID, Fecha, Hora, Tipo, TipoTxn, Monto, Moneda, Comercio, Cuenta, Categoria)
+  // Leer todas las transacciones — col A–J
   const datos = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
 
-  const hoy       = new Date();
-  const mesAct    = hoy.getMonth();
-  const anioAct   = hoy.getFullYear();
-  const mesPrev   = mesAct === 0 ? 11 : mesAct - 1;
-  const anioPrev  = mesAct === 0 ? anioAct - 1 : anioAct;
+  const hoy      = new Date();
+  const mesAct   = hoy.getMonth();
+  const anioAct  = hoy.getFullYear();
+  const mesPrev  = mesAct === 0 ? 11 : mesAct - 1;
+  const anioPrev = mesAct === 0 ? anioAct - 1 : anioAct;
 
-  // Separar transacciones por mes
+  // Separar por mes
   const txnAct  = [];
   const txnPrev = [];
 
@@ -41,48 +38,39 @@ function analizarFinanzas() {
     const d    = fecha instanceof Date ? fecha : new Date(fecha);
     const tipo = String(row[3]).toLowerCase();
     if (tipo === 'informativo') return;
-
-    const m = d.getMonth();
-    const y = d.getFullYear();
+    const m = d.getMonth(), y = d.getFullYear();
     if (m === mesAct  && y === anioAct)  txnAct.push(row);
     if (m === mesPrev && y === anioPrev) txnPrev.push(row);
   });
 
-  const act  = calcularMetricas_(txnAct);
-  const prev = calcularMetricas_(txnPrev);
+  const act        = calcularMetricas_(txnAct);
+  const prev       = calcularMetricas_(txnPrev);
+  const proyeccion = calcularProyeccionMes_(txnAct, hoy);
+  const escenarios = calcularEscenarios_(datos, mesAct, anioAct);
+  const anomalias  = detectarAnomalias_(txnAct, act.promedioEgreso);
+  const score      = calcularScore_(act, prev, proyeccion, anomalias);
+  const sensib     = calcularSensibilidad_(act);
+  const analisis   = generarAnalisisIA_(act, prev, proyeccion, escenarios, score, anomalias, mesAct, anioAct, mesPrev, anioPrev);
 
-  // Detectar transacciones anómalas (monto > 2x la media del mes)
-  const anomalias = detectarAnomalias_(txnAct, act.promedioEgreso);
+  guardarInsight_(ss, act, score, proyeccion, escenarios, sensib, analisis, mesAct, anioAct);
 
-  // Llamar a Gemini para el análisis narrativo
-  const analisis = generarAnalisisIA_(act, prev, anomalias, mesAct, anioAct, mesPrev, anioPrev);
-
-  // Construir y enviar mensaje Telegram
-  const mensaje = construirMensajeReporte_(act, prev, anomalias, analisis, mesAct, anioAct, mesPrev, anioPrev);
+  const mensaje = construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anomalias, sensib, analisis, mesAct, anioAct, mesPrev, anioPrev);
   enviarMensajeTelegram_(mensaje);
 
-  Logger.log('✅ Reporte financiero enviado a Telegram.');
-  Logger.log('   Ingresos: $' + act.ingresos.toLocaleString('es-CO'));
-  Logger.log('   Egresos:  $' + act.egresos.toLocaleString('es-CO'));
-  Logger.log('   Balance:  $' + act.balance.toLocaleString('es-CO'));
+  Logger.log('✅ Reporte financiero v2 enviado.');
 }
 
 // ------------------------------------------------------------
-// CALCULA MÉTRICAS A PARTIR DE UN ARREGLO DE TRANSACCIONES
+// MÉTRICAS BÁSICAS DEL MES
 // ------------------------------------------------------------
 function calcularMetricas_(txns) {
-  let ingresos = 0;
-  let egresos  = 0;
-  let countEg  = 0;
-  const cats   = {};
-  const comerciosAltos = [];
+  let ingresos = 0, egresos = 0, countEg = 0;
+  const cats = {};
 
   txns.forEach(function(row) {
     const tipo  = String(row[3]).toLowerCase();
     const monto = Number(row[5]) || 0;
     const cat   = String(row[9]).trim() || 'Otro';
-    const comercio = String(row[7]).trim();
-
     if (tipo === 'ingreso') {
       ingresos += monto;
     } else if (tipo === 'egreso') {
@@ -92,32 +80,134 @@ function calcularMetricas_(txns) {
     }
   });
 
-  const topCats      = Object.entries(cats).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
-  const tasaAhorro   = ingresos > 0 ? ((ingresos - egresos) / ingresos * 100) : 0;
+  const topCats        = Object.entries(cats).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
+  const tasaAhorro     = ingresos > 0 ? ((ingresos - egresos) / ingresos * 100) : 0;
   const promedioEgreso = countEg > 0 ? egresos / countEg : 0;
 
+  return { ingresos, egresos, balance: ingresos - egresos, tasaAhorro, topCats, cats, count: txns.length, countEgresos: countEg, promedioEgreso };
+}
+
+// ------------------------------------------------------------
+// PROYECCIÓN AL CIERRE DEL MES
+// Calcula el ritmo diario actual y proyecta los egresos totales
+// ------------------------------------------------------------
+function calcularProyeccionMes_(txnAct, hoy) {
+  const diasMes      = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const diaActual    = hoy.getDate();
+  const diasRestantes = diasMes - diaActual;
+
+  let egresosHastaHoy = 0;
+  txnAct.forEach(function(row) {
+    if (String(row[3]).toLowerCase() === 'egreso') egresosHastaHoy += Number(row[5]) || 0;
+  });
+
+  const ritmoDiario       = diaActual > 0 ? egresosHastaHoy / diaActual : 0;
+  const proyeccionEgresos = egresosHastaHoy + (ritmoDiario * diasRestantes);
+  const gastoPendiente    = ritmoDiario * diasRestantes;
+
+  return { diasMes, diaActual, diasRestantes, ritmoDiario, egresosHastaHoy, proyeccionEgresos, gastoPendiente };
+}
+
+// ------------------------------------------------------------
+// ESCENARIOS (últimos 6 meses históricos)
+// Optimista = menor gasto, Base = promedio, Pesimista = mayor
+// ------------------------------------------------------------
+function calcularEscenarios_(datos, mesActual, anioActual) {
+  const egresoPorMes = {};
+
+  datos.forEach(function(row) {
+    const fecha = row[1];
+    if (!fecha) return;
+    const d    = fecha instanceof Date ? fecha : new Date(fecha);
+    const tipo = String(row[3]).toLowerCase();
+    if (tipo !== 'egreso') return;
+
+    const m = d.getMonth(), y = d.getFullYear();
+    // Excluir mes actual
+    if (m === mesActual && y === anioActual) return;
+
+    const clave = y + '-' + m;
+    egresoPorMes[clave] = (egresoPorMes[clave] || 0) + (Number(row[5]) || 0);
+  });
+
+  // Tomar los últimos 6 meses disponibles
+  const valores = Object.values(egresoPorMes).sort(function(a, b) { return a - b; });
+  const ultimos6 = valores.slice(-6);
+
+  if (ultimos6.length === 0) return { optimista: 0, base: 0, pesimista: 0, mesesAnalizados: 0 };
+
+  const suma = ultimos6.reduce(function(a, b) { return a + b; }, 0);
   return {
-    ingresos,
-    egresos,
-    balance:       ingresos - egresos,
-    tasaAhorro:    tasaAhorro.toFixed(1),
-    topCats,
-    cats,
-    count:         txns.length,
-    countEgresos:  countEg,
-    promedioEgreso,
+    optimista:       ultimos6[0],
+    base:            suma / ultimos6.length,
+    pesimista:       ultimos6[ultimos6.length - 1],
+    mesesAnalizados: ultimos6.length,
   };
 }
 
 // ------------------------------------------------------------
-// DETECTA TRANSACCIONES ANÓMALAS
-// Un gasto es anómalo si supera 3x el promedio del mes
+// SCORE FINANCIERO 0–100
+// Tasa ahorro 30pts | balance positivo 20pts | tendencia 20pts
+// sin anomalías 15pts | proyección saludable 15pts
+// ------------------------------------------------------------
+function calcularScore_(act, prev, proyeccion, anomalias) {
+  let score = 0;
+
+  // 1. Tasa de ahorro (30 pts)
+  const ahorro = Number(act.tasaAhorro);
+  if      (ahorro >= 30) score += 30;
+  else if (ahorro >= 20) score += 22;
+  else if (ahorro >= 10) score += 14;
+  else if (ahorro > 0)   score += 6;
+
+  // 2. Balance positivo (20 pts)
+  if (act.balance > 0) score += 20;
+
+  // 3. Tendencia vs mes anterior (20 pts)
+  if (prev.egresos > 0) {
+    const varPct = (act.egresos - prev.egresos) / prev.egresos * 100;
+    if      (varPct <= -10) score += 20;
+    else if (varPct <= 0)   score += 14;
+    else if (varPct <= 10)  score += 7;
+  } else {
+    score += 10; // sin datos del mes anterior
+  }
+
+  // 4. Sin anomalías (15 pts)
+  if      (anomalias.length === 0) score += 15;
+  else if (anomalias.length === 1) score += 7;
+
+  // 5. Proyección saludable (15 pts)
+  if (proyeccion.proyeccionEgresos > 0 && act.ingresos > 0) {
+    const ratio = proyeccion.proyeccionEgresos / act.ingresos;
+    if      (ratio <= 0.7) score += 15;
+    else if (ratio <= 0.9) score += 8;
+    else if (ratio <= 1.0) score += 3;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+// ------------------------------------------------------------
+// SENSIBILIDAD — top 5 categorías con % de impacto
+// ------------------------------------------------------------
+function calcularSensibilidad_(act) {
+  if (act.egresos === 0) return [];
+  return Object.entries(act.cats)
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .slice(0, 5)
+    .map(function(item) {
+      return { cat: item[0], monto: item[1], pct: (item[1] / act.egresos * 100).toFixed(1) };
+    });
+}
+
+// ------------------------------------------------------------
+// DETECTA GASTOS ANÓMALOS (> 3x el promedio del mes)
 // ------------------------------------------------------------
 function detectarAnomalias_(txns, promedio) {
   if (promedio <= 0) return [];
   const umbral = promedio * 3;
   const result = [];
-
   txns.forEach(function(row) {
     const tipo  = String(row[3]).toLowerCase();
     const monto = Number(row[5]) || 0;
@@ -125,143 +215,173 @@ function detectarAnomalias_(txns, promedio) {
       result.push({ comercio: String(row[7]), monto: monto, cat: String(row[9]) });
     }
   });
-
-  // Máximo 2 anomalías para no saturar el mensaje
   return result.slice(0, 2);
 }
 
 // ------------------------------------------------------------
-// LLAMA A GEMINI PARA ANÁLISIS NARRATIVO
+// GUARDA SNAPSHOT EN FINANCIAL INSIGHTS
 // ------------------------------------------------------------
-function generarAnalisisIA_(act, prev, anomalias, mesAct, anioAct, mesPrev, anioPrev) {
-  const MESES = ['enero','febrero','marzo','abril','mayo','junio',
-                 'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function guardarInsight_(ss, act, score, proyeccion, escenarios, sensib, analisis, mesAct, anioAct) {
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-  const fmt = function(n) { return '$' + Number(n).toLocaleString('es-CO') + ' COP'; };
+  // Crear hoja si no existe
+  configurarFinancialInsights_(ss);
+  const sheet = ss.getSheetByName(SHEETS.FINANCIAL_INSIGHTS);
+  if (!sheet) return;
 
-  const varEgresos = prev.egresos > 0
-    ? (((act.egresos - prev.egresos) / prev.egresos) * 100).toFixed(1)
-    : null;
+  const catPrincipal = sensib.length > 0 ? sensib[0].cat : '';
 
-  const topCatsStr = act.topCats.map(function(item, i) {
+  sheet.appendRow([
+    new Date(),                          // A — Fecha Registro
+    MESES[mesAct] + ' ' + anioAct,       // B — Periodo
+    act.ingresos,                        // C — Ingresos
+    act.egresos,                         // D — Egresos
+    act.balance,                         // E — Balance
+    Number(act.tasaAhorro.toFixed(1)),   // F — Tasa Ahorro %
+    score,                               // G — Score
+    escenarios.optimista,                // H — Escenario Optimista
+    Math.round(escenarios.base),         // I — Escenario Base
+    escenarios.pesimista,                // J — Escenario Pesimista
+    Math.round(proyeccion.proyeccionEgresos), // K — Proyección fin mes
+    Math.round(proyeccion.ritmoDiario),  // L — Ritmo diario
+    catPrincipal,                        // M — Categoría principal
+    analisis,                            // N — Análisis IA
+  ]);
+
+  Logger.log('✅ Insight guardado en Financial Insights.');
+}
+
+// ------------------------------------------------------------
+// ANÁLISIS NARRATIVO CON GEMINI
+// ------------------------------------------------------------
+function generarAnalisisIA_(act, prev, proyeccion, escenarios, score, anomalias, mesAct, anioAct, mesPrev, anioPrev) {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fmt   = function(n) { return '$' + Number(Math.round(n)).toLocaleString('es-CO') + ' COP'; };
+
+  const topStr = act.topCats.map(function(item, i) {
     const pct = act.egresos > 0 ? (item[1] / act.egresos * 100).toFixed(0) : 0;
     return (i + 1) + '. ' + item[0] + ': ' + fmt(item[1]) + ' (' + pct + '%)';
   }).join('\n');
 
-  const anomaliasStr = anomalias.length > 0
+  const escStr = escenarios.mesesAnalizados > 0
+    ? 'Histórico ' + escenarios.mesesAnalizados + ' meses — Optimista: ' + fmt(escenarios.optimista) + ' | Base: ' + fmt(escenarios.base) + ' | Pesimista: ' + fmt(escenarios.pesimista)
+    : 'Sin historial suficiente';
+
+  const anomStr = anomalias.length > 0
     ? anomalias.map(function(a) { return '• ' + a.comercio + ': ' + fmt(a.monto); }).join('\n')
-    : 'Ninguna';
+    : 'Ninguno';
+
+  const varEgresos = prev.egresos > 0
+    ? ((act.egresos - prev.egresos) / prev.egresos * 100).toFixed(1) + '%'
+    : 'sin datos';
 
   const prompt =
-    'Eres un asesor financiero personal colombiano, experto en finanzas personales y productos de inversión en Colombia. ' +
-    'Tu respuesta debe ser en español, máximo 5 líneas, sin asteriscos ni markdown, tono amigable y directo.\n\n' +
-    'DATOS DE ' + MESES[mesAct].toUpperCase() + ' ' + anioAct + ':\n' +
+    'Eres un asesor financiero personal colombiano experto en finanzas personales y productos de inversión colombianos. ' +
+    'Responde en español, máximo 4 líneas, sin asteriscos ni markdown, tono amigable y directo.\n\n' +
+    'DATOS ' + MESES[mesAct].toUpperCase() + ' ' + anioAct + ':\n' +
     '• Ingresos: ' + fmt(act.ingresos) + '\n' +
-    '• Egresos: ' + fmt(act.egresos) + '\n' +
-    '• Balance: ' + fmt(act.balance) + '\n' +
-    '• Tasa de ahorro: ' + act.tasaAhorro + '%\n' +
-    '• Transacciones: ' + act.count + '\n\n' +
-    'TOP CATEGORÍAS DE GASTO:\n' + (topCatsStr || 'Sin datos') + '\n\n' +
-    'COMPARADO CON ' + MESES[mesPrev].toUpperCase() + ' ' + anioPrev + ':\n' +
-    '• Egresos: ' + fmt(prev.egresos) + (varEgresos ? ' (variación: ' + varEgresos + '%)' : '') + '\n' +
-    '• Balance anterior: ' + fmt(prev.balance) + '\n\n' +
-    'GASTOS INUSUALES:\n' + anomaliasStr + '\n\n' +
-    'Con base en estos datos reales:\n' +
-    '1. Da una observación clave sobre el patrón de gasto\n' +
-    '2. Recomienda un producto de inversión colombiano concreto (CDTs, FICs, Fiducias de Bancolombia, etc.) con el superávit disponible\n' +
-    '3. Da un consejo práctico para el próximo mes\n' +
-    'Si el balance es negativo, enfócate en reducción de gastos antes de invertir.';
+    '• Egresos: ' + fmt(act.egresos) + ' (vs ' + MESES[mesPrev] + ': ' + varEgresos + ')\n' +
+    '• Balance: ' + fmt(act.balance) + ' | Tasa ahorro: ' + Number(act.tasaAhorro).toFixed(1) + '%\n' +
+    '• Score financiero: ' + score + '/100\n\n' +
+    'TOP CATEGORÍAS:\n' + (topStr || 'Sin datos') + '\n\n' +
+    'PROYECCIÓN FIN DE MES:\n' +
+    '• Ritmo diario: ' + fmt(proyeccion.ritmoDiario) + '\n' +
+    '• Proyección egresos: ' + fmt(proyeccion.proyeccionEgresos) + '\n\n' +
+    'ESCENARIOS HISTÓRICOS:\n' + escStr + '\n\n' +
+    'GASTOS INUSUALES: ' + anomStr + '\n\n' +
+    'Con base en estos datos:\n' +
+    '1. Una observación clave sobre el patrón de gasto\n' +
+    '2. Recomienda un producto de inversión colombiano concreto (CDT, FIC, Fiducia Bancolombia) si hay superávit\n' +
+    '3. Un consejo práctico para el próximo mes';
 
   try {
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.4, maxOutputTokens: 600 }
     };
-    const options = {
-      method: 'post', contentType: 'application/json',
-      payload: JSON.stringify(payload), muteHttpExceptions: true
-    };
+    const options = { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true };
     const resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, options);
     if (resp.getResponseCode() !== 200) throw new Error('Gemini ' + resp.getResponseCode());
-
     const json = JSON.parse(resp.getContentText());
     let texto = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
-    // Limpiar caracteres que rompen el Markdown de Telegram
-    texto = texto.replace(/[*_`\[\]]/g, '').replace(/#+\s/g, '').trim();
-    return texto;
+    return texto.replace(/[*_`\[\]]/g, '').replace(/#+\s/g, '').trim();
   } catch(e) {
-    Logger.log('⚠️ Error Gemini advisor: ' + e.message);
-    return 'No se pudo generar el análisis IA en este momento.';
+    Logger.log('⚠️ Gemini advisor error: ' + e.message);
+    return 'Análisis no disponible en este momento.';
   }
 }
 
 // ------------------------------------------------------------
 // CONSTRUYE EL MENSAJE DE TELEGRAM
 // ------------------------------------------------------------
-function construirMensajeReporte_(act, prev, anomalias, analisis, mesAct, anioAct, mesPrev, anioPrev) {
-  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anomalias, sensib, analisis, mesAct, anioAct, mesPrev, anioPrev) {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const fmt   = function(n) { return '$' + Number(Math.round(Math.abs(n))).toLocaleString('es-CO') + ' COP'; };
 
-  const fmt = function(n) {
-    const abs = Math.abs(n);
-    const signo = n < 0 ? '-' : '';
-    return signo + '$' + Number(abs).toLocaleString('es-CO') + ' COP';
-  };
-
-  // Balance emoji
-  const balEmoji = act.balance >= 0 ? '💚' : '🔴';
+  // Score emoji
+  const scoreEmoji = score >= 80 ? '🟢' : score >= 60 ? '🟡' : score >= 40 ? '🟠' : '🔴';
+  const balEmoji   = act.balance >= 0 ? '💚' : '🔴';
   const ahorroEmoji = Number(act.tasaAhorro) >= 20 ? '🟢' : Number(act.tasaAhorro) >= 10 ? '🟡' : '🔴';
 
-  // Variación egresos vs mes anterior
+  // Variación egresos
   let varLine = '';
   if (prev.egresos > 0) {
-    const varPct  = ((act.egresos - prev.egresos) / prev.egresos * 100).toFixed(1);
-    const arrow   = Number(varPct) > 0 ? '📈' : '📉';
-    const signo   = Number(varPct) > 0 ? '+' : '';
-    varLine = arrow + ' Egresos vs ' + MESES[mesPrev] + ': ' + signo + varPct + '%\n';
+    const varPct = ((act.egresos - prev.egresos) / prev.egresos * 100).toFixed(1);
+    varLine = (Number(varPct) > 0 ? '📈' : '📉') + ' vs ' + MESES[mesPrev] + ': ' + (Number(varPct) > 0 ? '+' : '') + varPct + '%\n';
   }
 
   // Top categorías
-  const topLine = act.topCats.length > 0
-    ? act.topCats.map(function(item, i) {
-        const pct = act.egresos > 0 ? (item[1] / act.egresos * 100).toFixed(0) : 0;
-        return '  ' + (i + 1) + '. ' + item[0] + ': $' + Number(item[1]).toLocaleString('es-CO') + ' (' + pct + '%)';
-      }).join('\n')
-    : '  Sin datos';
+  const topLine = act.topCats.map(function(item, i) {
+    const pct = act.egresos > 0 ? (item[1] / act.egresos * 100).toFixed(0) : 0;
+    return '  ' + (i + 1) + '. ' + item[0] + ': ' + fmt(item[1]) + ' (' + pct + '%)';
+  }).join('\n') || '  Sin datos';
+
+  // Proyección
+  const proyLine =
+    '  Ritmo diario: ' + fmt(proyeccion.ritmoDiario) + '\n' +
+    '  Proyección fin de mes: ' + fmt(proyeccion.proyeccionEgresos) + '\n' +
+    '  Días restantes: ' + proyeccion.diasRestantes;
+
+  // Escenarios
+  let escLine = '';
+  if (escenarios.mesesAnalizados > 0) {
+    escLine =
+      '\n📐 *Escenarios históricos* (' + escenarios.mesesAnalizados + ' meses)\n' +
+      '  🟢 Optimista: ' + fmt(escenarios.optimista) + '\n' +
+      '  🟡 Base: ' + fmt(escenarios.base) + '\n' +
+      '  🔴 Pesimista: ' + fmt(escenarios.pesimista) + '\n';
+  }
 
   // Anomalías
-  let anomaliasLine = '';
+  let anomLine = '';
   if (anomalias.length > 0) {
-    anomaliasLine = '\n⚠️ *Gastos inusuales*\n' +
-      anomalias.map(function(a) {
-        return '  • ' + a.comercio + ': $' + Number(a.monto).toLocaleString('es-CO');
-      }).join('\n') + '\n';
+    anomLine = '\n⚠️ *Gastos inusuales*\n' +
+      anomalias.map(function(a) { return '  • ' + a.comercio + ': ' + fmt(a.monto); }).join('\n') + '\n';
   }
 
   // Alerta balance negativo
-  let alertaBalance = '';
-  if (act.balance < 0) {
-    alertaBalance = '\n🚨 *Alerta:* los egresos superan los ingresos este mes.\n';
-  }
+  const alertaBalance = act.balance < 0 ? '\n🚨 *Alerta: egresos superan ingresos este mes*\n' : '';
 
   return (
-    '📊 *Reporte Financiero — ' + MESES[mesAct] + ' ' + anioAct + '*\n\n' +
-    '💚 Ingresos:  $' + Number(act.ingresos).toLocaleString('es-CO') + ' COP\n' +
-    '🔴 Egresos:   $' + Number(act.egresos).toLocaleString('es-CO')  + ' COP\n' +
-    balEmoji + ' Balance:   ' + fmt(act.balance) + '\n' +
-    ahorroEmoji + ' Tasa ahorro: ' + act.tasaAhorro + '%\n' +
-    '\n📂 *Top categorías*\n' + topLine + '\n' +
+    scoreEmoji + ' *Score: ' + score + '/100 — ' + MESES[mesAct] + ' ' + anioAct + '*\n\n' +
+    '💚 Ingresos:  ' + fmt(act.ingresos) + '\n' +
+    '🔴 Egresos:   ' + fmt(act.egresos) + '\n' +
+    balEmoji + ' Balance:   ' + (act.balance < 0 ? '-' : '') + fmt(act.balance) + '\n' +
+    ahorroEmoji + ' Tasa ahorro: ' + Number(act.tasaAhorro).toFixed(1) + '%\n' +
     '\n' + varLine +
     alertaBalance +
-    anomaliasLine +
+    '\n📂 *Top categorías*\n' + topLine + '\n' +
+    '\n📊 *Proyección*\n' + proyLine + '\n' +
+    escLine +
+    anomLine +
     '\n🧠 *Análisis IA*\n' + analisis
   );
 }
 
 // ------------------------------------------------------------
-// PRUEBA RÁPIDA — Ejecutar manualmente para verificar
+// PRUEBA — ejecutar manualmente para verificar
 // ------------------------------------------------------------
 function probarAsesorFinanciero() {
-  Logger.log('🔍 Ejecutando análisis financiero de prueba...');
+  Logger.log('🔍 Ejecutando análisis financiero v2...');
   analizarFinanzas();
 }

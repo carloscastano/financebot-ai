@@ -11,7 +11,8 @@
       "WebFetch(domain:twominutereports.com)",
       "WebFetch(domain:chartud.io)",
       "WebFetch(domain:bgdn.me)",
-      "WebFetch(domain:www.f9finance.com)"
+      "WebFetch(domain:www.f9finance.com)",
+      "Bash(clasp push:*)"
     ]
   }
 }
