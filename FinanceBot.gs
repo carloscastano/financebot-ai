@@ -4,6 +4,23 @@
 // ============================================================
 
 // ------------------------------------------------------------
+// WRAPPERS PARA clasp run
+// clasp run solo detecta funciones del archivo principal.
+// Estas funciones delegan a los otros archivos.
+// Uso: clasp run <nombreFuncion>
+// ------------------------------------------------------------
+function run_agregarConfigCategorias()  { agregarConfigCategorias(); }
+function run_sincronizarCategorias()    { sincronizarCategorias(); }
+function run_normalizarCategorias()     { normalizarCategorias(); }
+function run_configurarDashboard()      { configurarDashboard(); }
+function run_analizarFinanzas()         { analizarFinanzas(); }
+function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
+function run_procesarEmails()           { procesarEmailsBancolombia(); }
+function run_cargarHistorico()          { cargarHistoricoEmails(); }
+function run_probarAsesor()             { probarAsesorFinanciero(); }
+function run_resetearTelegram()         { resetearOffsetTelegram(); }
+
+// ------------------------------------------------------------
 // FUNCIÓN PRINCIPAL
 // Esta es la que se ejecuta automáticamente cada 5 minutos
 // También puedes correrla manualmente desde Apps Script
