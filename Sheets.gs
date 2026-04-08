@@ -22,6 +22,16 @@ function escribirTransaccion_(sheet, txn) {
   const id = 'TXN-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
   const procesadoEn = new Date().toISOString();
 
+  // Validar categoría contra la lista maestra de Configurations
+  // Si no está en la lista → forzar 'Otro' para mantener consistencia
+  const cfg = leerConfiguracion_();
+  const listaLower = cfg.categorias.map(function(c) { return c.toLowerCase(); });
+  const catOriginal = String(txn.categoria || '').trim();
+  if (catOriginal && !listaLower.includes(catOriginal.toLowerCase())) {
+    Logger.log('⚠️ Categoría "' + catOriginal + '" no está en la lista → se guarda como "Otro"');
+    txn.categoria = 'Otro';
+  }
+
   sheet.appendRow([
     id,                          // A - ID
     txn.fecha        || '',      // B - Fecha
@@ -48,6 +58,68 @@ function escribirTransaccion_(sheet, txn) {
   if (lastRow > 2) {
     sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn())
          .sort([{ column: 2, ascending: false }, { column: 3, ascending: false }]);
+  }
+}
+
+// ------------------------------------------------------------
+// NORMALIZA CATEGORÍAS EN TRANSACTIONS
+// Corrige categorías no estándar que Gemini inventó.
+// Ejecutar manualmente una vez desde Apps Script.
+// ------------------------------------------------------------
+function normalizarCategorias() {
+  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  if (!sheet || sheet.getLastRow() < 2) return;
+
+  // Mapa: valor incorrecto → valor estándar
+  const MAPA = {
+    'home':           'Hogar',
+    'hogar':          'Hogar',
+    'comida':         'Alimentación',
+    'alimentacion':   'Alimentación',
+    'restaurantes':   'Alimentación',
+    'ropa':           'Ropa y Personal',
+    'ropa y personal':'Ropa y Personal',
+    'viviendas':      'Vivienda',
+    'vivienda':       'Vivienda',
+    'prestamo':       'Financiero',
+    'préstamo':       'Financiero',
+    'pago tarjeta':   'Financiero',
+    'impuestos':      'Servicios',
+    'ejercicio':      'Salud',
+    'salud':          'Salud',
+    'servicios':      'Servicios',
+    'transporte':     'Transporte',
+    'transferencia':  'Transferencia',
+    'salario':        'Salario',
+    'educacion':      'Educación',
+    'educación':      'Educación',
+    'entretenimiento':'Entretenimiento',
+    'financiero':     'Financiero',
+    'otro':           'Otro',
+  };
+
+  const lastRow = sheet.getLastRow();
+  const colCat  = 10; // columna J = Categoría
+  const rango   = sheet.getRange(2, colCat, lastRow - 1, 1);
+  const valores = rango.getValues();
+
+  let corregidos = 0;
+  valores.forEach(function(fila, i) {
+    const original = String(fila[0]).trim();
+    const clave    = original.toLowerCase();
+    if (MAPA[clave] && MAPA[clave] !== original) {
+      valores[i][0] = MAPA[clave];
+      corregidos++;
+      Logger.log('✏️ Fila ' + (i + 2) + ': "' + original + '" → "' + MAPA[clave] + '"');
+    }
+  });
+
+  if (corregidos > 0) {
+    rango.setValues(valores);
+    Logger.log('✅ Categorías normalizadas: ' + corregidos + ' correcciones.');
+  } else {
+    Logger.log('✅ Todas las categorías ya están correctas.');
   }
 }
 
@@ -107,6 +179,17 @@ function leerConfiguracion_() {
       ? 'from:(' + dominios.join(' OR ') + ')'
       : 'from:(@notificacionesbancolombia.com OR @bancolombia.com.co)';
 
+    // Leer categorías: "Categoría 1", "Categoría 2", ...
+    const categorias = [];
+    for (let i = 1; i <= 20; i++) {
+      const cat = cfg['Categoría ' + i] || cfg['Categoria ' + i];
+      if (cat && String(cat).trim()) categorias.push(String(cat).trim());
+    }
+    if (categorias.length === 0) {
+      // Fallback si aún no se han configurado
+      categorias.push(...CATEGORIAS_DEFECTO_);
+    }
+
     return {
       presupuestoMensual:   cfg['Presupuesto mensual']     || 3000000,
       metaAhorro:           cfg['Meta ahorro']             || 500000,
@@ -116,6 +199,7 @@ function leerConfiguracion_() {
       tarjetaCredito:       cfg['Tarjeta credito']         || '',
       tarjetaDebito:        cfg['Tarjeta debito']          || '',
       gmailQuery:           gmailQuery,
+      categorias:           categorias,
       // Exponer claves raw para que detectarBanco_() pueda matchear
       'Banco 1 nombre':     cfg['Banco 1 nombre'] || 'Bancolombia',
       'Banco 1 sender':     cfg['Banco 1 sender'] || '@notificacionesbancolombia.com,@bancolombia.com.co',
@@ -130,13 +214,103 @@ function leerConfiguracion_() {
   }
 }
 
+// Lista de categorías estándar — usada como fallback
+const CATEGORIAS_DEFECTO_ = [
+  'Alimentación', 'Transporte', 'Vivienda', 'Salud', 'Educación',
+  'Entretenimiento', 'Servicios', 'Ropa y Personal', 'Hogar',
+  'Financiero', 'Transferencia', 'Salario', 'Otro',
+];
+
 function configuracionPorDefecto_() {
   return {
     presupuestoMensual: 3000000, metaAhorro: 500000, umbralAlerta: 200000,
     alertaPresupuestoPct: 0.8, diasRecordatorio: 3,
     tarjetaCredito: '', tarjetaDebito: '',
     gmailQuery: 'from:(@notificacionesbancolombia.com OR @bancolombia.com.co)',
+    categorias: CATEGORIAS_DEFECTO_.slice(),
   };
+}
+
+// ------------------------------------------------------------
+// MIGRACIÓN: agrega categorías a la hoja Configurations existente
+// Ejecutar UNA SOLA VEZ. Las categorías quedan editables por el usuario.
+// ------------------------------------------------------------
+function agregarConfigCategorias() {
+  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.CONFIGURATIONS);
+  if (!sheet) { Logger.log('❌ Hoja Configurations no encontrada.'); return; }
+
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
+  if (datos.some(function(p) { return String(p).startsWith('Categoría'); })) {
+    Logger.log('ℹ️ Categorías ya configuradas. No se hicieron cambios.');
+    return;
+  }
+
+  // Separador visual
+  sheet.appendRow(['--- Categorías ---', '', 'Edita, agrega o elimina categorías. El bot y el dashboard usarán esta lista.']);
+
+  CATEGORIAS_DEFECTO_.forEach(function(cat, i) {
+    sheet.appendRow(['Categoría ' + (i + 1), cat, '']);
+  });
+
+  Logger.log('✅ ' + CATEGORIAS_DEFECTO_.length + ' categorías agregadas a Configurations.');
+}
+
+// ------------------------------------------------------------
+// SINCRONIZA CATEGORÍAS: renombra en Transactions cuando cambias
+// un nombre en Configurations. Uso: modifica el valor en la hoja
+// y llama sincronizarCategorias({viejo: 'Home', nuevo: 'Hogar'})
+// O ejecuta sin parámetros para normalizar con el mapa estándar.
+// ------------------------------------------------------------
+function sincronizarCategorias(opciones) {
+  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  if (!sheet || sheet.getLastRow() < 2) return;
+
+  const cfg       = leerConfiguracion_();
+  const listaSet  = new Set(cfg.categorias.map(function(c) { return c.toLowerCase(); }));
+
+  const lastRow = sheet.getLastRow();
+  const rango   = sheet.getRange(2, 10, lastRow - 1, 1); // col J = Categoría
+  const valores = rango.getValues();
+
+  // Mapa de normalización heredado + renombre puntual si se pasa opciones
+  const MAPA_NORM = {
+    'home': 'Hogar', 'comida': 'Alimentación', 'restaurantes': 'Alimentación',
+    'ropa': 'Ropa y Personal', 'viviendas': 'Vivienda', 'prestamo': 'Financiero',
+    'préstamo': 'Financiero', 'pago tarjeta': 'Financiero', 'impuestos': 'Servicios',
+    'ejercicio': 'Salud', 'alimentacion': 'Alimentación',
+  };
+  if (opciones && opciones.viejo && opciones.nuevo) {
+    MAPA_NORM[opciones.viejo.toLowerCase()] = opciones.nuevo;
+  }
+
+  let corregidos = 0;
+  valores.forEach(function(fila, i) {
+    const original = String(fila[0]).trim();
+    const clave    = original.toLowerCase();
+
+    // 1. Aplicar mapa de normalización
+    if (MAPA_NORM[clave] && MAPA_NORM[clave] !== original) {
+      Logger.log('✏️ Fila ' + (i+2) + ': "' + original + '" → "' + MAPA_NORM[clave] + '"');
+      valores[i][0] = MAPA_NORM[clave];
+      corregidos++;
+      return;
+    }
+    // 2. Si la categoría no está en la lista maestra → 'Otro'
+    if (original && !listaSet.has(clave)) {
+      Logger.log('⚠️ Fila ' + (i+2) + ': "' + original + '" no reconocida → "Otro"');
+      valores[i][0] = 'Otro';
+      corregidos++;
+    }
+  });
+
+  if (corregidos > 0) {
+    rango.setValues(valores);
+    Logger.log('✅ Sincronización completa: ' + corregidos + ' filas actualizadas.');
+  } else {
+    Logger.log('✅ Todas las categorías ya están alineadas.');
+  }
 }
 
 // ------------------------------------------------------------
@@ -289,21 +463,10 @@ function configurarDashboard_(sheet) {
   sheet.getRange('B9').setValue('Total COP');
   sheet.getRange('C9').setValue('% del gasto');
 
-  // Leer categorías únicas desde Transactions (columna J) — dinámico
-  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const txnSheet = ss.getSheetByName(T);
-  var cats = [];
-  if (txnSheet && txnSheet.getLastRow() > 1) {
-    const catData = txnSheet.getRange(2, 10, txnSheet.getLastRow() - 1, 1).getValues().flat();
-    const unique = {};
-    catData.forEach(function(c) { if (c && String(c).trim()) unique[String(c).trim()] = true; });
-    cats = Object.keys(unique).sort();
-  }
-  // Fallback si no hay datos aún
-  if (cats.length === 0) {
-    cats = ['Alimentación','Transporte','Vivienda','Salud','Servicios',
-            'Financiero','Transferencia','Salario','Otro'];
-  }
+  // Leer categorías desde Configurations (fuente de verdad)
+  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const cfg = leerConfiguracion_();
+  var cats  = cfg.categorias.slice().sort();
 
   cats.forEach(function(cat, i) {
     const row = 10 + i;

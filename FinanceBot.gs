@@ -127,6 +127,7 @@ function esEmailTransaccional_(texto) {
     'recibiste', 'abono', 'retiro', 'cajero', 'pse',
     'factura', 'vence', 'pago exitoso', 'pagaste', 'cop',
     'enviaste', 'bre-b', 'nequi', 'enviaste plata',
+    'pago tarjeta', 'tarjeta de crédito', 'pago tc',
   ];
   return keywords.some(k => lower.includes(k));
 }
@@ -195,6 +196,8 @@ function llamarGemini_(textoEmail) {
 // Sistema calibrado para patrones de Bancolombia Colombia
 // ------------------------------------------------------------
 function construirPrompt_(textoEmail) {
+  const cfg = leerConfiguracion_();
+  const listaCats = cfg.categorias.join(', ');
   return `Eres un analista financiero personal experto en notificaciones de Bancolombia (Colombia).
 
 Tu trabajo: parsear el mensaje bancario y devolver SOLO un JSON válido (sin markdown, sin explicaciones).
@@ -219,6 +222,7 @@ PATRONES BANCOLOMBIA:
 • Factura pendiente: "su factura inscrita [SERVICIO] con referencia [REF] se vence el [DD/MM/YYYY]" → tipo=informativo, tipo_transaccion=factura_pendiente
 • Pago PSE: "pago exitoso de [SERVICIO] por COP[monto]" → tipo=egreso
 • Pago factura programada: "Bancolombia informa pago Factura Programada [SERVICIO] Ref [REF] por $[monto] desde [cuenta]" → tipo=egreso, tipo_transaccion=pago_servicio
+• Pago tarjeta de crédito: "Bancolombia informa pago Tarjeta de Crédito *[4dig] por $[monto]" o "pago de tu tarjeta de crédito" → tipo=egreso, tipo_transaccion=pago_tc, categoria=Financiero, subcategoria=Pago Tarjeta, comercio="Pago TC *[4dig]"
 • Nequi envío Bre-B: "Enviaste de manera exitosa [monto] a la llave [número] de [NOMBRE] el [fecha] a la [hora]" → tipo=egreso, tipo_transaccion=transferencia_enviada, comercio=nombre del destinatario, referencia=número de llave, categoria=Transferencia
 • Nequi ingreso: "Recibiste [monto] de [NOMBRE]" → tipo=ingreso, tipo_transaccion=transferencia_recibida, comercio=nombre del remitente, categoria=Transferencia
 
@@ -227,9 +231,11 @@ REGLAS PARA TRANSFERENCIAS:
 - referencia = número de cuenta destino (el que aparece después de "a la cuenta *")
 - cuenta = número de cuenta origen (el que aparece después de "desde tu cuenta")
 
-CATEGORÍAS (usa exactamente estas):
-Alimentación, Transporte, Vivienda, Salud, Educación, Entretenimiento,
-Servicios, Ropa y Personal, Hogar, Financiero, Transferencia, Salario, Otro
+CATEGORÍAS — USA EXACTAMENTE UNA DE ESTAS (sin variantes ni sinónimos):
+${listaCats}
+
+Si el gasto no encaja claramente en ninguna → usa "Otro".
+NUNCA inventes categorías fuera de esta lista.
 
 SUBCATEGORÍAS:
 - Alimentación: Supermercados, Restaurantes, Domicilios, Tiendas
@@ -247,7 +253,8 @@ TERPEL, PRIMAX, TEXACO → Transporte/Gasolina
 NETFLIX, SPOTIFY, DISNEY, HBO → Entretenimiento/Streaming
 CLARO, MOVISTAR, TIGO → Servicios/Telefonía
 AGUAS, ENEL, EPM, CODENSA, GAS NATURAL, CENTRAL HIDROEL, CHEC, EEPP → Vivienda/Servicios públicos
-AVÍCOLA, SURTIPOLLOS → Alimentación/Tiendas
+AVÍCOLA, SURTIPOLLOS, MERCALDAS, SULTANA → Alimentación/Tiendas
+Pago TC, Pago Tarjeta, Tarjeta de Crédito → Financiero/Pago Tarjeta
 
 Responde SOLO este JSON (sin nada más):
 {

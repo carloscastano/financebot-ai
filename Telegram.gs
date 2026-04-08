@@ -141,8 +141,10 @@ function parsearTransaccionManual_(texto) {
     'Extrae la información y devuelve SOLO un JSON válido (sin markdown).\n' +
     'Si el usuario no menciona fecha, usa hoy. Si no menciona hora, usa null.\n' +
     'Si no queda claro si es ingreso o egreso, asume egreso.\n\n' +
-    'CATEGORÍAS: Alimentación, Transporte, Vivienda, Salud, Educación, Entretenimiento, ' +
-    'Servicios, Ropa y Personal, Hogar, Financiero, Transferencia, Salario, Otro\n\n' +
+    'REGLAS ESPECIALES:\n' +
+    '- Arriendo, canon, renta de apartamento/local → tipo=ingreso, tipo_transaccion=transferencia_recibida, categoria=Salario, subcategoria=Arriendo\n' +
+    '- "me pagaron el arriendo", "ingresó el arriendo", "canon apartamento" → misma regla anterior\n\n' +
+    'CATEGORÍAS (usa exactamente una de estas): ' + leerConfiguracion_().categorias.join(', ') + '\n\n' +
     'JSON a retornar:\n' +
     '{"fecha":"' + hoy + '","hora":null,"tipo":"egreso|ingreso",' +
     '"tipo_transaccion":"compra_td|transferencia_enviada|transferencia_recibida|otro",' +
@@ -213,7 +215,7 @@ function recordarPagosPendientes() {
     // Si ya fue pagado este mes, no recordar
     if (ultimoPago instanceof Date && !isNaN(ultimoPago)) {
       if (ultimoPago.getMonth() === hoy.getMonth() && ultimoPago.getFullYear() === hoy.getFullYear()) {
-        Logger.log(`✅ ${servicio}: ya pagado este mes (${Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy')})`);
+        Logger.log('✅ ' + servicio + ': ya pagado este mes (' + Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy') + ')');
         return;
       }
     }
@@ -223,15 +225,16 @@ function recordarPagosPendientes() {
     const fechaPago = new Date(anio, mes - 1, diaVencimiento);
     fechaPago.setHours(0, 0, 0, 0);
 
-    if (fechaPago < hoy) {
-      fechaPago.setMonth(fechaPago.getMonth() + 1);
-    }
-
     const diasParaVencer = Math.round((fechaPago - hoy) / (1000 * 60 * 60 * 24));
 
-    Logger.log(`${servicio}: vence ${Utilities.formatDate(fechaPago,'America/Bogota','dd/MM/yyyy')}, faltan ${diasParaVencer} día(s), umbral ${diasAnticipacion}`);
+    // Si ya venció este mes y no está pagado → recordar como VENCIDO hasta que lo marquen
+    // Si aún no ha vencido → recordar dentro del umbral de días
+    const vencidoSinPagar = diasParaVencer < 0;
+    const proximoAVencer  = diasParaVencer >= 0 && diasParaVencer <= diasAnticipacion;
 
-    if (diasParaVencer >= 0 && diasParaVencer <= diasAnticipacion) {
+    Logger.log(servicio + ': faltan ' + diasParaVencer + ' día(s), umbral ' + diasAnticipacion + (vencidoSinPagar ? ' ⚠️ VENCIDO' : ''));
+
+    if (vencidoSinPagar || proximoAVencer) {
       pagosARecordar.push({ servicio, monto, fechaPago, diasParaVencer, referencia, notas, filaNum });
     }
   });
@@ -241,19 +244,22 @@ function recordarPagosPendientes() {
     return;
   }
 
-  // Guardar mapa ID → fila en Script Properties para cuando el usuario responda
+  // Guardar mapa ID → fila. ID es fijo = filaNum - 1 (fila 2 = ID 1, fila 3 = ID 2, etc.)
   const mapa = {};
-  pagosARecordar.forEach(function(p, i) { mapa[i + 1] = p.filaNum; });
+  pagosARecordar.forEach(function(p) { mapa[p.filaNum - 1] = p.filaNum; });
   PropertiesService.getScriptProperties().setProperty('PENDING_PAYMENT_MAP', JSON.stringify(mapa));
 
-  // Construir mensaje con IDs
-  const lineas = pagosARecordar.map(function(p, i) {
-    const id       = i + 1;
+  // Construir mensaje con IDs fijos por fila
+  const lineas = pagosARecordar.map(function(p) {
+    const id       = p.filaNum - 1;  // ID permanente basado en fila
     const fecha    = Utilities.formatDate(p.fechaPago, 'America/Bogota', 'dd/MM/yyyy');
     const montoStr = p.monto ? '\n💰 $' + Number(p.monto).toLocaleString('es-CO') + ' COP' : '';
     const ref      = p.referencia ? '\n🔑 Ref: ' + p.referencia : '';
-    const dias     = p.diasParaVencer === 0 ? '⚠️ HOY' : 'en ' + p.diasParaVencer + ' día(s)';
-    return '🧾 *ID ' + id + ': ' + p.servicio + '*\n📆 Vence: ' + fecha + ' (' + dias + ')' + montoStr + ref;
+    let estado;
+    if (p.diasParaVencer < 0)     estado = '🚨 VENCIDO hace ' + Math.abs(p.diasParaVencer) + ' día(s)';
+    else if (p.diasParaVencer === 0) estado = '⚠️ HOY';
+    else                           estado = 'en ' + p.diasParaVencer + ' día(s)';
+    return '🧾 *ID ' + id + ': ' + p.servicio + '*\n📆 Vence: ' + fecha + ' (' + estado + ')' + montoStr + ref;
   });
 
   const mensaje =
