@@ -72,6 +72,25 @@ function procesarMensajesTelegram() {
       return;
     }
 
+    // Documentos (extractos bancarios .zip o .xlsx)
+    if (msg.document) {
+      var doc      = msg.document;
+      var docName  = (doc.file_name || '').toLowerCase();
+      if (docName.endsWith('.zip') || docName.endsWith('.xlsx')) {
+        try {
+          enviarMensajeTelegram_('📊 Procesando extracto, un momento...');
+          var resExtracto = procesarExtractoTelegram_(doc.file_id, doc.file_name);
+          enviarMensajeTelegram_(resExtracto);
+        } catch(eDoc) {
+          Logger.log('❌ Extracto: ' + eDoc.message);
+          enviarMensajeTelegram_('❌ Error procesando el extracto: ' + eDoc.message);
+        }
+      } else {
+        enviarMensajeTelegram_('📎 Solo acepto extractos en formato .zip o .xlsx\nDescárgalo desde la app del banco y envíalo aquí.');
+      }
+      return;
+    }
+
     if (!msg.text) return;
 
     // Comando: "ID X pagada" — marca pago pendiente

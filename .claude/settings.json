@@ -12,7 +12,15 @@
       "WebFetch(domain:chartud.io)",
       "WebFetch(domain:bgdn.me)",
       "WebFetch(domain:www.f9finance.com)",
-      "Bash(clasp push:*)"
+      "Bash(clasp push:*)",
+      "Read(//c/Users/Usuario/**)",
+      "Bash(curl -s -H 'Authorization: Bearer ya29.a0Aa7MYiqF3IAGcD5atNca-5y9h3FMvm1iUrbtyL13vCi4KS0N9OloTH4oK8jU0gilligd6_cRq6S26fiTGyv_8Ke1NokiZYPi9QVWHQiCDn3MZhLTovJ1gwYCryS4ddNms_cQ-ePtryWU663dQrm-WTQPDCog8elmw9BINDeMMwgEDwghRkWs_3bOuySsPRanPRuY5yoaCgYKAW0SARASFQHGX2MiLShezo66JKclWTbpxQJE7A0206' https://script.googleapis.com/v1/projects/19hEt199VG1WMvRagXGwrjJ-O7EqRisKshfhHLo_sEYXMWn-2BFA5uSI2/deployments)",
+      "Bash(curl -s -X POST -H 'Authorization: Bearer ya29.a0Aa7MYiqF3IAGcD5atNca-5y9h3FMvm1iUrbtyL13vCi4KS0N9OloTH4oK8jU0gilligd6_cRq6S26fiTGyv_8Ke1NokiZYPi9QVWHQiCDn3MZhLTovJ1gwYCryS4ddNms_cQ-ePtryWU663dQrm-WTQPDCog8elmw9BINDeMMwgEDwghRkWs_3bOuySsPRanPRuY5yoaCgYKAW0SARASFQHGX2MiLShezo66JKclWTbpxQJE7A0206' -H 'Content-Type: application/json' -d '{\"function\":\"run_procesarEmails\",\"devMode\":false}' https://script.googleapis.com/v1/scripts/19hEt199VG1WMvRagXGwrjJ-O7EqRisKshfhHLo_sEYXMWn-2BFA5uSI2:run)",
+      "Bash(curl -s -X POST -H 'Authorization: Bearer ya29.a0Aa7MYiqF3IAGcD5atNca-5y9h3FMvm1iUrbtyL13vCi4KS0N9OloTH4oK8jU0gilligd6_cRq6S26fiTGyv_8Ke1NokiZYPi9QVWHQiCDn3MZhLTovJ1gwYCryS4ddNms_cQ-ePtryWU663dQrm-WTQPDCog8elmw9BINDeMMwgEDwghRkWs_3bOuySsPRanPRuY5yoaCgYKAW0SARASFQHGX2MiLShezo66JKclWTbpxQJE7A0206' -H 'Content-Type: application/json' -d '{\"function\":\"run_procesarEmails\",\"devMode\":false}' https://script.googleapis.com/v1/scripts/AKfycbwF3yxO0gfdaIudLDgF-uk_83VM7u5y1PDsyQTr_qx8wgzghAjNUHB6iXxBFKEEINOM:run)",
+      "Bash(curl -s 'https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=ya29.a0Aa7MYiqF3IAGcD5atNca-5y9h3FMvm1iUrbtyL13vCi4KS0N9OloTH4oK8jU0gilligd6_cRq6S26fiTGyv_8Ke1NokiZYPi9QVWHQiCDn3MZhLTovJ1gwYCryS4ddNms_cQ-ePtryWU663dQrm-WTQPDCog8elmw9BINDeMMwgEDwghRkWs_3bOuySsPRanPRuY5yoaCgYKAW0SARASFQHGX2MiLShezo66JKclWTbpxQJE7A0206')",
+      "Bash(node -e ':*)",
+      "Bash(clasp deploy:*)",
+      "Bash(node gas-run.js run_diagnosticarExtracto '[\"1wObPByODi7FWkwMcs6JZRZEI0TpqMAC4\"]')"
     ]
   }
 }

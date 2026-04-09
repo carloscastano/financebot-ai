@@ -19,6 +19,7 @@ function run_procesarEmails()           { procesarEmailsBancolombia(); }
 function run_cargarHistorico()          { cargarHistoricoEmails(); }
 function run_probarAsesor()             { probarAsesorFinanciero(); }
 function run_resetearTelegram()         { resetearOffsetTelegram(); }
+function run_procesarMensajes()         { procesarMensajesTelegram(); }
 
 // ------------------------------------------------------------
 // FUNCIÓN PRINCIPAL
