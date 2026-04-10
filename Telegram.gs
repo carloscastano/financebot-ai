@@ -102,15 +102,41 @@ function procesarMensajesTelegram() {
     }
 
     // Comandos especiales
+    if (msg.text === '/suscripciones') {
+      try { reporteSuscripciones(); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      return;
+    }
+
     if (msg.text === '/ayuda' || msg.text === '/help') {
       enviarMensajeTelegram_(
-        '🤖 *FinanceBot — Entrada manual*\n\n' +
-        'Escríbeme cualquier gasto o ingreso:\n\n' +
+        '🤖 *FinanceBot — Comandos*\n\n' +
+        '*Gastos manuales* — escríbeme directamente:\n' +
         '• `gasté 15000 en la frutería`\n' +
         '• `ingresé 200000 de Juan Nequi`\n' +
-        '• `almuerzo 12000 efectivo`\n' +
-        '• `gasolina 80000 terpel`\n\n' +
-        'Clasifico automáticamente y guardo en tu hoja.'
+        '• `almuerzo 12000`\n\n' +
+        '*Comandos:*\n' +
+        '• /suscripciones — detecta cargos recurrentes\n' +
+        '• /ayuda — este menú\n\n' +
+        '*Archivos:*\n' +
+        '• Envía un .zip o .xlsx con tu extracto Bancolombia para importarlo'
+      );
+      return;
+    }
+
+    // Comando no reconocido → mostrar ayuda
+    if (msg.text && msg.text.startsWith('/')) {
+      enviarMensajeTelegram_(
+        '❓ Comando no reconocido.\n\n' +
+        '🤖 *Lo que puedo hacer:*\n\n' +
+        '*Registrar gastos:*\n' +
+        '• `gasté 15000 en la frutería`\n' +
+        '• `ingresé 200000 de Juan Nequi`\n' +
+        '• `almuerzo 12000`\n\n' +
+        '*Comandos:*\n' +
+        '• /suscripciones — detecta cargos recurrentes\n' +
+        '• /ayuda — este menú\n\n' +
+        '*Archivos:*\n' +
+        '• Envía .zip o .xlsx para importar extracto Bancolombia'
       );
       return;
     }

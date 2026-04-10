@@ -276,23 +276,19 @@ function generarAnalisisIA_(act, prev, proyeccion, escenarios, score, anomalias,
     : 'sin datos';
 
   const prompt =
-    'Eres un asesor financiero personal colombiano experto en finanzas personales y productos de inversión colombianos. ' +
-    'Responde en español, máximo 4 líneas, sin asteriscos ni markdown, tono amigable y directo.\n\n' +
-    'DATOS ' + MESES[mesAct].toUpperCase() + ' ' + anioAct + ':\n' +
-    '• Ingresos: ' + fmt(act.ingresos) + '\n' +
-    '• Egresos: ' + fmt(act.egresos) + ' (vs ' + MESES[mesPrev] + ': ' + varEgresos + ')\n' +
-    '• Balance: ' + fmt(act.balance) + ' | Tasa ahorro: ' + Number(act.tasaAhorro).toFixed(1) + '%\n' +
-    '• Score financiero: ' + score + '/100\n\n' +
-    'TOP CATEGORÍAS:\n' + (topStr || 'Sin datos') + '\n\n' +
-    'PROYECCIÓN FIN DE MES:\n' +
-    '• Ritmo diario: ' + fmt(proyeccion.ritmoDiario) + '\n' +
-    '• Proyección egresos: ' + fmt(proyeccion.proyeccionEgresos) + '\n\n' +
-    'ESCENARIOS HISTÓRICOS:\n' + escStr + '\n\n' +
-    'GASTOS INUSUALES: ' + anomStr + '\n\n' +
-    'Con base en estos datos:\n' +
-    '1. Una observación clave sobre el patrón de gasto\n' +
-    '2. Recomienda un producto de inversión colombiano concreto (CDT, FIC, Fiducia Bancolombia) si hay superávit\n' +
-    '3. Un consejo práctico para el próximo mes';
+    'Eres el mejor amigo de Carlos, colombiano, que casualmente sabe mucho de finanzas personales. ' +
+    'Le hablas de tú, en tono cercano y directo, como por WhatsApp. Sin listas numeradas, sin términos corporativos. ' +
+    'Máximo 3 oraciones cortas. Sin asteriscos ni markdown.\n\n' +
+    'Sus finanzas de ' + MESES[mesAct] + ' ' + anioAct + ':\n' +
+    '• Ingresos: ' + fmt(act.ingresos) + ', Egresos: ' + fmt(act.egresos) + ' (vs ' + MESES[mesPrev] + ': ' + varEgresos + ')\n' +
+    '• Le sobró/faltó: ' + fmt(act.balance) + ', ahorra el ' + Number(act.tasaAhorro).toFixed(1) + '% de lo que gana\n' +
+    '• Score: ' + score + '/100\n' +
+    '• Más gasta en: ' + (topStr || 'sin datos') + '\n' +
+    '• Gastos raros este mes: ' + anomStr + '\n' +
+    '• Va a gastar aprox ' + fmt(proyeccion.proyeccionEgresos) + ' si sigue igual\n\n' +
+    'Dale un comentario honesto y concreto sobre cómo le fue este mes y qué puede mejorar el próximo. ' +
+    'Si le sobró plata, menciona algo concreto para hacer con ese excedente (no productos de inversión formales, sino ideas prácticas). ' +
+    'Si gastó más de lo normal en algo, díselo sin rodeos.';
 
   try {
     const payload = {
