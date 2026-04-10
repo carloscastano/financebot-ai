@@ -290,7 +290,7 @@ function run_diagnosticarExtracto(driveFileId) {
 function clasificarConGemini_(filas) {
   var cfg        = leerConfiguracion_();
   var categorias = cfg.categorias.join(', ');
-  var CHUNK      = 70;
+  var CHUNK      = 30;
   var todas      = [];
 
   for (var i = 0; i < filas.length; i += CHUNK) {
@@ -342,19 +342,20 @@ function geminiClasificar_(filas, categorias) {
     rawBody  = resp.getContentText();
   }
   if (httpCode !== 200) {
-    Logger.log('Gemini HTTP ' + httpCode + ': ' + rawBody.substring(0, 400));
-    return [];
+    throw new Error('Gemini HTTP ' + httpCode + ': ' + rawBody.substring(0, 300));
   }
 
   var json;
   try { json = JSON.parse(rawBody); } catch(e) {
-    Logger.log('Gemini resp no es JSON: ' + rawBody.substring(0, 200));
-    return [];
+    throw new Error('Gemini resp no es JSON: ' + rawBody.substring(0, 200));
   }
 
-  if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) {
-    Logger.log('Gemini sin candidates: ' + JSON.stringify(json).substring(0, 300));
-    return [];
+  if (!json.candidates || !json.candidates[0]) {
+    throw new Error('Gemini sin candidates: ' + JSON.stringify(json).substring(0, 300));
+  }
+  if (!json.candidates[0].content) {
+    var finish = (json.candidates[0].finishReason || 'unknown');
+    throw new Error('Gemini content vacío, finishReason: ' + finish + ' | ' + JSON.stringify(json.candidates[0]).substring(0, 200));
   }
 
   var text = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
@@ -363,10 +364,9 @@ function geminiClasificar_(filas, categorias) {
 
   var items;
   try { items = JSON.parse(text); } catch (e) {
-    Logger.log('Parse error chunk: ' + e.message + ' | texto: ' + text.substring(0, 200));
-    return [];
+    throw new Error('JSON parse error: ' + e.message + ' | texto: ' + text.substring(0, 200));
   }
-  if (!Array.isArray(items)) return [];
+  if (!Array.isArray(items)) throw new Error('Gemini no retornó array: ' + String(items).substring(0, 100));
 
   return items
     .filter(function(x) { return x.m && x.f; })
