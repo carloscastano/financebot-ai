@@ -6,6 +6,7 @@
 // ============================================================
 
 function reporteSemanal() {
+  if (!isFeatureEnabled_('reporte_semanal')) { Logger.log('⏸️ reporte_semanal desactivado.'); return; }
   enviarMensajeTelegram_(construirMensajeReporteSemanal_());
 }
 

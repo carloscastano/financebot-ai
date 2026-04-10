@@ -117,6 +117,12 @@ function procesarMensajesTelegram() {
       return;
     }
 
+    if (msg.text === '/config' ||
+        (msg.text && (msg.text.startsWith('/activar ') || msg.text.startsWith('/desactivar ')))) {
+      try { enviarMensajeTelegram_(procesarComandoConfig_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      return;
+    }
+
     if (msg.text === '/ayuda' || msg.text === '/help') {
       enviarMensajeTelegram_(
         '🤖 *FinanceBot — Comandos*\n\n' +
@@ -131,6 +137,7 @@ function procesarMensajesTelegram() {
         '• /meta abonar <nombre> <monto> — registrar abono\n' +
         '• /presupuesto — estado de presupuestos por categoría\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
+        '• /config — ver y activar/desactivar funcionalidades\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +
         '• Envía un .zip o .xlsx con tu extracto Bancolombia para importarlo'
@@ -245,6 +252,7 @@ function parsearTransaccionManual_(texto) {
 // Responde "ID X pagada" en Telegram para marcar como pagado.
 // ------------------------------------------------------------
 function recordarPagosPendientes() {
+  if (!isFeatureEnabled_('recordatorio_pagos')) { Logger.log('⏸️ recordatorio_pagos desactivado.'); return; }
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
     Logger.log('⚠️ Telegram no configurado.');
     return;
@@ -441,6 +449,7 @@ function enviarMensajeTelegram_(texto) {
 // ENVÍA ALERTA DE GASTO ALTO A TELEGRAM
 // ------------------------------------------------------------
 function enviarTelegram_(txn) {
+  if (!isFeatureEnabled_('alerta_gasto_alto')) return;
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) return;
 
   const monto = Number(txn.monto).toLocaleString('es-CO');

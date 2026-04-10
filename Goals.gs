@@ -183,6 +183,7 @@ function _calcularFlujoCaja_() {
 // → Tipo: Temporizador mensual (o diario con check de día 1)
 // ------------------------------------------------------------
 function recordarMetasSinAbono() {
+  if (!isFeatureEnabled_('recordatorio_metas')) { Logger.log('⏸️ recordatorio_metas desactivado.'); return; }
   // Solo ejecutar el día 1 de cada mes si usas activador diario
   var hoy = new Date();
   if (hoy.getDate() !== 1) return;

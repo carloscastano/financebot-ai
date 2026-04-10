@@ -5,6 +5,7 @@
 // ============================================================
 
 function analizarFinanzas() {
+  if (!isFeatureEnabled_('reporte_mensual')) { Logger.log('⏸️ reporte_mensual desactivado.'); return; }
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
     Logger.log('⚠️ Telegram no configurado.');
     return;

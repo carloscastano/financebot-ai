@@ -22,6 +22,7 @@
 // Anti-spam: 1 alerta por nivel (80% / 100%) por categoría por mes.
 // ------------------------------------------------------------
 function verificarAlertaPresupuesto_(txn) {
+  if (!isFeatureEnabled_('alerta_presupuesto')) return;
   if (!txn || String(txn.tipo).toLowerCase() !== 'egreso') return;
 
   var cfg          = leerConfiguracion_();
@@ -85,6 +86,7 @@ function verificarAlertaPresupuesto_(txn) {
 // REVISIÓN CONSOLIDADA — DÍA 25 DE CADA MES
 // ------------------------------------------------------------
 function verificarPresupuestoMensual_() {
+  if (!isFeatureEnabled_('revision_dia25')) { Logger.log('⏸️ revision_dia25 desactivado.'); return; }
   var hoy = new Date();
   if (hoy.getDate() !== 25) return; // Solo actúa el día 25
   var msg = construirMensajePresupuesto_();
