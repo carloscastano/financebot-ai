@@ -11,7 +11,8 @@ const SHEETS = {
   PENDING_PAYMENTS:   'Pending Payments',
   SEARCH_PRODUCTS:    'Search Products',
   DATA_DICTIONARY:    'DataDictionary',
-  FINANCIAL_INSIGHTS: 'Financial Insights',  // Historial de reportes del Asesor Financiero
+  FINANCIAL_INSIGHTS: 'Financial Insights',
+  GOALS:              'Goals',
 };
 
 // ------------------------------------------------------------

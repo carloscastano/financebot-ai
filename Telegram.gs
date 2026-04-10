@@ -102,6 +102,11 @@ function procesarMensajesTelegram() {
     }
 
     // Comandos especiales
+    if (msg.text === '/metas' || (msg.text && msg.text.startsWith('/meta '))) {
+      try { enviarMensajeTelegram_(procesarComandoMeta_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      return;
+    }
+
     if (msg.text === '/suscripciones') {
       try { reporteSuscripciones(); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
       return;
@@ -115,6 +120,9 @@ function procesarMensajesTelegram() {
         '• `ingresé 200000 de Juan Nequi`\n' +
         '• `almuerzo 12000`\n\n' +
         '*Comandos:*\n' +
+        '• /metas — ver progreso de metas de ahorro\n' +
+        '• /meta nueva <nombre> <monto> [fecha] — crear meta\n' +
+        '• /meta abonar <nombre> <monto> — registrar abono\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +
@@ -133,6 +141,9 @@ function procesarMensajesTelegram() {
         '• `ingresé 200000 de Juan Nequi`\n' +
         '• `almuerzo 12000`\n\n' +
         '*Comandos:*\n' +
+        '• /metas — metas de ahorro\n' +
+        '• /meta nueva <nombre> <monto> [fecha] — crear meta\n' +
+        '• /meta abonar <nombre> <monto> — abonar\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +
