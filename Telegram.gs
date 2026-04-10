@@ -112,6 +112,11 @@ function procesarMensajesTelegram() {
       return;
     }
 
+    if (msg.text === '/presupuesto') {
+      try { enviarMensajeTelegram_(construirMensajePresupuesto_()); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      return;
+    }
+
     if (msg.text === '/ayuda' || msg.text === '/help') {
       enviarMensajeTelegram_(
         '🤖 *FinanceBot — Comandos*\n\n' +
@@ -121,8 +126,10 @@ function procesarMensajesTelegram() {
         '• `almuerzo 12000`\n\n' +
         '*Comandos:*\n' +
         '• /metas — ver progreso de metas de ahorro\n' +
+        '• /meta estado — alertas rápidas (sin abono / cerca de fecha)\n' +
         '• /meta nueva <nombre> <monto> [fecha] — crear meta\n' +
         '• /meta abonar <nombre> <monto> — registrar abono\n' +
+        '• /presupuesto — estado de presupuestos por categoría\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +
@@ -142,8 +149,10 @@ function procesarMensajesTelegram() {
         '• `almuerzo 12000`\n\n' +
         '*Comandos:*\n' +
         '• /metas — metas de ahorro\n' +
+        '• /meta estado — alertas rápidas\n' +
         '• /meta nueva <nombre> <monto> [fecha] — crear meta\n' +
         '• /meta abonar <nombre> <monto> — abonar\n' +
+        '• /presupuesto — presupuestos por categoría\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +

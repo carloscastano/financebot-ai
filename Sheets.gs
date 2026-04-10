@@ -54,6 +54,11 @@ function escribirTransaccion_(sheet, txn) {
     txn.banco        || '',      // R - Banco Origen
   ]);
 
+  // Hook alertas de presupuesto (solo entradas en tiempo real, no imports masivos)
+  if (txn.fuente === 'telegram' || txn.fuente === 'email') {
+    try { verificarAlertaPresupuesto_(txn); } catch(e) { Logger.log('Budget alert error: ' + e.message); }
+  }
+
   // Ordenar: más reciente arriba
   const lastRow = sheet.getLastRow();
   if (lastRow > 2) {
@@ -191,6 +196,13 @@ function leerConfiguracion_() {
       categorias.push(...CATEGORIAS_DEFECTO_);
     }
 
+    // Presupuestos por categoría: "Presupuesto Alimentación" → 400000
+    const presupuestos = {};
+    categorias.forEach(function(cat) {
+      const val = cfg['Presupuesto ' + cat];
+      if (val && Number(val) > 0) presupuestos[cat] = Number(val);
+    });
+
     return {
       presupuestoMensual:   cfg['Presupuesto mensual']     || 3000000,
       metaAhorro:           cfg['Meta ahorro']             || 500000,
@@ -201,6 +213,7 @@ function leerConfiguracion_() {
       tarjetaDebito:        cfg['Tarjeta debito']          || '',
       gmailQuery:           gmailQuery,
       categorias:           categorias,
+      presupuestos:         presupuestos,
       // Exponer claves raw para que detectarBanco_() pueda matchear
       'Banco 1 nombre':     cfg['Banco 1 nombre'] || 'Bancolombia',
       'Banco 1 sender':     cfg['Banco 1 sender'] || '@notificacionesbancolombia.com,@bancolombia.com.co',
@@ -229,6 +242,7 @@ function configuracionPorDefecto_() {
     tarjetaCredito: '', tarjetaDebito: '',
     gmailQuery: 'from:(@notificacionesbancolombia.com OR @bancolombia.com.co)',
     categorias: CATEGORIAS_DEFECTO_.slice(),
+    presupuestos: {},
   };
 }
 
