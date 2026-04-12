@@ -48,6 +48,11 @@ var FEATURES_CATALOGO_ = [
     nombre:      'Alerta Gasto Alto',
     descripcion: 'Aviso cuando un gasto supera el umbral configurado'
   },
+  {
+    id:          'chat_financiero',
+    nombre:      'Chat Financiero',
+    descripcion: 'Responde preguntas sobre tus finanzas en lenguaje natural'
+  },
 ];
 
 // ------------------------------------------------------------

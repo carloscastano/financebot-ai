@@ -168,6 +168,12 @@ function procesarMensajesTelegram() {
       return;
     }
 
+    // Chat conversacional: detectar pregunta antes de intentar parsear como transacción
+    if (_esPreguntaFinanciera_(msg.text)) {
+      try { enviarMensajeTelegram_(responderChat_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      return;
+    }
+
     try {
       const transaccion  = parsearTransaccionManual_(msg.text);
       transaccion.fuente = 'telegram';
