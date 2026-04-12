@@ -49,3 +49,32 @@ function construirPromptChatFinanciero_(pregunta, contexto) {
     'Responde usando unicamente este contexto y las reglas anteriores.'
   );
 }
+
+function construirPromptAnalisisMensual_(resumenMensual, nombreUsuario) {
+  var fechaIso = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var skill = construirSkillFinancieroObjetivo_({ nombreUsuario: nombreUsuario || 'Carlos', fechaIso: fechaIso });
+
+  return (
+    skill + '\n\n' +
+    'Contexto financiero mensual:\n' + resumenMensual + '\n\n' +
+    'Tarea:\n' +
+    '- Entrega un analisis mensual honesto y concreto.\n' +
+    '- Maximo 3 oraciones cortas.\n' +
+    '- Si faltan datos, dilo.\n' +
+    '- Cierra con 1 accion concreta para el proximo mes.'
+  );
+}
+
+function construirPromptInsightSemanal_(resumenSemanal, nombreUsuario) {
+  var fechaIso = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var skill = construirSkillFinancieroObjetivo_({ nombreUsuario: nombreUsuario || 'Carlos', fechaIso: fechaIso });
+
+  return (
+    skill + '\n\n' +
+    'Contexto financiero semanal:\n' + resumenSemanal + '\n\n' +
+    'Tarea:\n' +
+    '- Entrega 1 sola oracion corta, directa y util.\n' +
+    '- Sin saludo, sin markdown.\n' +
+    '- Debe incluir una recomendacion accionable.'
+  );
+}

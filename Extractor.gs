@@ -43,6 +43,8 @@ function procesarExtractoTelegram_(fileId, fileName) {
       txn.hora   = '';
       escribirTransaccion_(sheetTxn, txn);
     });
+    // Ordenar una sola vez al final del lote (evita sort por cada append)
+    ordenarTransaccionesSheet_(sheetTxn);
   }
 
   return construirMensajeExtracto_(nuevas, duplicadas);

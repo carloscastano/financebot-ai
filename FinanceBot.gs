@@ -414,6 +414,11 @@ function cargarHistoricoEmails() {
   Logger.log(`   ⏭️ Omitidos   : ${omitidos}`);
   Logger.log(`   ❌ Errores    : ${errores}`);
   Logger.log(`   📬 Pendientes : ejecuta de nuevo si quedan más de ${LOTE}`);
+
+  if (procesados > 0) {
+    ordenarTransaccionesSheet_(sheetTxn);
+    Logger.log('✅ Transactions ordenadas al cerrar lote histórico.');
+  }
 }
 
 // ------------------------------------------------------------

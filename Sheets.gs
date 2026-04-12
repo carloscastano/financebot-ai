@@ -59,7 +59,15 @@ function escribirTransaccion_(sheet, txn) {
     try { verificarAlertaPresupuesto_(txn); } catch(e) { Logger.log('Budget alert error: ' + e.message); }
   }
 
-  // Ordenar: más reciente arriba
+  // Ordenar: más reciente arriba (excepto cargas masivas)
+  const fuente = String(txn.fuente || '').toLowerCase();
+  if (fuente !== 'historico' && fuente !== 'extracto') {
+    ordenarTransaccionesSheet_(sheet);
+  }
+}
+
+function ordenarTransaccionesSheet_(sheet) {
+  if (!sheet) return;
   const lastRow = sheet.getLastRow();
   if (lastRow > 2) {
     sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn())
@@ -136,12 +144,8 @@ function ordenarTransacciones() {
   const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
   if (!sheet) return;
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 2) {
-    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn())
-         .sort([{ column: 2, ascending: false }, { column: 3, ascending: false }]);
-    Logger.log('✅ Transactions ordenadas: más reciente arriba.');
-  }
+  ordenarTransaccionesSheet_(sheet);
+  Logger.log('✅ Transactions ordenadas: más reciente arriba.');
 }
 
 // ------------------------------------------------------------
@@ -493,7 +497,6 @@ function configurarDashboard_(sheet) {
   sheet.getRange('C9').setValue('% del gasto');
 
   // Leer categorías desde Configurations (fuente de verdad)
-  const ss  = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   const cfg = leerConfiguracion_();
   var cats  = cfg.categorias.slice().sort();
 

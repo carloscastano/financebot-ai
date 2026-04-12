@@ -440,15 +440,29 @@ function parsearFecha_(valor) {
 function enviarMensajeTelegram_(texto) {
   const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
   try {
-    UrlFetchApp.fetch(url, {
+    const resp = UrlFetchApp.fetch(url, {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify({ chat_id: CONFIG.TELEGRAM_CHAT_ID, text: texto, parse_mode: 'Markdown' }),
       muteHttpExceptions: true
     });
+
+    if (resp.getResponseCode() !== 200) {
+      // Fallback: si falla Markdown (u otro error), reintentar en texto plano
+      UrlFetchApp.fetch(url, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({ chat_id: CONFIG.TELEGRAM_CHAT_ID, text: _limpiarMarkdownBasico_(texto) }),
+        muteHttpExceptions: true
+      });
+    }
   } catch(e) {
     Logger.log('⚠️ Telegram no disponible al enviar mensaje: ' + e.message);
   }
+}
+
+function _limpiarMarkdownBasico_(texto) {
+  return String(texto || '').replace(/[*_`\[\]()]/g, '');
 }
 
 // ------------------------------------------------------------
@@ -495,7 +509,20 @@ function enviarTelegram_(txn) {
   const code = response.getResponseCode();
 
   if (code !== 200) {
-    Logger.log(`⚠️ Telegram error ${code}: ${response.getContentText()}`);
+    Logger.log(`⚠️ Telegram error ${code}: ${response.getContentText()} (reintentando sin Markdown)`);
+    try {
+      UrlFetchApp.fetch(url, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({
+          chat_id: CONFIG.TELEGRAM_CHAT_ID,
+          text: _limpiarMarkdownBasico_(mensaje)
+        }),
+        muteHttpExceptions: true
+      });
+    } catch(e2) {
+      Logger.log('⚠️ Telegram fallback error: ' + e2.message);
+    }
   } else {
     Logger.log(`📱 Alerta Telegram enviada: ${txn.comercio} $${monto}`);
   }

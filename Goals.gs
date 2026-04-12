@@ -125,14 +125,30 @@ function _registrarTransaccionAhorro_(nombreMeta, monto, fechaStr) {
 // ------------------------------------------------------------
 function _calcularFlujoCaja_() {
   var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var txnSh = ss.getSheetByName('Transactions');
+  var txnSh = ss.getSheetByName(SHEETS.TRANSACTIONS);
   if (!txnSh || txnSh.getLastRow() < 2) return null;
 
   var header = txnSh.getRange(1, 1, 1, txnSh.getLastColumn()).getValues()[0];
-  var iF = header.indexOf('fecha');
-  var iT = header.indexOf('tipo');
-  var iM = header.indexOf('monto');
-  var iC = header.indexOf('categoria');
+  var norm = function(v) {
+    return String(v || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  };
+  var idx = function(nombre) {
+    var n = norm(nombre);
+    for (var i = 0; i < header.length; i++) {
+      if (norm(header[i]) === n) return i;
+    }
+    return -1;
+  };
+
+  var iF   = idx('Fecha');
+  var iT   = idx('Tipo');
+  var iM   = idx('Monto');
+  var iC   = idx('Categoria');
+  var iSub = idx('Subcategoria');
   if (iF < 0 || iT < 0 || iM < 0) return null;
 
   var datos  = txnSh.getRange(2, 1, txnSh.getLastRow() - 1, txnSh.getLastColumn()).getValues();
@@ -151,10 +167,11 @@ function _calcularFlujoCaja_() {
     var monto = Math.abs(Number(row[iM]));
     var tipo  = String(row[iT]).toLowerCase();
     var cat   = iC >= 0 ? String(row[iC]).toLowerCase() : '';
+    var sub   = iSub >= 0 ? String(row[iSub]).toLowerCase() : '';
 
     // Excluir transferencias entre cuentas propias y abonos de metas (evita doble conteo)
     if (cat === 'transferencia') return;
-    if (cat === 'financiero' && String(row[iC + 1] || '').toLowerCase() === 'ahorro') return;
+    if (cat === 'financiero' && sub === 'ahorro') return;
 
     if (tipo === 'ingreso') {
       ingMes[mes] = (ingMes[mes] || 0) + monto;

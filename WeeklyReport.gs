@@ -111,11 +111,10 @@ function _geminiInsightSemanal_(act) {
       ? act.topCats.map(function(c) { return c[0] + ' $' + Math.round(c[1]).toLocaleString('es-CO'); }).join(', ')
       : 'sin categorías';
 
-    var prompt =
-      'Carlos gastó esta semana: total $' + Math.round(act.egresos).toLocaleString('es-CO') +
-      '. Top categorías: ' + topResumen + '.' +
-      ' Eres su amigo que sabe de finanzas. En máximo 1 oración corta y directa (sin asteriscos ni emojis), ' +
-      'dile algo concreto y útil sobre sus gastos de esta semana. Sin saludos.';
+    var resumenSemanal =
+      'Gasto total semanal: $' + Math.round(act.egresos).toLocaleString('es-CO') + '. ' +
+      'Top categorias: ' + topResumen + '.';
+    var prompt = construirPromptInsightSemanal_(resumenSemanal, 'Carlos');
 
     var payload = {
       contents: [{ parts: [{ text: prompt }] }],

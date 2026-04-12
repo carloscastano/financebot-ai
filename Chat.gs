@@ -73,8 +73,6 @@ function _contextoFinanciero_() {
   if (sheet && sheet.getLastRow() > 1) {
     var datos     = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
     var inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    var hace30    = new Date(hoy.getTime() - 30 * 24 * 3600000);
-
     var txnMes  = [];
     var txnMes2 = []; // mes anterior
     var mesPrev = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;

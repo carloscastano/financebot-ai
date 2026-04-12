@@ -276,20 +276,19 @@ function generarAnalisisIA_(act, prev, proyeccion, escenarios, score, anomalias,
     ? ((act.egresos - prev.egresos) / prev.egresos * 100).toFixed(1) + '%'
     : 'sin datos';
 
-  const prompt =
-    'Eres el mejor amigo de Carlos, colombiano, que casualmente sabe mucho de finanzas personales. ' +
-    'Le hablas de tú, en tono cercano y directo, como por WhatsApp. Sin listas numeradas, sin términos corporativos. ' +
-    'Máximo 3 oraciones cortas. Sin asteriscos ni markdown.\n\n' +
-    'Sus finanzas de ' + MESES[mesAct] + ' ' + anioAct + ':\n' +
-    '• Ingresos: ' + fmt(act.ingresos) + ', Egresos: ' + fmt(act.egresos) + ' (vs ' + MESES[mesPrev] + ': ' + varEgresos + ')\n' +
-    '• Le sobró/faltó: ' + fmt(act.balance) + ', ahorra el ' + Number(act.tasaAhorro).toFixed(1) + '% de lo que gana\n' +
-    '• Score: ' + score + '/100\n' +
-    '• Más gasta en: ' + (topStr || 'sin datos') + '\n' +
-    '• Gastos raros este mes: ' + anomStr + '\n' +
-    '• Va a gastar aprox ' + fmt(proyeccion.proyeccionEgresos) + ' si sigue igual\n\n' +
-    'Dale un comentario honesto y concreto sobre cómo le fue este mes y qué puede mejorar el próximo. ' +
-    'Si le sobró plata, menciona algo concreto para hacer con ese excedente (no productos de inversión formales, sino ideas prácticas). ' +
-    'Si gastó más de lo normal en algo, díselo sin rodeos.';
+  const resumenMensual =
+    'Periodo: ' + MESES[mesAct] + ' ' + anioAct + '\n' +
+    'Ingresos: ' + fmt(act.ingresos) + '\n' +
+    'Egresos: ' + fmt(act.egresos) + ' (vs ' + MESES[mesPrev] + ': ' + varEgresos + ')\n' +
+    'Balance: ' + fmt(act.balance) + '\n' +
+    'Tasa ahorro: ' + Number(act.tasaAhorro).toFixed(1) + '%\n' +
+    'Score: ' + score + '/100\n' +
+    'Top categorias:\n' + (topStr || 'sin datos') + '\n' +
+    'Gastos inusuales:\n' + anomStr + '\n' +
+    'Proyeccion egresos fin de mes: ' + fmt(proyeccion.proyeccionEgresos) + '\n' +
+    'Escenarios: ' + escStr;
+
+  const prompt = construirPromptAnalisisMensual_(resumenMensual, 'Carlos');
 
   try {
     const payload = {
