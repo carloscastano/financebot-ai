@@ -454,19 +454,19 @@ function configurarDashboard_(sheet) {
 
   // Suma por tipo (egreso/ingreso) — para totales del mes
   function fMes(tipo) {
-    const filtroTipo  = '(' + T + '!D2:D5000="' + tipo + '")';
-    const filtroYear  = '*(YEAR(' + T + '!B2:B5000)=YEAR(TODAY()))';
-    const filtroMonth = '*(MONTH(' + T + '!B2:B5000)=MONTH(TODAY()))';
-    return '=SUMPRODUCT(' + filtroTipo + filtroYear + filtroMonth + '*' + T + '!F2:F5000)';
+    const filtroTipo  = '(' + T + '!D2:D="' + tipo + '")';
+    const filtroYear  = '*(YEAR(' + T + '!B2:B)=YEAR(TODAY()))';
+    const filtroMonth = '*(MONTH(' + T + '!B2:B)=MONTH(TODAY()))';
+    return '=SUMPRODUCT(' + filtroTipo + filtroYear + filtroMonth + '*' + T + '!F2:F)';
   }
 
   // Suma por categoría sin filtrar tipo — muestra el total real (ingresos Y egresos)
   function fMesCat(categoria) {
-    const filtroNoInfo = '(' + T + '!D2:D5000<>"informativo")';
-    const filtroCat    = '*(' + T + '!J2:J5000="' + categoria + '")';
-    const filtroYear   = '*(YEAR(' + T + '!B2:B5000)=YEAR(TODAY()))';
-    const filtroMonth  = '*(MONTH(' + T + '!B2:B5000)=MONTH(TODAY()))';
-    return '=SUMPRODUCT(' + filtroNoInfo + filtroCat + filtroYear + filtroMonth + '*' + T + '!F2:F5000)';
+    const filtroNoInfo = '(' + T + '!D2:D<>"informativo")';
+    const filtroCat    = '*(' + T + '!J2:J="' + categoria + '")';
+    const filtroYear   = '*(YEAR(' + T + '!B2:B)=YEAR(TODAY()))';
+    const filtroMonth  = '*(MONTH(' + T + '!B2:B)=MONTH(TODAY()))';
+    return '=SUMPRODUCT(' + filtroNoInfo + filtroCat + filtroYear + filtroMonth + '*' + T + '!F2:F)';
   }
 
   // ── TITULO ──
@@ -511,11 +511,11 @@ function configurarDashboard_(sheet) {
   const fh = 10 + cats.length + 1;
   sheet.getRange(fh, 1).setValue('ACUMULADO HISTORICO');
   sheet.getRange(fh+1, 1).setValue('Total Egresos Historico');
-  sheet.getRange(fh+1, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D5000="egreso")*' + T + '!F2:F5000)');
+  sheet.getRange(fh+1, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="egreso")*' + T + '!F2:F)');
   sheet.getRange(fh+2, 1).setValue('Total Ingresos Historico');
-  sheet.getRange(fh+2, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D5000="ingreso")*' + T + '!F2:F5000)');
+  sheet.getRange(fh+2, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="ingreso")*' + T + '!F2:F)');
   sheet.getRange(fh+3, 1).setValue('N de Transacciones');
-  sheet.getRange(fh+3, 2).setFormula('=COUNTA(' + T + '!A2:A5000)');
+  sheet.getRange(fh+3, 2).setFormula('=COUNTA(' + T + '!A2:A)');
 
   // ── CONSOLIDADO MENSUAL DEL AÑO ──
   // Referencia la celda E2 (año editable del filtro por periodo)
@@ -531,12 +531,12 @@ function configurarDashboard_(sheet) {
     const m   = i + 1;
     sheet.getRange(row, 1).setValue(mes);
     sheet.getRange(row, 2).setFormula(
-      '=SUMPRODUCT((' + T + '!D2:D5000="egreso")*(YEAR(' + T + '!B2:B5000)=E2)*(MONTH(' + T + '!B2:B5000)=' + m + ')*' + T + '!F2:F5000)');
+      '=SUMPRODUCT((' + T + '!D2:D="egreso")*(YEAR(' + T + '!B2:B)=E2)*(MONTH(' + T + '!B2:B)=' + m + ')*' + T + '!F2:F)');
     sheet.getRange(row, 3).setFormula(
-      '=SUMPRODUCT((' + T + '!D2:D5000="ingreso")*(YEAR(' + T + '!B2:B5000)=E2)*(MONTH(' + T + '!B2:B5000)=' + m + ')*' + T + '!F2:F5000)');
+      '=SUMPRODUCT((' + T + '!D2:D="ingreso")*(YEAR(' + T + '!B2:B)=E2)*(MONTH(' + T + '!B2:B)=' + m + ')*' + T + '!F2:F)');
     sheet.getRange(row, 4).setFormula('=C' + row + '-B' + row);
     sheet.getRange(row, 5).setFormula(
-      '=SUMPRODUCT((' + T + '!A2:A5000<>"")*(YEAR(' + T + '!B2:B5000)=E2)*(MONTH(' + T + '!B2:B5000)=' + m + '))');
+      '=SUMPRODUCT((' + T + '!A2:A<>"")*(YEAR(' + T + '!B2:B)=E2)*(MONTH(' + T + '!B2:B)=' + m + '))');
   });
 
   // ── FILTRO POR PERIODO (columnas E-G) ──
@@ -545,10 +545,10 @@ function configurarDashboard_(sheet) {
   const M = 'E3';  // celda mes
 
   function fPer(tipo) {
-    return '=SUMPRODUCT((' + T + '!D2:D5000="' + tipo + '")*(YEAR(' + T + '!B2:B5000)=' + Y + ')*(MONTH(' + T + '!B2:B5000)=' + M + ')*' + T + '!F2:F5000)';
+    return '=SUMPRODUCT((' + T + '!D2:D="' + tipo + '")*(YEAR(' + T + '!B2:B)=' + Y + ')*(MONTH(' + T + '!B2:B)=' + M + ')*' + T + '!F2:F)';
   }
   function fPerCat(cat) {
-    return '=SUMPRODUCT((' + T + '!D2:D5000<>"informativo")*(' + T + '!J2:J5000="' + cat + '")*(YEAR(' + T + '!B2:B5000)=' + Y + ')*(MONTH(' + T + '!B2:B5000)=' + M + ')*' + T + '!F2:F5000)';
+    return '=SUMPRODUCT((' + T + '!D2:D<>"informativo")*(' + T + '!J2:J="' + cat + '")*(YEAR(' + T + '!B2:B)=' + Y + ')*(MONTH(' + T + '!B2:B)=' + M + ')*' + T + '!F2:F)';
   }
 
   sheet.getRange('D1').setValue('FILTRO PERIODO');

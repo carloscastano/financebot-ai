@@ -12,7 +12,7 @@
 function run_agregarConfigCategorias()  { agregarConfigCategorias(); }
 function run_sincronizarCategorias()    { sincronizarCategorias(); }
 function run_normalizarCategorias()     { normalizarCategorias(); }
-function run_configurarDashboard()      { configurarDashboard(); }
+function run_configurarDashboard()      { reconstruirDashboard(); }
 function run_analizarFinanzas()         { analizarFinanzas(); }
 function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
 function run_procesarEmails()           { procesarEmailsBancolombia(); }

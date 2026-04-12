@@ -7,35 +7,31 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 
 ## Backlog
 
-### En progreso
+### Completado
 
-- [ ] #13 Metas de Ahorro con Progreso Visual
-- [ ] #16 Chat conversacional con contexto financiero
-- [ ] #17 Alerta de Presupuesto por Categoria
-- [ ] #18 Reporte Semanal Automatico
+- [x] #1  Importar extracto Bancolombia (.xlsx/.zip)
+- [x] #2  Clasificacion automatica con Gemini
+- [x] #3  Alertas Telegram por gasto alto
+- [x] #4  Registro manual de gastos/ingresos
+- [x] #5  Recordatorio de pagos pendientes
+- [x] #6  Reporte financiero mensual con IA
+- [x] #7  Dashboard en Google Sheets
+- [x] #8  Suscripciones fantasma (/suscripciones)
+- [x] #9  Metas de ahorro v2 (/metas, /meta estado)
+- [x] #10 Recordatorio mensual metas + viabilidad
+- [x] #11 Alertas presupuesto en tiempo real
+- [x] #12 Reporte semanal automatico
+- [x] #13 /presupuesto - estado por categoria
+- [x] #14 Feature flags (/config /activar /desactivar)
+- [x] #15 Chat conversacional financiero
 
 ### Pendiente
 
-- [ ] #19 Manual de instalacion para nuevos usuarios
-- [ ] #20 Documentacion y limpieza de codigo (funciones de debugging, comentarios)
-- [ ] #21 Documentacion de funciones de usuario (guia de uso del bot)
-- [ ] #23 Mejorar filtro suscripciones (excluir transferencias internas y retiros ATM)
-- [ ] #6  Carga historico transacciones desde correo (ULTIMO - dejar para el final)
-
-### Completado
-
-- [x] #1  Procesamiento de emails Bancolombia via Gmail
-- [x] #2  Clasificacion automatica con Gemini
-- [x] #3  Almacenamiento en Google Sheets (Transactions)
-- [x] #4  Asesor Financiero diario (score, proyeccion, escenarios)
-- [x] #5  Notificacion por Telegram de movimientos
-- [x] #7  Ejecucion remota via gas-run.js (reemplazo clasp run)
-- [x] #8  Soporte OAuth completo (Drive, Gmail, Sheets)
-- [x] #9  Gastos manuales por Telegram (foto recibo)
-- [x] #10 Notificacion de pagos pendientes
-- [x] #11 Importar extracto Bancolombia ZIP/XLSX via Telegram
-- [x] #12 Detector de Suscripciones Fantasma
-- [x] #22 Reporte de analisis financiero tono personal (no corporativo)
+- [ ] #19 Manual de instalacion
+- [ ] #20 Limpieza de codigo (funciones debug)
+- [ ] #21 Guia de uso del bot para el usuario
+- [ ] #6  Carga historico desde Gmail automatico (ultimo, ID legado del backlog)
+- [ ] #23 Mejorar filtro suscripciones (esperar 6-12 meses de datos)
 
 ---
 
