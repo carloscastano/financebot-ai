@@ -27,24 +27,37 @@ function detectarSuscripciones_() {
 
   var lastRow = sheet.getLastRow();
   // Cols: A=ID, B=Fecha, C=Hora, D=Tipo, E=TipoTxn, F=Monto, G=Moneda, H=Comercio, I=Cuenta
-  var datos = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+  var datos = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
 
   var hoy     = new Date();
   var hace90  = new Date(hoy.getTime() - 90 * 24 * 3600000);
+
+  // Palabras clave que indican NO es una suscripción digital
+  var EXCLUIR_COMERCIO = ['ATM', 'CAJERO', 'RETIRO', 'EFECTIVO', 'DAVIPLATA', 'CORRESPONSAL'];
+  var EXCLUIR_CATEGORIA = ['transferencia', 'financiero', 'salario', 'ahorro'];
+  var EXCLUIR_TIPO_TXN  = ['transferencia_enviada', 'transferencia_recibida'];
 
   // Agrupar egresos de los últimos 90 días por comercio normalizado
   var grupos = {};
   datos.forEach(function(row) {
     var fecha    = row[1];
     var tipo     = String(row[3]).toLowerCase();
+    var tipoTxn  = String(row[4] || '').toLowerCase();
     var monto    = Number(row[5]);
     var comercio = String(row[7] || '').trim();
+    var cat      = String(row[9] || '').toLowerCase();
 
     if (!fecha || !comercio || monto <= 0) return;
     if (tipo === 'ingreso') return;
 
     var d = fecha instanceof Date ? fecha : new Date(fecha);
     if (isNaN(d.getTime()) || d < hace90) return;
+
+    // Excluir transferencias, retiros ATM y categorías no relevantes
+    if (EXCLUIR_TIPO_TXN.indexOf(tipoTxn) >= 0) return;
+    if (EXCLUIR_CATEGORIA.some(function(c) { return cat.indexOf(c) >= 0; })) return;
+    var comercioUp = comercio.toUpperCase();
+    if (EXCLUIR_COMERCIO.some(function(p) { return comercioUp.indexOf(p) >= 0; })) return;
 
     // Normalizar: quitar números de referencia, mayúsculas, espacios extra
     var clave = comercio.toUpperCase().replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
@@ -115,8 +128,23 @@ function detectarSuscripciones_() {
 function construirMensajeSuscripciones_(subs) {
   var fmt = function(n) { return '$' + Number(n).toLocaleString('es-CO'); };
 
+  // Advertir si hay pocos datos (menos de 3 meses)
+  var aviso = '';
+  var primerFecha = null;
+  if (subs.length > 0) {
+    // Estimar rango de datos desde las fechas detectadas
+    var hoyMs = new Date().getTime();
+    var hace90Ms = hoyMs - 90 * 24 * 3600000;
+    var hace60Ms = hoyMs - 60 * 24 * 3600000;
+    // Si todas las suscripciones tienen ≤ 2 ocurrencias, datos probablemente escasos
+    var maxVeces = subs.reduce(function(m, s) { return Math.max(m, s.vecesEn90d); }, 0);
+    if (maxVeces <= 2) {
+      aviso = '\n\n📌 _Tienes pocos meses de historial. Con 6-12 meses los resultados serán más precisos._';
+    }
+  }
+
   if (subs.length === 0) {
-    return '👻 No detecté suscripciones recurrentes en los últimos 90 días.';
+    return '👻 No detecté suscripciones recurrentes en los últimos 90 días.\n\n_Tip: la función mejora con 6+ meses de historial._';
   }
 
   // Calcular costo mensual estimado
@@ -141,6 +169,7 @@ function construirMensajeSuscripciones_(subs) {
     '👻 *Suscripciones detectadas* (últimos 90 días)\n\n' +
     lineas.join('\n') + '\n\n' +
     '💰 Costo mensual estimado: *' + fmt(Math.round(totalMensual)) + '*\n\n' +
-    '⚠️ = no ha cobrado en más de 1.5 períodos. ¿Sigue activo?'
+    '⚠️ = no ha cobrado en más de 1.5 períodos. ¿Sigue activo?' +
+    aviso
   );
 }

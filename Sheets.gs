@@ -165,9 +165,18 @@ function leerConfiguracion_() {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.CONFIGURATIONS);
     if (!sheet) return configuracionPorDefecto_();
-    const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
     const cfg = {};
-    datos.forEach(([p, v]) => { if (p) cfg[p.trim()] = v; });
+    const budgetPorCategoria = {}; // col C en filas de Categoría N
+    datos.forEach(([p, v, b]) => {
+      if (p) {
+        cfg[p.trim()] = v;
+        // Si es una fila "Categoría N" con presupuesto en col C
+        if (/^Categor[íi]a\s+\d+$/i.test(String(p).trim()) && b && Number(b) > 0) {
+          budgetPorCategoria[String(v).trim()] = Number(b);
+        }
+      }
+    });
 
     // Construir query de Gmail desde los senders activos en la hoja
     // Cada "Banco N sender" puede tener múltiples dominios separados por coma
@@ -196,11 +205,16 @@ function leerConfiguracion_() {
       categorias.push(...CATEGORIAS_DEFECTO_);
     }
 
-    // Presupuestos por categoría: "Presupuesto Alimentación" → 400000
+    // Presupuestos: col C en la fila de categoría (nuevo formato)
+    // Fallback: fila separada "Presupuesto Alimentación" (formato anterior)
     const presupuestos = {};
     categorias.forEach(function(cat) {
-      const val = cfg['Presupuesto ' + cat];
-      if (val && Number(val) > 0) presupuestos[cat] = Number(val);
+      if (budgetPorCategoria[cat]) {
+        presupuestos[cat] = budgetPorCategoria[cat];
+      } else {
+        const val = cfg['Presupuesto ' + cat];
+        if (val && Number(val) > 0) presupuestos[cat] = Number(val);
+      }
     });
 
     return {

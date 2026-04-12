@@ -179,19 +179,12 @@ function responderChat_(pregunta) {
 
   var contexto = _contextoFinanciero_();
 
-  var prompt =
-    'Eres el mejor amigo de Carlos, colombiano, que sabe mucho de finanzas personales. ' +
-    'Le hablas de tú, en tono cercano y directo, como por WhatsApp. ' +
-    'Sin listas numeradas, sin términos corporativos. Sin asteriscos ni markdown. ' +
-    'Máximo 4 oraciones. Si la respuesta requiere números, usa los datos reales del contexto.\n\n' +
-    '## Datos financieros reales de Carlos\n' + contexto + '\n' +
-    '## Pregunta de Carlos\n' + pregunta + '\n\n' +
-    'Responde de forma concreta usando los datos. Si no tienes suficiente información, díselo sin rodeos.';
+  var prompt = construirPromptChatFinanciero_(pregunta, contexto);
 
   try {
     var payload = {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 300 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 350 }
     };
     var resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
       method: 'post', contentType: 'application/json',
