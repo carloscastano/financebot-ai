@@ -17,6 +17,8 @@ function run_analizarFinanzas()         { analizarFinanzas(); }
 function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
 function run_procesarEmails()           { procesarEmailsBancolombia(); }
 function run_cargarHistorico()          { cargarHistoricoEmails(); }
+function run_contarHistorico()          { return contarHistoricoPorMes_(); }
+function run_cargarMes()                { return cargarMesEspecifico_(); }
 function run_probarAsesor()             { analizarFinanzas(); }
 function run_resetearTelegram()         { resetearOffsetTelegram(); }
 function run_procesarMensajes()         { procesarMensajesTelegram(); }
@@ -35,15 +37,15 @@ function procesarEmailsBancolombia() {
   const threads = GmailApp.search(query, 0, CONFIG.MAX_EMAILS_POR_EJECUCION);
 
   if (threads.length === 0) {
-    Logger.log('No hay emails nuevos de Bancolombia.');
+    logInfo_('EMAIL_PIPELINE', 'No hay emails nuevos de Bancolombia');
     return;
   }
 
-  Logger.log(`Encontrados ${threads.length} hilo(s) de Bancolombia.`);
+  logInfo_('EMAIL_PIPELINE', `Encontrados ${threads.length} hilo(s) de Bancolombia`);
 
   const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheetTxn = ss.getSheetByName('Transactions');
-  const sheetErr = ss.getSheetByName('Errors');
+  const sheetTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  const sheetErr = ss.getSheetByName(SHEETS.ERRORS);
 
   for (const thread of threads) {
     const messages = thread.getMessages();
@@ -58,11 +60,11 @@ function procesarEmailsBancolombia() {
       try {
         // Paso 1: Limpiar y extraer texto del email
         const textoLimpio = extraerTextoEmail_(message);
-        Logger.log(`Procesando: ${asunto}`);
+        logInfo_('EMAIL_PIPELINE', `Procesando: ${asunto}`);
 
         // Paso 2: Verificar que sea transaccional (filtro rápido)
         if (!esEmailTransaccional_(textoLimpio)) {
-          Logger.log('Email no transaccional, se omite.');
+          logInfo_('EMAIL_PIPELINE', 'Email no transaccional, se omite');
           message.markRead();
           continue;
         }
@@ -76,7 +78,7 @@ function procesarEmailsBancolombia() {
 
         // Paso 4: Guardar en Google Sheets
         escribirTransaccion_(sheetTxn, transaccion);
-        Logger.log(`✅ Guardado: ${transaccion.comercio} - $${transaccion.monto} COP`);
+        logInfo_('EMAIL_PIPELINE', `Guardado: ${transaccion.comercio} - $${transaccion.monto} COP`);
 
         // Paso 5: Alerta Telegram si monto supera umbral (leído desde hoja Configuración)
         if (
@@ -92,7 +94,7 @@ function procesarEmailsBancolombia() {
         thread.addLabel(label);
 
       } catch (e) {
-        Logger.log(`❌ Error procesando email ${emailId}: ${e.message}`);
+        logError_('EMAIL_PIPELINE', `Error procesando email ${emailId}`, e);
         // Si es error temporal de servidor (503/502/red), NO marcar como leído
         // → el trigger lo reintentará automáticamente en la próxima ejecución
         const esErrorTemporal = e.message.includes('503') ||
@@ -100,7 +102,7 @@ function procesarEmailsBancolombia() {
                                 e.message.includes('server error') ||
                                 e.message.includes('unavailable');
         if (esErrorTemporal) {
-          Logger.log(`⏳ Error temporal — email ${emailId} se reintentará en la próxima ejecución.`);
+          logWarn_('EMAIL_PIPELINE', `Error temporal en email ${emailId}, se reintentará`);
         } else {
           registrarError_(sheetErr, e.message, asunto, emailId);
           message.markRead();
@@ -283,100 +285,205 @@ function obtenerOCrearLabel_(nombre) {
   let label = GmailApp.getUserLabelByName(nombre);
   if (!label) {
     label = GmailApp.createLabel(nombre);
-    Logger.log(`Label creada: ${nombre}`);
+    logInfo_('EMAIL_PIPELINE', `Label creada: ${nombre}`);
   }
   return label;
 }
 
 // ------------------------------------------------------------
-// CARGA HISTÓRICA DE EMAILS
-// Procesa emails de Bancolombia desde una fecha inicial,
-// sin importar si están leídos. Salta los ya etiquetados.
-// Ejecutar manualmente — NO configurar como trigger automático.
+// CARGA HISTÓRICA DE EMAILS — función core
 //
-// Parámetros ajustables:
-//   FECHA_INICIO  : desde qué fecha buscar (formato YYYY/MM/DD)
-//   LOTE          : cuántos hilos procesar por ejecución (máx ~50
-//                   para evitar timeout de 6 min de Apps Script)
+// fechaInicio : 'YYYY/MM/DD' — desde cuándo buscar
+// fechaFin    : 'YYYY/MM/DD' — hasta cuándo ('' = sin límite)
+// soloContar  : true = dry-run, no llama a Gemini ni escribe nada
+//
+// Ejecutar manualmente. NO configurar como trigger automático.
+// Usar run_contarHistorico() primero para ver qué hay.
+// Usar run_cargarMes() para cargar de a un mes.
 // ------------------------------------------------------------
-function cargarHistoricoEmails() {
-  const FECHA_INICIO = '2024/01/01';  // ← cambia si quieres otro rango
-  const LOTE         = 50;            // ← baja a 20 si hay timeout
+function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar) {
+  const INICIO = fechaInicio || '2024/01/01';
+  const FIN    = fechaFin    || '';
+  const DRY    = soloContar  === true;
+  const LOTE   = 25;  // seguro para timeout de 6 min (no subir de 30)
 
-  const label = obtenerOCrearLabel_(CONFIG.GMAIL_LABEL);
-  const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheetTxn = ss.getSheetByName('Transactions');
-  const sheetErr = ss.getSheetByName('Errors');
+  const cfg      = leerConfiguracion_();
+  const label    = obtenerOCrearLabel_(CONFIG.GMAIL_LABEL);
+  const ss       = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheetTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  const sheetErr = DRY ? null : ss.getSheetByName(SHEETS.ERRORS);
 
-  // Busca todos los emails del período SIN filtro is:unread,
-  // usando los bancos/senders configurados en la hoja Configurations
-  const cfg2 = leerConfiguracion_();
-  const query = `${cfg2.gmailQuery} after:${FECHA_INICIO} -label:${CONFIG.GMAIL_LABEL}`;
+  // Construir query con ventana de fechas
+  let query = `${cfg.gmailQuery} after:${INICIO} -label:${CONFIG.GMAIL_LABEL}`;
+  if (FIN) query += ` before:${FIN}`;
+
   const threads = GmailApp.search(query, 0, LOTE);
 
   if (threads.length === 0) {
-    Logger.log('✅ No hay emails históricos pendientes por procesar.');
-    return;
+    const msg = `Sin emails pendientes | ${INICIO}${FIN ? ' → ' + FIN : ''}`;
+    logInfo_('HISTORICO', (DRY ? '[DRY] ' : '') + msg);
+    return msg;
   }
 
-  Logger.log(`📦 Histórico: encontrados ${threads.length} hilo(s) sin procesar desde ${FECHA_INICIO}`);
+  logInfo_('HISTORICO', `[${DRY ? 'DRY' : 'CARGA'}] ${threads.length} hilo(s) | ${INICIO}${FIN ? ' → ' + FIN : ''}`);
 
-  let procesados = 0;
-  let errores    = 0;
-  let omitidos   = 0;
+  // Construir set fecha+monto de lo ya existente en Transactions — una sola lectura
+  const existentes = {};
+  if (!DRY && sheetTxn && sheetTxn.getLastRow() > 1) {
+    const lastRow = sheetTxn.getLastRow();
+    const fechas  = sheetTxn.getRange(2, 2, lastRow - 1, 1).getValues();
+    const montos  = sheetTxn.getRange(2, 6, lastRow - 1, 1).getValues();
+    for (let i = 0; i < fechas.length; i++) {
+      const f = fechas[i][0];
+      const m = montos[i][0];
+      if (!f || !m) continue;
+      const fs = (f instanceof Date)
+        ? Utilities.formatDate(f, 'America/Bogota', 'yyyy-MM-dd')
+        : String(f).substring(0, 10);
+      existentes[fs + '|' + Number(m)] = true;
+    }
+    logInfo_('HISTORICO', `Set de dedup cargado: ${Object.keys(existentes).length} transacciones existentes`);
+  }
+
+  let procesados = 0, omitidos = 0, duplicados = 0, errores = 0, transaccionales = 0;
 
   for (const thread of threads) {
-    const messages = thread.getMessages();
-
-    for (const message of messages) {
+    for (const message of thread.getMessages()) {
       const asunto  = message.getSubject();
       const emailId = message.getId();
 
       try {
-        const textoLimpio = extraerTextoEmail_(message);
+        const texto = extraerTextoEmail_(message);
 
-        if (!esEmailTransaccional_(textoLimpio)) {
-          Logger.log(`⏭️ Omitido (no transaccional): ${asunto}`);
-          thread.addLabel(label);  // marcar para no reprocesar
+        if (!esEmailTransaccional_(texto)) {
           omitidos++;
+          if (!DRY) thread.addLabel(label);
           continue;
         }
 
-        const transaccion = llamarGemini_(textoLimpio);
-        transaccion.email_asunto = asunto;
-        transaccion.email_id     = emailId;
-        transaccion.fuente       = 'historico';
-        transaccion.banco        = detectarBanco_(message.getFrom(), cfg2);
+        transaccionales++;
+        if (DRY) continue;  // solo contamos, sin llamar a Gemini
 
-        escribirTransaccion_(sheetTxn, transaccion);
+        const txn = llamarGemini_(texto);
+        txn.email_asunto = asunto;
+        txn.email_id     = emailId;
+        txn.fuente       = 'historico';
+        txn.banco        = detectarBanco_(message.getFrom(), cfg);
+
+        // Dedup contra Transactions existentes (fecha+monto)
+        const key = String(txn.fecha).substring(0, 10) + '|' + Number(txn.monto);
+        if (existentes[key]) {
+          duplicados++;
+          thread.addLabel(label);  // marcar para no reprocesar
+          logInfo_('HISTORICO', `Dup: ${txn.fecha} ${txn.comercio} $${txn.monto}`);
+          continue;
+        }
+        existentes[key] = true;  // registrar para dedup dentro del mismo lote
+
+        escribirTransaccion_(sheetTxn, txn);
         thread.addLabel(label);
         procesados++;
-        Logger.log(`✅ [${procesados}] ${transaccion.fecha} | ${transaccion.comercio} | $${transaccion.monto} COP`);
+        logInfo_('HISTORICO', `[${procesados}] ${txn.fecha} | ${txn.comercio} | $${txn.monto} COP`);
 
-        // Pausa corta para no saturar la API de Gemini
-        Utilities.sleep(500);
+        Utilities.sleep(500);  // pausa para no saturar Gemini
 
       } catch (e) {
         errores++;
-        Logger.log(`❌ Error en email ${emailId}: ${e.message}`);
-        registrarError_(sheetErr, e.message, asunto, emailId);
-        // Si Gemini devuelve 503 (alta demanda), espera más antes de continuar
-        if (e.message.includes('503')) Utilities.sleep(3000);
+        logError_('HISTORICO', `Email ${emailId}`, e);
+        if (!DRY) registrarError_(sheetErr, e.message, asunto, emailId);
+        // Pausa extra si Gemini está bajo presión
+        if (e.message.includes('503') || e.message.includes('429')) Utilities.sleep(3000);
       }
     }
   }
 
-  Logger.log('');
-  Logger.log(`📊 Resumen histórico:`);
-  Logger.log(`   ✅ Procesados : ${procesados}`);
-  Logger.log(`   ⏭️ Omitidos   : ${omitidos}`);
-  Logger.log(`   ❌ Errores    : ${errores}`);
-  Logger.log(`   📬 Pendientes : ejecuta de nuevo si quedan más de ${LOTE}`);
-
-  if (procesados > 0) {
+  if (!DRY && procesados > 0) {
     ordenarTransaccionesSheet_(sheetTxn);
-    Logger.log('✅ Transactions ordenadas al cerrar lote histórico.');
+    logInfo_('HISTORICO', 'Transactions ordenadas');
   }
+
+  const resumen = DRY
+    ? `[DRY] ${INICIO}${FIN ? '→' + FIN : ''} | Hilos=${threads.length} Transaccionales≈${transaccionales} Omitidos=${omitidos}`
+    : `[CARGA] ${INICIO}${FIN ? '→' + FIN : ''} | OK=${procesados} Dup=${duplicados} Omitidos=${omitidos} Err=${errores}`;
+
+  logInfo_('HISTORICO', resumen);
+  return resumen;
+}
+
+// ------------------------------------------------------------
+// CUENTA EMAILS POR MES — dry-run sin Gemini ni escritura
+// Ejecutar PRIMERO para saber cuánto hay antes de cargar.
+// Cambia DESDE para ajustar el rango.
+// ------------------------------------------------------------
+function contarHistoricoPorMes_() {
+  const DESDE = '2024/01';  // ← primer mes a contar (YYYY/MM)
+
+  const cfg      = leerConfiguracion_();
+  const hoyCal   = new Date();
+  const hastaAnio = hoyCal.getFullYear();
+  const hastaMes  = hoyCal.getMonth() + 1;
+
+  const [desdeAnio, desdeMes] = DESDE.split('/').map(Number);
+
+  const filas = [];
+  let totalHilos = 0, totalTransac = 0;
+
+  let anio = desdeAnio, mes = desdeMes;
+  while (anio < hastaAnio || (anio === hastaAnio && mes <= hastaMes)) {
+    const inicio = `${anio}/${String(mes).padStart(2,'0')}/01`;
+    const mesF   = mes === 12 ? 1    : mes + 1;
+    const anioF  = mes === 12 ? anio + 1 : anio;
+    const fin    = `${anioF}/${String(mesF).padStart(2,'0')}/01`;
+
+    const q       = `${cfg.gmailQuery} after:${inicio} before:${fin} -label:${CONFIG.GMAIL_LABEL}`;
+    const threads = GmailApp.search(q, 0, 100);
+
+    let transac = 0;
+    threads.forEach(function(t) {
+      t.getMessages().forEach(function(m) {
+        try {
+          if (esEmailTransaccional_(extraerTextoEmail_(m))) transac++;
+        } catch(e) { /* ignorar errores de extracción en conteo */ }
+      });
+    });
+
+    const etiqueta = `${anio}/${String(mes).padStart(2,'0')}`;
+    const estado   = threads.length === 0 ? '(sin emails)' : `${threads.length} hilos, ~${transac} a procesar con Gemini`;
+    filas.push(`  ${etiqueta}: ${estado}`);
+    totalHilos  += threads.length;
+    totalTransac += transac;
+
+    if (mes === 12) { anio++; mes = 1; } else { mes++; }
+  }
+
+  const resumen =
+    `📊 Histórico pendiente (${DESDE} → hoy)\n` +
+    filas.join('\n') + '\n' +
+    `  ─────────────────────────\n` +
+    `  Total: ${totalHilos} hilos, ~${totalTransac} emails a procesar\n` +
+    `  Runs necesarios (lote 25): ~${Math.ceil(totalTransac / 25)}`;
+
+  Logger.log(resumen);
+  return resumen;
+}
+
+// ------------------------------------------------------------
+// CARGA UN MES ESPECÍFICO
+// Cambia MES al mes que quieres cargar (formato 'YYYY/MM').
+// Ejecuta de nuevo con el mismo mes si salieron más de 25.
+// ------------------------------------------------------------
+function cargarMesEspecifico_() {
+  const MES = '2024/01';  // ← cambia al mes a cargar (YYYY/MM)
+
+  const [anio, mes] = MES.split('/').map(Number);
+  const mesF  = mes === 12 ? 1    : mes + 1;
+  const anioF = mes === 12 ? anio + 1 : anio;
+
+  const inicio = `${anio}/${String(mes).padStart(2,'0')}/01`;
+  const fin    = `${anioF}/${String(mesF).padStart(2,'0')}/01`;
+
+  Logger.log(`▶ Cargando mes ${MES}: ${inicio} → ${fin}`);
+  return cargarHistoricoEmails(inicio, fin, false);
 }
 
 // ------------------------------------------------------------
