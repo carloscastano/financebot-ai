@@ -29,7 +29,7 @@ function escribirTransaccion_(sheet, txn) {
   const listaLower = cfg.categorias.map(function(c) { return c.toLowerCase(); });
   const catOriginal = String(txn.categoria || '').trim();
   if (catOriginal && !listaLower.includes(catOriginal.toLowerCase())) {
-    Logger.log('⚠️ Categoría "' + catOriginal + '" no está en la lista → se guarda como "Otro"');
+    logWarn_('SHEETS', 'Categoria "' + catOriginal + '" no esta en la lista; se guarda como "Otro"');
     txn.categoria = 'Otro';
   }
 
@@ -56,7 +56,7 @@ function escribirTransaccion_(sheet, txn) {
 
   // Hook alertas de presupuesto (solo entradas en tiempo real, no imports masivos)
   if (txn.fuente === 'telegram' || txn.fuente === 'email') {
-    try { verificarAlertaPresupuesto_(txn); } catch(e) { Logger.log('Budget alert error: ' + e.message); }
+    try { verificarAlertaPresupuesto_(txn); } catch(e) { logWarn_('BUDGET', 'Budget alert error: ' + _safeErrMsg_(e)); }
   }
 
   // Ordenar: más reciente arriba (excepto cargas masivas)
@@ -125,15 +125,15 @@ function normalizarCategorias() {
     if (MAPA[clave] && MAPA[clave] !== original) {
       valores[i][0] = MAPA[clave];
       corregidos++;
-      Logger.log('✏️ Fila ' + (i + 2) + ': "' + original + '" → "' + MAPA[clave] + '"');
+      logInfo_('SHEETS', 'Fila ' + (i + 2) + ': "' + original + '" -> "' + MAPA[clave] + '"');
     }
   });
 
   if (corregidos > 0) {
     rango.setValues(valores);
-    Logger.log('✅ Categorías normalizadas: ' + corregidos + ' correcciones.');
+    logInfo_('SHEETS', 'Categorias normalizadas: ' + corregidos + ' correcciones');
   } else {
-    Logger.log('✅ Todas las categorías ya están correctas.');
+    logInfo_('SHEETS', 'Todas las categorias ya estan correctas');
   }
 }
 
@@ -145,7 +145,7 @@ function ordenarTransacciones() {
   const sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
   if (!sheet) return;
   ordenarTransaccionesSheet_(sheet);
-  Logger.log('✅ Transactions ordenadas: más reciente arriba.');
+  logInfo_('SHEETS', 'Transactions ordenadas: mas reciente arriba');
 }
 
 // ------------------------------------------------------------
@@ -229,6 +229,7 @@ function leerConfiguracion_() {
       diasRecordatorio:     cfg['Dias recordatorio pagos'] || 3,
       tarjetaCredito:       cfg['Tarjeta credito']         || '',
       tarjetaDebito:        cfg['Tarjeta debito']          || '',
+      historicoDesde:       String(cfg['Historico Desde']  || '2024/01').trim(),
       gmailQuery:           gmailQuery,
       categorias:           categorias,
       presupuestos:         presupuestos,
@@ -241,7 +242,7 @@ function leerConfiguracion_() {
       'Banco 3 sender':     cfg['Banco 3 sender'] || '',
     };
   } catch(e) {
-    Logger.log('⚠️ Config no disponible, usando defaults: ' + e.message);
+    logWarn_('SHEETS', 'Config no disponible, usando defaults: ' + _safeErrMsg_(e));
     return configuracionPorDefecto_();
   }
 }
@@ -271,11 +272,11 @@ function configuracionPorDefecto_() {
 function agregarConfigCategorias() {
   const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEETS.CONFIGURATIONS);
-  if (!sheet) { Logger.log('❌ Hoja Configurations no encontrada.'); return; }
+  if (!sheet) { logError_('SHEETS', 'Hoja Configurations no encontrada'); return; }
 
   const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
   if (datos.some(function(p) { return String(p).startsWith('Categoría'); })) {
-    Logger.log('ℹ️ Categorías ya configuradas. No se hicieron cambios.');
+    logInfo_('SHEETS', 'Categorias ya configuradas. No se hicieron cambios');
     return;
   }
 
@@ -286,7 +287,7 @@ function agregarConfigCategorias() {
     sheet.appendRow(['Categoría ' + (i + 1), cat, '']);
   });
 
-  Logger.log('✅ ' + CATEGORIAS_DEFECTO_.length + ' categorías agregadas a Configurations.');
+  logInfo_('SHEETS', CATEGORIAS_DEFECTO_.length + ' categorias agregadas a Configurations');
 }
 
 // ------------------------------------------------------------
@@ -325,14 +326,14 @@ function sincronizarCategorias(opciones) {
 
     // 1. Aplicar mapa de normalización
     if (MAPA_NORM[clave] && MAPA_NORM[clave] !== original) {
-      Logger.log('✏️ Fila ' + (i+2) + ': "' + original + '" → "' + MAPA_NORM[clave] + '"');
+      logInfo_('SHEETS', 'Fila ' + (i + 2) + ': "' + original + '" -> "' + MAPA_NORM[clave] + '"');
       valores[i][0] = MAPA_NORM[clave];
       corregidos++;
       return;
     }
     // 2. Si la categoría no está en la lista maestra → 'Otro'
     if (original && !listaSet.has(clave)) {
-      Logger.log('⚠️ Fila ' + (i+2) + ': "' + original + '" no reconocida → "Otro"');
+      logWarn_('SHEETS', 'Fila ' + (i + 2) + ': "' + original + '" no reconocida -> "Otro"');
       valores[i][0] = 'Otro';
       corregidos++;
     }
@@ -340,9 +341,9 @@ function sincronizarCategorias(opciones) {
 
   if (corregidos > 0) {
     rango.setValues(valores);
-    Logger.log('✅ Sincronización completa: ' + corregidos + ' filas actualizadas.');
+    logInfo_('SHEETS', 'Sincronizacion completa: ' + corregidos + ' filas actualizadas');
   } else {
-    Logger.log('✅ Todas las categorías ya están alineadas.');
+    logInfo_('SHEETS', 'Todas las categorias ya estan alineadas');
   }
 }
 
@@ -353,12 +354,12 @@ function sincronizarCategorias(opciones) {
 function agregarConfigBancos() {
   const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEETS.CONFIGURATIONS);
-  if (!sheet) { Logger.log('❌ Hoja Configurations no encontrada.'); return; }
+  if (!sheet) { logError_('SHEETS', 'Hoja Configurations no encontrada'); return; }
 
   // Verificar si ya existen las filas de bancos
   const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat();
   if (datos.some(p => String(p).startsWith('Banco 1'))) {
-    Logger.log('ℹ️ Configuración de bancos ya existe. No se hicieron cambios.');
+    logInfo_('SHEETS', 'Configuracion de bancos ya existe. No se hicieron cambios');
     return;
   }
 
@@ -375,8 +376,8 @@ function agregarConfigBancos() {
     sheet.appendRow(fila);
   });
 
-  Logger.log('✅ Configuración de bancos agregada (' + nuevasFilas.length + ' filas).');
-  Logger.log('💡 Ahora puedes agregar Nequi u otros bancos editando Banco 2/3 en la hoja Configurations.');
+  logInfo_('SHEETS', 'Configuracion de bancos agregada (' + nuevasFilas.length + ' filas)');
+  logInfo_('SHEETS', 'Puedes agregar Nequi u otros bancos editando Banco 2/3 en Configurations');
 }
 
 // ------------------------------------------------------------
@@ -396,10 +397,10 @@ function migrarNombresHojas() {
   ];
   renombrar.forEach(([viejo, nuevo]) => {
     const s = ss.getSheetByName(viejo);
-    if (s && viejo !== nuevo) { s.setName(nuevo); Logger.log(`✅ ${viejo} → ${nuevo}`); }
+    if (s && viejo !== nuevo) { s.setName(nuevo); logInfo_('SHEETS', viejo + ' -> ' + nuevo); }
   });
   reordenarHojas_(ss);
-  Logger.log('🎉 Migración completa. Ejecuta reconstruirDashboard() ahora.');
+  logInfo_('SHEETS', 'Migracion completa. Ejecuta reconstruirDashboard()');
 }
 
 // ------------------------------------------------------------
@@ -421,12 +422,12 @@ function configurarSpreadsheet() {
   configurarDashboard_(dash);
 
   reordenarHojas_(ss);
-  Logger.log('🎉 Spreadsheet listo.');
+  logInfo_('SHEETS', 'Spreadsheet listo');
 }
 
 function _crearSiNoExiste(ss, nombre, fn) {
   let sheet = ss.getSheetByName(nombre);
-  if (!sheet) { sheet = ss.insertSheet(nombre); fn(sheet); Logger.log('✅ ' + nombre); }
+  if (!sheet) { sheet = ss.insertSheet(nombre); fn(sheet); logInfo_('SHEETS', 'Hoja creada: ' + nombre); }
 }
 
 // ------------------------------------------------------------
@@ -439,7 +440,7 @@ function reconstruirDashboard() {
   sheet.clearContents();
   sheet.clearFormats();
   configurarDashboard_(sheet);
-  Logger.log('✅ Dashboard reconstruido.');
+  logInfo_('SHEETS', 'Dashboard reconstruido');
 }
 
 // ------------------------------------------------------------
@@ -709,6 +710,7 @@ function sheetConfigurations_(sheet) {
     ['Banco 2 sender', '',                                                   'Ejemplo: @nequi.com.co — vacío = se ignora en la búsqueda de Gmail'],
     ['Banco 3 nombre', '',                                                   'Ejemplo: Davivienda, Daviplata, etc.'],
     ['Banco 3 sender', '',                                                   'Ejemplo: @davivienda.com'],
+    ['Historico Desde', '2024/01',                                           'AñoMes de inicio para /historico contar y /historico cargar. Formato: YYYY/MM. Cambia según tu historial disponible.'],
   ];
   sheet.getRange(1, 1, datos.length, 3).setValues(datos);
   sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#e8f0fe');
@@ -852,7 +854,7 @@ function sheetDataDictionary_(sheet) {
 function reordenarHojas() {
   const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   reordenarHojas_(ss);
-  Logger.log('✅ Hojas reordenadas.');
+  logInfo_('SHEETS', 'Hojas reordenadas');
 }
 
 function reordenarHojas_(ss) {

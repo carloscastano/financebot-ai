@@ -412,11 +412,10 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar) {
 
 // ------------------------------------------------------------
 // CUENTA EMAILS POR MES — dry-run sin Gemini ni escritura
-// Ejecutar PRIMERO para saber cuánto hay antes de cargar.
-// Cambia DESDE para ajustar el rango.
+// Lee la fecha de inicio desde Configurations > "Historico Desde".
 // ------------------------------------------------------------
 function contarHistoricoPorMes_() {
-  const DESDE = '2024/01';  // ← primer mes a contar (YYYY/MM)
+  const DESDE = leerConfiguracion_().historicoDesde || '2024/01';
 
   const cfg      = leerConfiguracion_();
   const hoyCal   = new Date();
@@ -469,21 +468,54 @@ function contarHistoricoPorMes_() {
 
 // ------------------------------------------------------------
 // CARGA UN MES ESPECÍFICO
-// Cambia MES al mes que quieres cargar (formato 'YYYY/MM').
-// Ejecuta de nuevo con el mismo mes si salieron más de 25.
+// mes: 'YYYY/MM' — si no se pasa, lee Historico Desde de Configurations.
 // ------------------------------------------------------------
-function cargarMesEspecifico_() {
-  const MES = '2024/01';  // ← cambia al mes a cargar (YYYY/MM)
+function cargarMesEspecifico_(mes) {
+  const MES = mes || leerConfiguracion_().historicoDesde || '2024/01';
 
-  const [anio, mes] = MES.split('/').map(Number);
-  const mesF  = mes === 12 ? 1    : mes + 1;
-  const anioF = mes === 12 ? anio + 1 : anio;
+  const [anio, m] = MES.split('/').map(Number);
+  const mesF  = m === 12 ? 1    : m + 1;
+  const anioF = m === 12 ? anio + 1 : anio;
 
-  const inicio = `${anio}/${String(mes).padStart(2,'0')}/01`;
+  const inicio = `${anio}/${String(m).padStart(2,'0')}/01`;
   const fin    = `${anioF}/${String(mesF).padStart(2,'0')}/01`;
 
   Logger.log(`▶ Cargando mes ${MES}: ${inicio} → ${fin}`);
   return cargarHistoricoEmails(inicio, fin, false);
+}
+
+// ------------------------------------------------------------
+// PROCESA COMANDOS /historico desde Telegram
+// ------------------------------------------------------------
+function procesarComandoHistorico_(texto) {
+  const partes = texto.trim().split(/\s+/);
+  const sub    = (partes[1] || '').toLowerCase();
+
+  if (sub === 'contar') {
+    return contarHistoricoPorMes_();
+  }
+
+  if (sub === 'cargar') {
+    const mes = partes[2] || '';
+    if (!mes || !/^\d{4}\/\d{2}$/.test(mes)) {
+      return (
+        '❓ Formato: `/historico cargar YYYY/MM`\n' +
+        'Ejemplo: `/historico cargar 2024/01`\n\n' +
+        '_Ejecuta de nuevo si quedan más emails en ese mes_'
+      );
+    }
+    return cargarMesEspecifico_(mes);
+  }
+
+  const cfg   = leerConfiguracion_();
+  const desde = cfg.historicoDesde || '2024/01';
+  return (
+    '📂 *Carga Histórica*\n\n' +
+    '• `/historico contar` — muestra emails pendientes por mes\n' +
+    '• `/historico cargar YYYY/MM` — carga ese mes\n\n' +
+    '⚙️ Fecha inicio configurada: *' + desde + '*\n' +
+    '_Cambia en Configurations → Historico Desde_'
+  );
 }
 
 // ------------------------------------------------------------

@@ -15,9 +15,9 @@ function resetearOffsetTelegram() {
   if (data.ok && data.result.length > 0) {
     const lastId = data.result[data.result.length - 1].update_id;
     PropertiesService.getScriptProperties().setProperty('TELEGRAM_LAST_UPDATE_ID', String(lastId));
-    Logger.log('✅ Offset reseteado al update_id: ' + lastId + '. Mensajes anteriores ignorados.');
+    logInfo_('TELEGRAM', 'Offset reseteado al update_id=' + lastId);
   } else {
-    Logger.log('ℹ️ No hay mensajes pendientes. Offset reseteado a 0.');
+    logInfo_('TELEGRAM', 'No hay mensajes pendientes. Offset reseteado a 0');
     PropertiesService.getScriptProperties().setProperty('TELEGRAM_LAST_UPDATE_ID', '0');
   }
 }
@@ -46,7 +46,7 @@ function procesarMensajesTelegram() {
   try {
     resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   } catch(e) {
-    Logger.log('⚠️ Telegram no disponible (red): ' + e.message);
+    logWarn_('TELEGRAM', 'No disponible (red): ' + _safeErrMsg_(e));
     return;
   }
   if (resp.getResponseCode() !== 200) return;
@@ -55,7 +55,7 @@ function procesarMensajesTelegram() {
   if (!data.ok || !data.result.length) return;
 
   const ss       = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheetTxn = ss.getSheetByName('Transactions');
+  const sheetTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
   let maxId      = lastUpdate;
 
   data.result.forEach(function(update) {
@@ -82,8 +82,8 @@ function procesarMensajesTelegram() {
           var resExtracto = procesarExtractoTelegram_(doc.file_id, doc.file_name);
           enviarMensajeTelegram_(resExtracto);
         } catch(eDoc) {
-          Logger.log('❌ Extracto: ' + eDoc.message);
-          enviarMensajeTelegram_('❌ Error procesando el extracto: ' + eDoc.message);
+          logError_('TELEGRAM', 'Error procesando extracto', eDoc);
+          enviarMensajeTelegram_('❌ Error procesando el extracto: ' + mdEscape_(_safeErrMsg_(eDoc)));
         }
       } else {
         enviarMensajeTelegram_('📎 Solo acepto extractos en formato .zip o .xlsx\nDescárgalo desde la app del banco y envíalo aquí.');
@@ -103,23 +103,28 @@ function procesarMensajesTelegram() {
 
     // Comandos especiales
     if (msg.text === '/metas' || (msg.text && msg.text.startsWith('/meta '))) {
-      try { enviarMensajeTelegram_(procesarComandoMeta_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      try { enviarMensajeTelegram_(procesarComandoMeta_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;
     }
 
     if (msg.text === '/suscripciones') {
-      try { reporteSuscripciones(); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      try { reporteSuscripciones(); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;
     }
 
     if (msg.text === '/presupuesto') {
-      try { enviarMensajeTelegram_(construirMensajePresupuesto_()); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      try { enviarMensajeTelegram_(construirMensajePresupuesto_()); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;
     }
 
     if (msg.text === '/config' ||
         (msg.text && (msg.text.startsWith('/activar ') || msg.text.startsWith('/desactivar ')))) {
-      try { enviarMensajeTelegram_(procesarComandoConfig_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      try { enviarMensajeTelegram_(procesarComandoConfig_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
+      return;
+    }
+
+    if (msg.text === '/historico' || (msg.text && msg.text.startsWith('/historico '))) {
+      try { enviarMensajeTelegram_(procesarComandoHistorico_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;
     }
 
@@ -138,6 +143,8 @@ function procesarMensajesTelegram() {
         '• /presupuesto — estado de presupuestos por categoría\n' +
         '• /suscripciones — detecta cargos recurrentes\n' +
         '• /config — ver y activar/desactivar funcionalidades\n' +
+        '• /historico contar — emails pendientes por mes\n' +
+        '• /historico cargar YYYY/MM — carga un mes del historial\n' +
         '• /ayuda — este menú\n\n' +
         '*Archivos:*\n' +
         '• Envía un .zip o .xlsx con tu extracto Bancolombia para importarlo'
@@ -170,7 +177,7 @@ function procesarMensajesTelegram() {
 
     // Chat conversacional: detectar pregunta antes de intentar parsear como transacción
     if (_esPreguntaFinanciera_(msg.text)) {
-      try { enviarMensajeTelegram_(responderChat_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + e.message); }
+      try { enviarMensajeTelegram_(responderChat_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;
     }
 
@@ -190,13 +197,13 @@ function procesarMensajesTelegram() {
       enviarMensajeTelegram_(
         emoji + ' *Registrado*\n' +
         '💰 $' + monto + ' COP\n' +
-        '🏪 ' + (transaccion.comercio || 'Sin comercio') + '\n' +
-        '📂 ' + (transaccion.categoria || '') + (transaccion.subcategoria ? ' › ' + transaccion.subcategoria : '') + '\n' +
-        '🏷️ ' + transaccion.tipo + ' · ' + (transaccion.necesidad || '') + '\n' +
-        '💡 _' + (transaccion.sugerencia || '') + '_'
+        '🏪 ' + mdEscape_(transaccion.comercio || 'Sin comercio') + '\n' +
+        '📂 ' + mdEscape_(transaccion.categoria || '') + (transaccion.subcategoria ? ' › ' + mdEscape_(transaccion.subcategoria) : '') + '\n' +
+        '🏷️ ' + mdEscape_(transaccion.tipo) + ' · ' + mdEscape_(transaccion.necesidad || '') + '\n' +
+        '💡 _' + mdEscape_(transaccion.sugerencia || '') + '_'
       );
     } catch(e) {
-      Logger.log('❌ Telegram manual: ' + e.message);
+      logError_('TELEGRAM', 'Error en registro manual', e);
       enviarMensajeTelegram_('❌ No pude registrar eso. Intenta: "gasté 15000 en la frutería"');
     }
   });
@@ -244,14 +251,14 @@ function parsearTransaccionManual_(texto) {
 // Responde "ID X pagada" en Telegram para marcar como pagado.
 // ------------------------------------------------------------
 function recordarPagosPendientes() {
-  if (!isFeatureEnabled_('recordatorio_pagos')) { Logger.log('⏸️ recordatorio_pagos desactivado.'); return; }
+  if (!isFeatureEnabled_('recordatorio_pagos')) { logInfo_('PENDING_PAYMENTS', 'recordatorio_pagos desactivado'); return; }
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
-    Logger.log('⚠️ Telegram no configurado.');
+    logWarn_('PENDING_PAYMENTS', 'Telegram no configurado');
     return;
   }
 
   const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('Pending Payments');
+  const sheet = ss.getSheetByName(SHEETS.PENDING_PAYMENTS);
   if (!sheet || sheet.getLastRow() < 2) return;
 
   // Asegurar que exista la columna "Último Pago" en el header
@@ -280,7 +287,7 @@ function recordarPagosPendientes() {
     // Si ya fue pagado este mes, no recordar
     if (ultimoPago instanceof Date && !isNaN(ultimoPago)) {
       if (ultimoPago.getMonth() === hoy.getMonth() && ultimoPago.getFullYear() === hoy.getFullYear()) {
-        Logger.log('✅ ' + servicio + ': ya pagado este mes (' + Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy') + ')');
+        logInfo_('PENDING_PAYMENTS', servicio + ': ya pagado este mes (' + Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy') + ')');
         return;
       }
     }
@@ -297,7 +304,7 @@ function recordarPagosPendientes() {
     const vencidoSinPagar = diasParaVencer < 0;
     const proximoAVencer  = diasParaVencer >= 0 && diasParaVencer <= diasAnticipacion;
 
-    Logger.log(servicio + ': faltan ' + diasParaVencer + ' día(s), umbral ' + diasAnticipacion + (vencidoSinPagar ? ' ⚠️ VENCIDO' : ''));
+    logInfo_('PENDING_PAYMENTS', servicio + ': faltan ' + diasParaVencer + ' día(s), umbral ' + diasAnticipacion + (vencidoSinPagar ? ' VENCIDO' : ''));
 
     if (vencidoSinPagar || proximoAVencer) {
       pagosARecordar.push({ servicio, monto, fechaPago, diasParaVencer, referencia, notas, filaNum });
@@ -305,7 +312,7 @@ function recordarPagosPendientes() {
   });
 
   if (pagosARecordar.length === 0) {
-    Logger.log('ℹ️ No hay pagos próximos a vencer.');
+    logInfo_('PENDING_PAYMENTS', 'No hay pagos próximos a vencer');
     return;
   }
 
@@ -319,12 +326,12 @@ function recordarPagosPendientes() {
     const id       = p.filaNum - 1;  // ID permanente basado en fila
     const fecha    = Utilities.formatDate(p.fechaPago, 'America/Bogota', 'dd/MM/yyyy');
     const montoStr = p.monto ? '\n💰 $' + Number(p.monto).toLocaleString('es-CO') + ' COP' : '';
-    const ref      = p.referencia ? '\n🔑 Ref: ' + p.referencia : '';
+    const ref      = p.referencia ? '\n🔑 Ref: ' + mdEscape_(p.referencia) : '';
     let estado;
     if (p.diasParaVencer < 0)     estado = '🚨 VENCIDO hace ' + Math.abs(p.diasParaVencer) + ' día(s)';
     else if (p.diasParaVencer === 0) estado = '⚠️ HOY';
     else                           estado = 'en ' + p.diasParaVencer + ' día(s)';
-    return '🧾 *ID ' + id + ': ' + p.servicio + '*\n📆 Vence: ' + fecha + ' (' + estado + ')' + montoStr + ref;
+    return '🧾 *ID ' + id + ': ' + mdEscape_(p.servicio) + '*\n📆 Vence: ' + fecha + ' (' + estado + ')' + montoStr + ref;
   });
 
   const mensaje =
@@ -334,7 +341,7 @@ function recordarPagosPendientes() {
     '_Responde "ID 1 pagada" para marcar como pagado_';
 
   enviarMensajeTelegram_(mensaje);
-  Logger.log('📱 Recordatorio enviado: ' + pagosARecordar.length + ' pago(s).');
+  logInfo_('PENDING_PAYMENTS', 'Recordatorio enviado: ' + pagosARecordar.length + ' pago(s)');
 }
 
 // ------------------------------------------------------------
@@ -343,7 +350,7 @@ function recordarPagosPendientes() {
 // ------------------------------------------------------------
 function marcarPagoPendiente_(idStr) {
   const id = parseInt(idStr);
-  Logger.log('💳 marcarPagoPendiente_ llamado con ID: ' + id);
+  logInfo_('PENDING_PAYMENTS', 'marcarPagoPendiente_ ID=' + id);
 
   if (!id || id <= 0) {
     enviarMensajeTelegram_('❓ ID no válido. Ejemplo: *ID 1 pagada*');
@@ -351,7 +358,7 @@ function marcarPagoPendiente_(idStr) {
   }
 
   const mapaStr = PropertiesService.getScriptProperties().getProperty('PENDING_PAYMENT_MAP');
-  Logger.log('🗺️ PENDING_PAYMENT_MAP: ' + mapaStr);
+  logInfo_('PENDING_PAYMENTS', 'PENDING_PAYMENT_MAP=' + mapaStr);
 
   if (!mapaStr) {
     enviarMensajeTelegram_('❓ No hay recordatorios activos. Vuelve a ejecutar el recordatorio y luego responde el ID.');
@@ -360,15 +367,15 @@ function marcarPagoPendiente_(idStr) {
 
   const mapa    = JSON.parse(mapaStr);
   const filaNum = mapa[String(id)];
-  Logger.log('📍 Fila encontrada: ' + filaNum);
+  logInfo_('PENDING_PAYMENTS', 'Fila encontrada: ' + filaNum);
 
   if (!filaNum) {
-    enviarMensajeTelegram_('❓ ID ' + id + ' no encontrado. IDs disponibles: ' + Object.keys(mapa).join(', '));
+    enviarMensajeTelegram_('❓ ID ' + id + ' no encontrado. IDs disponibles: ' + mdEscape_(Object.keys(mapa).join(', ')));
     return;
   }
 
   const ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('Pending Payments');
+  const sheet = ss.getSheetByName(SHEETS.PENDING_PAYMENTS);
   if (!sheet) return;
 
   // Leer nombre del servicio para confirmar
@@ -379,11 +386,11 @@ function marcarPagoPendiente_(idStr) {
 
   enviarMensajeTelegram_(
     '✅ *Pago registrado*\n' +
-    '🧾 ' + servicio + '\n' +
+    '🧾 ' + mdEscape_(servicio) + '\n' +
     '📅 Pagado: ' + Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy') + '\n\n' +
     '_No recibirás recordatorio de este pago hasta el próximo mes._'
   );
-  Logger.log('✅ Pago marcado: ' + servicio + ' (fila ' + filaNum + ')');
+  logInfo_('PENDING_PAYMENTS', 'Pago marcado: ' + servicio + ' (fila ' + filaNum + ')');
 }
 
 // ------------------------------------------------------------
@@ -406,7 +413,7 @@ function probarMarcarPago() {
 // Agrega la columna "Último Pago" al header si no existe
 function _asegurarColumnaUltimoPago_(sheet) {
   const header = sheet.getRange(1, 9).getValue();
-  if (!header || String(header).trim() === '') {
+  if (!header || _normText_(header) !== _normText_(HEADERS.PENDING_PAYMENTS.LAST_PAYMENT)) {
     sheet.getRange(1, 9).setValue('Último Pago');
   }
 }
@@ -435,6 +442,7 @@ function enviarMensajeTelegram_(texto) {
     });
 
     if (resp.getResponseCode() !== 200) {
+      logWarn_('TELEGRAM', 'sendMessage retorno HTTP ' + resp.getResponseCode() + ' (reintento sin Markdown)');
       // Fallback: si falla Markdown (u otro error), reintentar en texto plano
       UrlFetchApp.fetch(url, {
         method: 'post',
@@ -444,7 +452,7 @@ function enviarMensajeTelegram_(texto) {
       });
     }
   } catch(e) {
-    Logger.log('⚠️ Telegram no disponible al enviar mensaje: ' + e.message);
+    logError_('TELEGRAM', 'No se pudo enviar mensaje', e);
   }
 }
 
@@ -464,12 +472,12 @@ function enviarTelegram_(txn) {
 
   const mensaje =
     `🚨 *Alerta FinanceBot*\n\n` +
-    `${emoji} *${txn.comercio || 'Comercio desconocido'}*\n` +
+    `${emoji} *${mdEscape_(txn.comercio || 'Comercio desconocido')}*\n` +
     `💰 $${monto} COP\n` +
-    `📂 ${txn.categoria} › ${txn.subcategoria || ''}\n` +
-    `🏷️ ${txn.necesidad || 'sin clasificar'}\n` +
-    `💡 _${txn.sugerencia || ''}_\n` +
-    `📅 ${txn.fecha || ''} ${txn.hora || ''}`;
+    `📂 ${mdEscape_(txn.categoria)} › ${mdEscape_(txn.subcategoria || '')}\n` +
+    `🏷️ ${mdEscape_(txn.necesidad || 'sin clasificar')}\n` +
+    `💡 _${mdEscape_(txn.sugerencia || '')}_\n` +
+    `📅 ${mdEscape_(txn.fecha || '')} ${mdEscape_(txn.hora || '')}`;
 
   const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -490,13 +498,13 @@ function enviarTelegram_(txn) {
   try {
     response = UrlFetchApp.fetch(url, options);
   } catch(e) {
-    Logger.log('⚠️ Telegram no disponible (alerta): ' + e.message);
+    logError_('TELEGRAM', 'No se pudo enviar alerta de gasto alto', e);
     return;
   }
   const code = response.getResponseCode();
 
   if (code !== 200) {
-    Logger.log(`⚠️ Telegram error ${code}: ${response.getContentText()} (reintentando sin Markdown)`);
+    logWarn_('TELEGRAM', 'Telegram error ' + code + ' (reintentando sin Markdown)');
     try {
       UrlFetchApp.fetch(url, {
         method: 'post',
@@ -508,10 +516,10 @@ function enviarTelegram_(txn) {
         muteHttpExceptions: true
       });
     } catch(e2) {
-      Logger.log('⚠️ Telegram fallback error: ' + e2.message);
+      logError_('TELEGRAM', 'Fallback sin Markdown falló', e2);
     }
   } else {
-    Logger.log(`📱 Alerta Telegram enviada: ${txn.comercio} $${monto}`);
+    logInfo_('TELEGRAM', 'Alerta enviada: ' + (txn.comercio || '') + ' $' + monto);
   }
 }
 
