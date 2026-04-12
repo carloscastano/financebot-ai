@@ -30,7 +30,7 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 - [ ] #19 Manual de instalacion (no tecnico, checklist)
 - [ ] #21 Guia de uso del bot (usuario final, comandos + ejemplos)
 - [ ] #16 Carga historica Gmail automatica (ultimo, mas complejo)
-- [ ] #23 Mejorar filtro suscripciones (cuando haya 6-12 meses de data)
+- [x] #23 Mejorar filtro suscripciones (filtros ATM/transferencias/categorias implementados; precision mejora con 6-12 meses de data)
 
 ### Pendiente — Limpieza (#20)
 
@@ -41,12 +41,12 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 - [x] Gemini texto helper: _llamarGeminiTexto_() para Chat + Advisor + WeeklyReport
 - [x] Funciones probar* comentadas (5 funciones en 4 archivos)
 - [x] Dashboard rangos dinamicos (D2:D en vez de D2:D5000)
-- [ ] Gemini JSON helper: _llamarGeminiJson_() para Extractor + Telegram + FinanceBot (retry/backoff unificado)
-- [ ] Estandarizar manejo de errores y logs (formato unico por modulo)
-- [ ] Normalizar nombres/acentos de headers y constantes en todo el repo
-- [ ] Hardening Markdown: estandarizar fallback en todos los mensajes formateados
-- [ ] Checklist de operacion y soporte (que ejecutar cuando falla X)
-- [ ] Depurar run_probarAsesor (apunta a funcion comentada)
+- [x] Gemini JSON helper: _llamarGeminiJson_() para Extractor + Telegram + FinanceBot (retry/backoff unificado)
+- [x] Estandarizar manejo de errores y logs (formato unico por modulo)
+- [x] Normalizar nombres/acentos de headers y constantes en todo el repo
+- [x] Hardening Markdown: estandarizar fallback en todos los mensajes formateados
+- [x] Checklist de operacion y soporte (que ejecutar cuando falla X)
+- [x] Depurar run_probarAsesor (apunta a funcion comentada)
 
 ---
 
