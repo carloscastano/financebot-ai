@@ -317,57 +317,7 @@ function geminiClasificar_(filas, categorias) {
     '"m":MONTO_POSITIVO,"c":"descripcion limpia","cat":"Categoria","sub":"Subcategoria"}]\n\n' +
     'DATOS:\n' + tabla;
 
-  var resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
-    method: 'post', contentType: 'application/json',
-    payload: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: 'application/json' }
-    }),
-    muteHttpExceptions: true
-  });
-
-  var httpCode = resp.getResponseCode();
-  var rawBody  = resp.getContentText();
-  if (httpCode === 429) {
-    // Rate limit → esperar 65s y reintentar una vez
-    Logger.log('Gemini 429 — esperando 65s y reintentando...');
-    Utilities.sleep(65000);
-    resp    = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
-      method: 'post', contentType: 'application/json',
-      payload: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: 'application/json' }
-      }),
-      muteHttpExceptions: true
-    });
-    httpCode = resp.getResponseCode();
-    rawBody  = resp.getContentText();
-  }
-  if (httpCode !== 200) {
-    throw new Error('Gemini HTTP ' + httpCode + ': ' + rawBody.substring(0, 300));
-  }
-
-  var json;
-  try { json = JSON.parse(rawBody); } catch(e) {
-    throw new Error('Gemini resp no es JSON: ' + rawBody.substring(0, 200));
-  }
-
-  if (!json.candidates || !json.candidates[0]) {
-    throw new Error('Gemini sin candidates: ' + JSON.stringify(json).substring(0, 300));
-  }
-  if (!json.candidates[0].content) {
-    var finish = (json.candidates[0].finishReason || 'unknown');
-    throw new Error('Gemini content vacío, finishReason: ' + finish + ' | ' + JSON.stringify(json.candidates[0]).substring(0, 200));
-  }
-
-  var text = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
-  text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  Logger.log('Gemini resp (primeros 300): ' + text.substring(0, 300));
-
-  var items;
-  try { items = JSON.parse(text); } catch (e) {
-    throw new Error('JSON parse error: ' + e.message + ' | texto: ' + text.substring(0, 200));
-  }
+  var items = _llamarGeminiJson_(prompt, { temperature: 0.1, maxOutputTokens: 4096 });
   if (!Array.isArray(items)) throw new Error('Gemini no retornó array: ' + String(items).substring(0, 100));
 
   return items

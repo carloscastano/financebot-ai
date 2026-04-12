@@ -80,10 +80,62 @@ function construirPromptInsightSemanal_(resumenSemanal, nombreUsuario) {
 }
 
 // ------------------------------------------------------------
+// HELPER GEMINI — respuestas JSON (parsear transacción, clasificar extracto)
+// Incluye retry automático en 429. Lanza Error si falla.
+// El caller hace el post-proceso del objeto/array retornado.
+// ------------------------------------------------------------
+function _llamarGeminiJson_(prompt, opts) {
+  opts = opts || {};
+  var payload = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature:      opts.temperature     !== undefined ? opts.temperature     : 0.1,
+      maxOutputTokens:  opts.maxOutputTokens !== undefined ? opts.maxOutputTokens : 512,
+      responseMimeType: 'application/json'
+    }
+  });
+  var fetchOpts = { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true };
+  var url = CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY;
+
+  var resp     = UrlFetchApp.fetch(url, fetchOpts);
+  var httpCode = resp.getResponseCode();
+  var rawBody  = resp.getContentText();
+
+  if (httpCode === 429) {
+    Logger.log('Gemini 429 — esperando 65s y reintentando...');
+    Utilities.sleep(65000);
+    resp     = UrlFetchApp.fetch(url, fetchOpts);
+    httpCode = resp.getResponseCode();
+    rawBody  = resp.getContentText();
+  }
+  if (httpCode !== 200) {
+    throw new Error('Gemini HTTP ' + httpCode + ': ' + rawBody.substring(0, 300));
+  }
+
+  var json;
+  try { json = JSON.parse(rawBody); } catch(e) {
+    throw new Error('Gemini resp no es JSON válido: ' + rawBody.substring(0, 200));
+  }
+  if (!json.candidates || !json.candidates[0]) {
+    throw new Error('Gemini sin candidates: ' + JSON.stringify(json).substring(0, 300));
+  }
+  if (!json.candidates[0].content) {
+    var finish = json.candidates[0].finishReason || 'unknown';
+    throw new Error('Gemini content vacío, finishReason: ' + finish);
+  }
+
+  var text = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
+  text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  Logger.log('Gemini JSON (primeros 300): ' + text.substring(0, 300));
+
+  try { return JSON.parse(text); } catch(e) {
+    throw new Error('Gemini JSON parse error: ' + e.message + ' | ' + text.substring(0, 200));
+  }
+}
+
+// ------------------------------------------------------------
 // HELPER GEMINI — respuestas de texto (chat, análisis, insights)
 // Retorna el texto limpio o null si falla/rate-limit.
-// Las llamadas que esperan JSON (clasificar, parsear transacción)
-// mantienen su propia lógica especializada en cada módulo.
 // ------------------------------------------------------------
 function _llamarGeminiTexto_(prompt, opts) {
   opts = opts || {};

@@ -17,7 +17,7 @@ function run_analizarFinanzas()         { analizarFinanzas(); }
 function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
 function run_procesarEmails()           { procesarEmailsBancolombia(); }
 function run_cargarHistorico()          { cargarHistoricoEmails(); }
-function run_probarAsesor()             { probarAsesorFinanciero(); }
+function run_probarAsesor()             { analizarFinanzas(); }
 function run_resetearTelegram()         { resetearOffsetTelegram(); }
 function run_procesarMensajes()         { procesarMensajesTelegram(); }
 
@@ -157,49 +157,7 @@ function esEmailTransaccional_(texto) {
 function llamarGemini_(textoEmail) {
   const prompt = construirPrompt_(textoEmail);
 
-  const payload = {
-    contents: [{
-      parts: [{ text: prompt }]
-    }],
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 512,
-      responseMimeType: 'application/json'
-    }
-  };
-
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  };
-
-  const url = `${CONFIG.GEMINI_URL}?key=${CONFIG.GEMINI_API_KEY}`;
-  const response = UrlFetchApp.fetch(url, options);
-  const responseCode = response.getResponseCode();
-
-  if (responseCode !== 200) {
-    throw new Error(`Gemini respondió con código ${responseCode}: ${response.getContentText()}`);
-  }
-
-  const json = JSON.parse(response.getContentText());
-
-  // Extraer el texto de la respuesta de Gemini
-  let responseText = '';
-  if (json.candidates && json.candidates[0]?.content?.parts) {
-    responseText = json.candidates[0].content.parts
-      .map(p => p.text || '')
-      .join('');
-  }
-
-  // Limpiar backticks si Gemini los incluye
-  responseText = responseText
-    .replace(/```json\n?/g, '')
-    .replace(/```\n?/g, '')
-    .trim();
-
-  const transaccion = JSON.parse(responseText);
+  const transaccion = _llamarGeminiJson_(prompt, { temperature: 0.1, maxOutputTokens: 512 });
 
   // Validar campos mínimos requeridos
   if (!transaccion.fecha || !transaccion.tipo || !transaccion.categoria) {

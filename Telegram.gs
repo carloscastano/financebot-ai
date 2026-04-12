@@ -232,21 +232,7 @@ function parsearTransaccionManual_(texto) {
     '"sugerencia":"consejo breve en español","referencia":null,"confianza":0.8,' +
     '"banco":"Efectivo|Nequi|Bancolombia|otro"}';
 
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 512, responseMimeType: 'application/json' }
-  };
-  const options = {
-    method: 'post', contentType: 'application/json',
-    payload: JSON.stringify(payload), muteHttpExceptions: true
-  };
-  const resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, options);
-  if (resp.getResponseCode() !== 200) throw new Error('Gemini ' + resp.getResponseCode());
-
-  const json = JSON.parse(resp.getContentText());
-  let text = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
-  text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(text);
+  return _llamarGeminiJson_(prompt, { temperature: 0.1, maxOutputTokens: 512 });
 }
 
 // ------------------------------------------------------------
