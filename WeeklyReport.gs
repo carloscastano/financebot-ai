@@ -116,20 +116,11 @@ function _geminiInsightSemanal_(act) {
       'Top categorias: ' + topResumen + '.';
     var prompt = construirPromptInsightSemanal_(resumenSemanal, 'Carlos');
 
-    var payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 80 }
-    };
-    var resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
-      method: 'post', contentType: 'application/json',
-      payload: JSON.stringify(payload), muteHttpExceptions: true
-    });
-    if (resp.getResponseCode() !== 200) return '';
-    var json = JSON.parse(resp.getContentText());
-    var texto = json.candidates[0].content.parts[0].text.trim();
+    var texto = _llamarGeminiTexto_(prompt, { temperature: 0.4, maxOutputTokens: 80 });
+    if (!texto) return '';
     return texto.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
   } catch(e) {
-    Logger.log('⚠️ Gemini insight semanal: ' + e.message);
+    Logger.log('⚠️ _geminiInsightSemanal_: ' + e.message);
     return '';
   }
 }

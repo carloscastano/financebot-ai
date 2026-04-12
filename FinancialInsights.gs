@@ -79,9 +79,7 @@ function configurarFinancialInsights_(ss) {
   return sheet;
 }
 
-// ------------------------------------------------------------
-// FUNCIÓN DE PRUEBA — ejecutar para verificar que la hoja
-// se crea y recibe datos correctamente
+/* PRUEBA — descomentar para verificar que la hoja se crea y recibe datos
 // ------------------------------------------------------------
 function probarFinancialInsights() {
   const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -107,3 +105,4 @@ function probarFinancialInsights() {
 
   Logger.log('✅ Fila de prueba insertada en Financial Insights. Verifica el Spreadsheet.');
 }
+*/

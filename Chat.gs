@@ -179,31 +179,9 @@ function responderChat_(pregunta) {
 
   var prompt = construirPromptChatFinanciero_(pregunta, contexto);
 
-  try {
-    var payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 350 }
-    };
-    var resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
-      method: 'post', contentType: 'application/json',
-      payload: JSON.stringify(payload), muteHttpExceptions: true
-    });
-
-    if (resp.getResponseCode() === 429) {
-      return '⏳ El asistente está ocupado, intenta en un momento.';
-    }
-    if (resp.getResponseCode() !== 200) {
-      return '❌ No pude consultar el asistente ahora. Intenta de nuevo.';
-    }
-
-    var json  = JSON.parse(resp.getContentText());
-    var texto = json.candidates[0].content.parts[0].text.trim();
-    return '🤖 ' + texto.replace(/\*\*/g, '').replace(/\*/g, '');
-
-  } catch(e) {
-    Logger.log('❌ Chat financiero: ' + e.message);
-    return '❌ Error al consultar el asistente: ' + e.message;
-  }
+  var texto = _llamarGeminiTexto_(prompt, { temperature: 0.2, maxOutputTokens: 350 });
+  if (texto === null) return '❌ No pude consultar el asistente ahora. Intenta de nuevo.';
+  return '🤖 ' + texto.replace(/\*\*/g, '').replace(/\*/g, '');
 }
 
 function run_testChat() {

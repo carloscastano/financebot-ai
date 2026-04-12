@@ -423,7 +423,7 @@ function cargarHistoricoEmails() {
 
 // ------------------------------------------------------------
 // FUNCIÓN DE PRUEBA MANUAL
-// Corre esto primero para verificar que todo funciona
+/* PRUEBA — descomentar para verificar el parsing de emails
 // ------------------------------------------------------------
 function probarConEmailFalso() {
   const textoTest = `Bancolombia: Compraste COP50.000,00 en TIENDA D1 MANIZALES con tu T.Cred *8352, el 22/03/2026 a las 14:30. Si tienes dudas, encuentranos aqui: 6045109095. Estamos cerca.`;
@@ -439,3 +439,4 @@ function probarConEmailFalso() {
     Logger.log('❌ Error: ' + e.message);
   }
 }
+*/

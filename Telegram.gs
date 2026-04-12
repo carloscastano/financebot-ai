@@ -402,7 +402,7 @@ function marcarPagoPendiente_(idStr) {
 
 // ------------------------------------------------------------
 // PRUEBA DIRECTA — ejecuta esto desde Apps Script para diagnosticar
-// Simula que el usuario respondió "ID 1 pagada"
+/* PRUEBA — descomentar para simular respuesta "ID 1 pagada"
 // ------------------------------------------------------------
 function probarMarcarPago() {
   Logger.log('=== PRUEBA marcarPagoPendiente_ ===');
@@ -415,6 +415,7 @@ function probarMarcarPago() {
   marcarPagoPendiente_('1');
   Logger.log('=== FIN PRUEBA ===');
 }
+*/
 
 // Agrega la columna "Último Pago" al header si no existe
 function _asegurarColumnaUltimoPago_(sheet) {
@@ -530,7 +531,7 @@ function enviarTelegram_(txn) {
 
 // ------------------------------------------------------------
 // PRUEBA DE TELEGRAM
-// Ejecuta esto para verificar que el bot funciona
+/* PRUEBA — descomentar para verificar que el bot envía mensajes
 // ------------------------------------------------------------
 function probarTelegram() {
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
@@ -552,6 +553,7 @@ function probarTelegram() {
   enviarTelegram_(txnPrueba);
   Logger.log('Prueba enviada. Revisa tu Telegram.');
 }
+*/
 
 // ------------------------------------------------------------
 // EMOJIS POR CATEGORÍA (para mensajes más visuales)

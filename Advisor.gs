@@ -290,21 +290,9 @@ function generarAnalisisIA_(act, prev, proyeccion, escenarios, score, anomalias,
 
   const prompt = construirPromptAnalisisMensual_(resumenMensual, 'Carlos');
 
-  try {
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 600 }
-    };
-    const options = { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true };
-    const resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, options);
-    if (resp.getResponseCode() !== 200) throw new Error('Gemini ' + resp.getResponseCode());
-    const json = JSON.parse(resp.getContentText());
-    let texto = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
-    return texto.replace(/[*_`\[\]]/g, '').replace(/#+\s/g, '').trim();
-  } catch(e) {
-    Logger.log('⚠️ Gemini advisor error: ' + e.message);
-    return 'Análisis no disponible en este momento.';
-  }
+  var texto = _llamarGeminiTexto_(prompt, { temperature: 0.4, maxOutputTokens: 600 });
+  if (!texto) return 'Análisis no disponible en este momento.';
+  return texto.replace(/[*_`\[\]]/g, '').replace(/#+\s/g, '').trim();
 }
 
 // ------------------------------------------------------------
@@ -375,9 +363,10 @@ function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anom
 }
 
 // ------------------------------------------------------------
-// PRUEBA — ejecutar manualmente para verificar
+/* PRUEBA — descomentar para ejecutar manualmente
 // ------------------------------------------------------------
 function probarAsesorFinanciero() {
   Logger.log('🔍 Ejecutando análisis financiero v2...');
   analizarFinanzas();
 }
+*/

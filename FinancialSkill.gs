@@ -78,3 +78,35 @@ function construirPromptInsightSemanal_(resumenSemanal, nombreUsuario) {
     '- Debe incluir una recomendacion accionable.'
   );
 }
+
+// ------------------------------------------------------------
+// HELPER GEMINI — respuestas de texto (chat, análisis, insights)
+// Retorna el texto limpio o null si falla/rate-limit.
+// Las llamadas que esperan JSON (clasificar, parsear transacción)
+// mantienen su propia lógica especializada en cada módulo.
+// ------------------------------------------------------------
+function _llamarGeminiTexto_(prompt, opts) {
+  opts = opts || {};
+  var payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature:     opts.temperature     !== undefined ? opts.temperature     : 0.4,
+      maxOutputTokens: opts.maxOutputTokens !== undefined ? opts.maxOutputTokens : 512
+    }
+  };
+  try {
+    var resp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    var code = resp.getResponseCode();
+    if (code === 429) { Logger.log('⚠️ Gemini 429 — rate limit'); return null; }
+    if (code !== 200) { Logger.log('⚠️ Gemini HTTP ' + code); return null; }
+    var json = JSON.parse(resp.getContentText());
+    if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) return null;
+    return json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
+  } catch(e) {
+    Logger.log('⚠️ _llamarGeminiTexto_: ' + e.message);
+    return null;
+  }
+}
