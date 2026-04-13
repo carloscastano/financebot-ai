@@ -448,6 +448,16 @@ function reconstruirDashboard() {
   logInfo_('SHEETS', 'Dashboard reconstruido');
 }
 
+function reconstruirDataDictionary() {
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEETS.DATA_DICTIONARY);
+  if (!sheet) sheet = ss.insertSheet(SHEETS.DATA_DICTIONARY);
+  sheet.clearContents();
+  sheet.clearFormats();
+  sheetDataDictionary_(sheet);
+  logInfo_('SHEETS', 'DataDictionary reconstruido');
+}
+
 // ------------------------------------------------------------
 // DASHBOARD — LOCALE-PROOF
 // REGLA: cero funciones con argumentos (no IF, no IFERROR)
