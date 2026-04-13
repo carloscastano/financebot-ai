@@ -839,47 +839,131 @@ function sheetDataDictionary_(sheet) {
     ['Errors','Asunto Email','Texto','Asunto del email que no se pudo procesar','Alertas y Notificaciones Transaccionales'],
     ['Errors','Email ID','Texto','ID del mensaje en Gmail — buscar con este ID si necesitas reprocesar','18e8a1b2c3d4e5f6'],
     ['Errors','Procesado','Texto ISO 8601','Cuando ocurrio el error','2026-03-22T21:38:28.000Z'],
+    // ── GOALS ─────────────────────────────────────────────────────────────────
+    ['Goals','ID','Texto','Identificador unico generado automaticamente al crear la meta','META-LK3F2A8B'],
+    ['Goals','Meta','Texto','Nombre descriptivo de la meta de ahorro — editable','Vacaciones Europa'],
+    ['Goals','Objetivo','Numero COP','Monto total en COP que quieres alcanzar','5000000'],
+    ['Goals','Fecha Limite','Texto DD/MM/YYYY','Fecha objetivo para completar la meta (opcional — puede quedar vacia)','31/12/2026'],
+    ['Goals','Ahorrado','Numero COP','Monto acumulado hasta ahora. Suma de todos los abonos registrados via /meta abonar','1250000'],
+    ['Goals','Estado','Texto','Estado actual de la meta — el bot lo actualiza automaticamente',
+     'activa — en progreso\ncompletada — llego al 100%\npausada — no recibe recordatorios'],
+    ['Goals','Creado','Texto ISO 8601','Timestamp de cuando se creo la meta con /meta nueva','2026-01-15T10:00:00.000Z'],
+    ['Goals','Último Abono','Texto ISO 8601','Fecha del ultimo abono registrado — se usa para calcular si hay metas sin actividad','2026-03-20T15:30:00.000Z'],
+    ['Goals','Etiqueta','Texto','Etiqueta libre para clasificar metas — util para agrupar en /metas','viaje | emergencia | hogar | vehiculo'],
+    // ── FINANCIAL INSIGHTS ────────────────────────────────────────────────────
+    ['Financial Insights','Fecha Registro','Texto ISO 8601','Timestamp de cuando se genero este snapshot del asesor financiero','2026-03-22T21:38:28.000Z'],
+    ['Financial Insights','Periodo','Texto YYYY-MM','Mes al que corresponde el analisis','2026-03'],
+    ['Financial Insights','Ingresos COP','Numero COP','Total de ingresos del periodo calculado desde Transactions','4500000'],
+    ['Financial Insights','Egresos COP','Numero COP','Total de egresos del periodo calculado desde Transactions','2800000'],
+    ['Financial Insights','Balance COP','Numero COP','Diferencia Ingresos - Egresos. Positivo = ahorro, negativo = deficit','1700000'],
+    ['Financial Insights','Tasa Ahorro %','Numero 0-100','Porcentaje ahorrado sobre el ingreso total del periodo','37.8'],
+    ['Financial Insights','Score (0-100)','Numero entero','Puntaje de salud financiera calculado por Gemini. 80+ excelente, 60-79 bueno, <60 alerta','74'],
+    ['Financial Insights','Escenario Optimista','Numero COP','Proyeccion de cierre de mes asumiendo el menor gasto diario de los ultimos 6 meses','1200000'],
+    ['Financial Insights','Escenario Base','Numero COP','Proyeccion de cierre de mes asumiendo el gasto diario promedio de los ultimos 6 meses','1800000'],
+    ['Financial Insights','Escenario Pesimista','Numero COP','Proyeccion de cierre de mes asumiendo el mayor gasto diario de los ultimos 6 meses','2900000'],
+    ['Financial Insights','Proyección Fin Mes','Numero COP','Egresos totales proyectados al cierre del mes corriente segun ritmo actual','2400000'],
+    ['Financial Insights','Ritmo Diario COP','Numero COP','Promedio de gasto por dia en el periodo — base para las proyecciones','93333'],
+    ['Financial Insights','Categoría Principal','Texto','Categoria con mayor gasto en el periodo','Alimentación ($520.000)'],
+    ['Financial Insights','Análisis IA','Texto largo','Parrafo de analisis generado por Gemini con observaciones, patrones y recomendaciones',
+     'Tu gasto en Alimentación subió 18% vs. el mes pasado...'],
     // ── CONFIGURATIONS ────────────────────────────────────────────────────────
-    ['Configurations','Parametro','Texto','Nombre del parametro de configuracion','Umbral alerta Telegram'],
-    ['Configurations','Valor','Variable','Valor actual del parametro — editable directamente en la hoja','300000'],
-    ['Configurations','Descripcion','Texto','Que hace este parametro','COP — envia alerta si un egreso supera este valor'],
-    ['Configurations','[col C] Presupuesto','Numero','En filas de Categoria X: presupuesto mensual en COP para esa categoria','400000'],
+    ['Configurations','Parametro','Texto','Nombre del parametro de configuracion',
+     'Presupuesto mensual | Umbral alerta Telegram | Banco 1 sender | ...'],
+    ['Configurations','Valor','Variable','Valor actual del parametro — edita esta columna para personalizar el bot',
+     '3000000 | 200000 | @notificacionesbancolombia.com'],
+    ['Configurations','Descripcion','Texto','Que hace este parametro y como afecta el comportamiento del bot',
+     'COP — envia alerta si un egreso supera este valor'],
+    ['Configurations','— Parametros principales —','','',''],
+    ['Configurations','Presupuesto mensual','Numero COP','Limite total de gasto al mes. El Dashboard muestra cuanto llevas gastado vs este limite.','3000000'],
+    ['Configurations','Meta ahorro','Numero COP','Cuanto quieres ahorrar al mes. Se usa en el Dashboard (% Meta) y en el asesor financiero.','500000'],
+    ['Configurations','Umbral alerta Telegram','Numero COP','Si un egreso supera este valor, el bot envia alerta inmediata por Telegram.','200000'],
+    ['Configurations','Alerta presupuesto %','Decimal 0-1','Fraccion del presupuesto que dispara alerta de categoria. 0.8 = avisa al llegar al 80%.','0.8'],
+    ['Configurations','Dias recordatorio pagos','Numero','Dias de anticipacion para recordatorios de Pending Payments.','3'],
+    ['Configurations','Tarjeta credito','Texto','Ultimos 4 digitos de la TC. El bot los incluye en mensajes de alerta.','*8352'],
+    ['Configurations','Tarjeta debito','Texto','Ultimos 4 digitos de la tarjeta debito (opcional).','*1234'],
+    ['Configurations','Banco','Texto','Nombre del banco principal. Solo referencia visual por ahora.','Bancolombia'],
+    ['Configurations','— Bancos (senders de Gmail) —','','',''],
+    ['Configurations','Banco 1 nombre','Texto','Nombre del primer banco monitorizado.','Bancolombia'],
+    ['Configurations','Banco 1 sender','Texto','Dominios del remitente del banco 1 separados por coma. El bot construye la query Gmail con esto.',
+     '@notificacionesbancolombia.com,@bancolombia.com.co'],
+    ['Configurations','Banco 2/3 nombre','Texto','Nombre del segundo/tercer banco. Dejar vacio si no aplica.','Nequi'],
+    ['Configurations','Banco 2/3 sender','Texto','Dominio del remitente del banco 2/3. Dejar vacio si no aplica.','@nequi.com.co'],
+    ['Configurations','— Categorias —','','',''],
+    ['Configurations','Categoria X','Texto','Nombre de una categoria de gasto — el bot valida contra esta lista al clasificar.','Alimentación | Transporte | Salud | Hogar | ...'],
+    ['Configurations','[col C] Presupuesto cat.','Numero COP','Presupuesto mensual para esa categoria especifica. El bot alerta cuando se acerca al limite.',
+     '800000'],
+    ['Configurations','— Carga historica —','','',''],
+    ['Configurations','Historico Desde','Texto YYYY/MM','Mes de inicio para /historico contar y /historico cargar. Cambia segun tu historial disponible.',
+     '2024/01'],
+    // ── DASHBOARD ─────────────────────────────────────────────────────────────
+    ['Dashboard','— MES ACTUAL (col A-C) —','','',''],
+    ['Dashboard','Total Egresos','Formula','Suma de todos los egresos del mes en curso. Fuente: Transactions col Tipo=egreso.','B4'],
+    ['Dashboard','Total Ingresos','Formula','Suma de todos los ingresos del mes en curso. Fuente: Transactions col Tipo=ingreso.','B5'],
+    ['Dashboard','Flujo de Caja','Formula','Ingresos - Egresos del mes. Positivo = ahorro neto, negativo = deficit.','B6'],
+    ['Dashboard','Ratio Ahorro','Formula %','Porcentaje del ingreso que fue a ahorro. 0 si no hay ingresos registrados.','B7'],
+    ['Dashboard','% Meta (col C)','Formula %','Que porcentaje del Presupuesto mensual de Configurations ya usaste.','C4'],
+    ['Dashboard','Gasto por Categoria','Formula','Una fila por cada categoria activa en Configurations. Total COP y % del gasto total.','fila 10+'],
+    ['Dashboard','Total Egresos Historico','Formula','Suma historica de todos los egresos en Transactions (todos los meses).','fila fh+1'],
+    ['Dashboard','Total Ingresos Historico','Formula','Suma historica de todos los ingresos en Transactions.','fila fh+2'],
+    ['Dashboard','N de Transacciones','Formula','Cuenta total de filas en Transactions con ID (A2:A).','fila fh+3'],
+    ['Dashboard','— CONSOLIDADO MENSUAL (col A-E) —','','',''],
+    ['Dashboard','Ene..Dic','Formula','Una fila por mes. Columnas: Egresos | Ingresos | Flujo | # Txn. Filtrado por el año en E2.','filas fc+1 a fc+12'],
+    ['Dashboard','— FILTRO PERIODO (col D-F) —','','',''],
+    ['Dashboard','E2 — Año','Celda editable','Año que se muestra en el Consolidado Mensual y en el bloque Periodo. Cambia este valor para ver otro año.',String(new Date().getFullYear())],
+    ['Dashboard','E3 — Mes','Celda editable','Mes (1-12) para el bloque Periodo (columnas D-F). Independiente del mes actual.',String(new Date().getMonth()+1)],
+    ['Dashboard','Total Egresos Periodo','Formula','Egresos del año+mes seleccionado en E2/E3.','E6'],
+    ['Dashboard','Total Ingresos Periodo','Formula','Ingresos del año+mes seleccionado en E2/E3.','E7'],
+    ['Dashboard','Por Categoria Periodo','Formula','Gasto por categoria del periodo seleccionado.','filas 12+'],
     // ── PENDING PAYMENTS ──────────────────────────────────────────────────────
-    ['Pending Payments','Servicio','Texto','Categoria del pago recurrente','Servicios publicos'],
-    ['Pending Payments','Nombre','Texto','Nombre especifico del proveedor o servicio','Aguas de Manizales'],
-    ['Pending Payments','Valor','Numero','Monto aproximado en COP','140000'],
-    ['Pending Payments','FechaPago','Fecha DD/MM/YYYY','Proximo vencimiento — dispara el recordatorio por Telegram','01/04/2026'],
-    ['Pending Payments','FechaLimitePago','Fecha DD/MM/YYYY','Hasta cuando aplica. Usa 31/12/2090 para sin limite','31/12/2090'],
-    ['Pending Payments','Frecuencia','Texto','Con que frecuencia se repite','Mensual | Bimestral | Anual | Unico'],
-    ['Pending Payments','DiasAnticipacion','Numero','Dias antes del vencimiento para recibir el recordatorio','3'],
-    ['Pending Payments','Estado','Texto','Control del recordatorio','Activo | Inactivo | Pagado'],
-    ['Pending Payments','Referencia','Texto','Codigo de pago, cuenta o referencia del servicio','140715'],
-    ['Pending Payments','Notas','Texto','Observaciones adicionales','Debito automatico TC *8352'],
+    ['Pending Payments','Servicio','Texto','Categoria del pago recurrente','Servicios publicos | Salud | Vivienda | Suscripcion | Credito'],
+    ['Pending Payments','Nombre','Texto','Nombre especifico del proveedor o servicio','Empresa de Agua | Gimnasio | Netflix | Credito hipotecario'],
+    ['Pending Payments','Valor','Numero COP','Monto aproximado a pagar. Puede quedar en blanco si varia mes a mes.','140000'],
+    ['Pending Payments','FechaPago','Fecha DD/MM/YYYY','Proximo vencimiento — este campo dispara el recordatorio de Telegram.','01/05/2026'],
+    ['Pending Payments','FechaLimitePago','Fecha DD/MM/YYYY','Hasta cuando aplica este pago. Usa 31/12/2090 para pagos recurrentes sin fecha de fin.','31/12/2090'],
+    ['Pending Payments','Frecuencia','Texto','Con que frecuencia se repite el pago','Mensual | Bimestral | Trimestral | Anual | Unico'],
+    ['Pending Payments','DiasAnticipacion','Numero','Cuantos dias antes del vencimiento quieres recibir el recordatorio por Telegram.','3'],
+    ['Pending Payments','Estado','Texto','Control del recordatorio',
+     'Activo — envia recordatorio\nInactivo — pausado\nPagado — ya pagado este periodo'],
+    ['Pending Payments','Referencia','Texto','Codigo de pago, numero de cuenta o referencia bancaria del servicio.','140715 | PSE-2341'],
+    ['Pending Payments','Notas','Texto','Observaciones adicionales: banco, metodo de pago, etc.','Debito automatico TC *8352'],
     // ── SEARCH PRODUCTS ───────────────────────────────────────────────────────
-    ['Search Products','Producto','Texto','Nombre del producto que quieres comprar','iPhone 16'],
-    ['Search Products','Descripcion','Texto','Modelo, marca, especificaciones relevantes','128GB, Negro'],
-    ['Search Products','Precio Objetivo','Numero','Maximo que estas dispuesto a pagar en COP','3500000'],
+    ['Search Products','Producto','Texto','Nombre del producto que quieres comprar','iPhone 16 | Nevera Samsung | Bicicleta'],
+    ['Search Products','Descripcion','Texto','Modelo, marca, especificaciones relevantes','128GB, Negro, Face ID'],
+    ['Search Products','Precio Objetivo','Numero COP','Maximo que estas dispuesto a pagar','3500000'],
     ['Search Products','Prioridad','Texto','Urgencia de compra','Alta | Media | Baja'],
-    ['Search Products','URL Referencia','Texto','Link de referencia en tienda o marketplace','https://...'],
+    ['Search Products','URL Referencia','Texto','Link de referencia del producto en tienda o marketplace','https://...'],
     ['Search Products','Estado','Texto','Estado de seguimiento','Pendiente | Comprado | Descartado'],
-    ['Search Products','Fecha Agregado','Fecha','Cuando lo agregaste a la lista','23/03/2026'],
-    ['Search Products','Notas','Texto','Por que lo necesitas o alternativas evaluadas','Para reemplazar el que se daño'],
+    ['Search Products','Fecha Agregado','Fecha DD/MM/YYYY','Cuando agregaste este producto a la lista','23/03/2026'],
+    ['Search Products','Notas','Texto','Por que lo necesitas, alternativas evaluadas, observaciones.','Para reemplazar el que se daño'],
   ];
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e8f0fe');
   sheet.getRange(2, 1, datos.length, headers.length).setValues(datos);
   sheet.setFrozenRows(1);
-  sheet.setColumnWidth(1, 160); sheet.setColumnWidth(2, 160);
-  sheet.setColumnWidth(3, 140); sheet.setColumnWidth(4, 380); sheet.setColumnWidth(5, 200);
+  sheet.setColumnWidth(1, 180); sheet.setColumnWidth(2, 190);
+  sheet.setColumnWidth(3, 150); sheet.setColumnWidth(4, 420); sheet.setColumnWidth(5, 220);
 
   const colores = {
-    'Transactions':'#e8f4e8','Goals':'#e8f9e8','Errors':'#ffe8e8',
-    'Configurations':'#e8f0fe','Pending Payments':'#fff8e1','Search Products':'#f3e8ff'
+    'Transactions':     '#e8f4e8',
+    'Goals':            '#e8f9f0',
+    'Financial Insights':'#fce8ff',
+    'Errors':           '#ffe8e8',
+    'Configurations':   '#e8f0fe',
+    'Dashboard':        '#fff3e0',
+    'Pending Payments': '#fff8e1',
+    'Search Products':  '#f3e8ff',
   };
   datos.forEach((fila, i) => {
     const color = colores[fila[0]] || '#ffffff';
     sheet.getRange(i + 2, 1, 1, headers.length).setBackground(color);
+    // filas separadoras (campo vacío = separador de sección)
+    if (fila[1].startsWith('—')) {
+      sheet.getRange(i + 2, 1, 1, headers.length)
+        .setFontWeight('bold')
+        .setFontStyle('italic')
+        .setFontColor('#555555');
+    }
   });
 }
 
