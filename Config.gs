@@ -21,6 +21,22 @@ const CONFIG = {
 const SETUP_SHEET_NAME_ = '🔧 Setup';
 
 // ============================================================
+// MENÚ PERSONALIZADO — aparece automáticamente al abrir la hoja
+// El usuario nunca necesita abrir el editor de código.
+// ============================================================
+function onOpen() {
+  SpreadsheetApp.getActiveSpreadsheet().addMenu('🤖 FinanceBot', [
+    { name: '🚀 Paso 1 — Crear formulario de configuración', functionName: 'crearHojaSetup'       },
+    { name: '✅ Paso 2 — Aplicar configuración',             functionName: 'aplicarSetup'          },
+    { name: '─────────────────────',                         functionName: 'menuSeparador_'         },
+    { name: '📊 Reconstruir dashboard',                      functionName: 'reconstruirDashboard'   },
+    { name: '🔍 Verificar credenciales',                     functionName: 'verificarCredenciales'  },
+    { name: '⚙️  Estado de triggers',                        functionName: 'mostrarEstadoTriggers'  },
+  ]);
+}
+function menuSeparador_() { /* separador visual */ }
+
+// ============================================================
 // PASO 1 — Crear hoja de configuración
 // Ejecuta esto primero. Crea una hoja temporal "Setup" en tu Spreadsheet.
 // Llena los campos y luego ejecuta aplicarSetup().
@@ -42,14 +58,22 @@ function crearHojaSetup() {
   const datos = [
     ['FINANCEBOT AI — CONFIGURACIÓN INICIAL', '', ''],
     ['', '', ''],
-    ['Instrucciones:', 'Llena la columna B con tus valores y ejecuta aplicarSetup()', ''],
-    ['DESPUÉS de ejecutar aplicarSetup(), esta hoja se elimina automáticamente.', '', ''],
+    ['📋 INSTRUCCIONES:', '1) Llena la columna B con tus valores  2) Menú FinanceBot → Paso 2 Aplicar', ''],
+    ['🔒 Seguridad:', 'Esta hoja se elimina sola al aplicar. Las claves quedan en Script Properties (invisibles).', ''],
     ['', '', ''],
-    ['Parámetro', 'Tu valor', 'Cómo obtenerlo'],
-    ['GEMINI_API_KEY',     '', 'aistudio.google.com → Get API Key → Create API Key'],
-    ['SPREADSHEET_ID',     _detectarSpreadsheetId_(), 'Ya detectado automáticamente ✅'],
-    ['TELEGRAM_BOT_TOKEN', '', 'Telegram → @BotFather → /newbot → copia el token'],
-    ['TELEGRAM_CHAT_ID',   '', 'Escríbele a tu bot → api.telegram.org/bot<TOKEN>/getUpdates → busca "id"'],
+    ['Parámetro', 'Tu valor (edita esta columna)', 'Cómo obtenerlo — paso a paso'],
+    ['GEMINI_API_KEY',
+     '',
+     '→ Entra a aistudio.google.com → botón "Get API Key" → "Create API key" → copia'],
+    ['SPREADSHEET_ID',
+     _detectarSpreadsheetId_(),
+     '✅ Detectado automáticamente — no tocar'],
+    ['TELEGRAM_BOT_TOKEN',
+     '',
+     '→ Abre Telegram → busca @BotFather → escribe /newbot → sigue los pasos → copia el token (formato 123456:ABC-DEF...)'],
+    ['TELEGRAM_CHAT_ID',
+     '',
+     '→ Después de crear el bot, escríbele cualquier mensaje → vuelve aquí y corre detectarMiChatId() desde el menú Extensiones → Apps Script → Ejecutar'],
   ];
 
   sheet.getRange(1, 1, datos.length, 3).setValues(datos);
@@ -133,14 +157,125 @@ function aplicarSetup() {
   logInfo_('SETUP', 'Hoja Setup eliminada');
 
   if (errores > 0) {
-    logWarn_('SETUP', 'Setup incompleto. Ejecuta crearHojaSetup() y completa los campos faltantes');
-  } else {
-    logInfo_('SETUP', 'Configuracion completa');
-    logInfo_('SETUP', '1) Ejecuta configurarSpreadsheet() para crear las hojas');
-    logInfo_('SETUP', '2) Configura triggers: procesarEmailsBancolombia(5m), procesarMensajesTelegram(1m), recordarPagosPendientes(diario 9am)');
+    logWarn_('SETUP', 'Setup incompleto — abre el menú FinanceBot → Paso 1 y completa los campos faltantes');
+    return;
   }
 
+  // Auto: crear hojas si no existen
+  logInfo_('SETUP', 'Creando hojas del Spreadsheet...');
+  try { configurarSpreadsheet(); } catch(e) { logWarn_('SETUP', 'configurarSpreadsheet: ' + e.message); }
+
+  // Auto: crear todos los triggers
+  logInfo_('SETUP', 'Configurando triggers automáticos...');
+  configurarTriggers();
+
+  // Auto: enviar mensaje de bienvenida a Telegram
+  try {
+    enviarMensajeTelegram_(
+      '🎉 *FinanceBot AI activado*\n\n' +
+      'Hola\\! Tu bot está configurado y listo\\.\n' +
+      'Escribe /ayuda para ver todos los comandos disponibles\\.'
+    );
+    logInfo_('SETUP', 'Mensaje de bienvenida enviado a Telegram ✅');
+  } catch(e) {
+    logWarn_('SETUP', 'Telegram no disponible: ' + e.message + ' — verifica TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID');
+  }
+
+  logInfo_('SETUP', '');
+  logInfo_('SETUP', '✅ SETUP COMPLETO — tu FinanceBot está activo');
+  logInfo_('SETUP', 'Próximos pasos:');
+  logInfo_('SETUP', '  1) Abre la hoja Configurations y ajusta tus categorías y presupuestos');
+  logInfo_('SETUP', '  2) Asegúrate que tu banco envía emails a ' + Session.getEffectiveUser().getEmail());
+  logInfo_('SETUP', '  3) Escribe /ayuda en Telegram para explorar el bot');
+
   verificarCredenciales();
+}
+
+// ============================================================
+// CONFIGURAR TRIGGERS — crea todos los triggers automáticamente
+// Idempotente: elimina duplicados antes de crear.
+// ============================================================
+function configurarTriggers() {
+  var funciones = [
+    'procesarEmailsBancolombia',
+    'procesarMensajesTelegram',
+    'recordarPagosPendientes',
+    'run_reporteSemanal',
+    'run_verificarPresupuestoMensual',
+    'run_recordarMetasMensual',
+  ];
+
+  // Eliminar triggers existentes para estas funciones (evita duplicados)
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (funciones.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
+  });
+
+  // Emails del banco — cada 5 min
+  ScriptApp.newTrigger('procesarEmailsBancolombia')
+    .timeBased().everyMinutes(5).create();
+
+  // Mensajes Telegram — cada 1 min
+  ScriptApp.newTrigger('procesarMensajesTelegram')
+    .timeBased().everyMinutes(1).create();
+
+  // Recordatorio pagos pendientes — diario 9am
+  ScriptApp.newTrigger('recordarPagosPendientes')
+    .timeBased().atHour(9).everyDays(1).create();
+
+  // Reporte semanal — lunes 7am
+  ScriptApp.newTrigger('run_reporteSemanal')
+    .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(7).create();
+
+  // Revisión presupuesto mensual — diario 8am (la función chequea si es día 25)
+  ScriptApp.newTrigger('run_verificarPresupuestoMensual')
+    .timeBased().atHour(8).everyDays(1).create();
+
+  logInfo_('SETUP', 'Triggers configurados: emails(5m), Telegram(1m), pagos(9am diario), reporte(lunes 7am), presupuesto(8am diario)');
+}
+
+// ============================================================
+// ESTADO DE TRIGGERS — muestra qué hay activo
+// ============================================================
+function mostrarEstadoTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  if (triggers.length === 0) {
+    logInfo_('SETUP', 'No hay triggers configurados. Ejecuta Paso 2 — Aplicar configuración.');
+    return;
+  }
+  logInfo_('SETUP', '=== TRIGGERS ACTIVOS (' + triggers.length + ') ===');
+  triggers.forEach(function(t) {
+    logInfo_('SETUP', '  • ' + t.getHandlerFunction() + ' — ' + t.getTriggerSource());
+  });
+}
+
+// ============================================================
+// DETECTAR CHAT ID — el usuario le escribe al bot y esta función
+// llama getUpdates para extraer el chat_id automáticamente.
+// ============================================================
+function detectarMiChatId() {
+  var token = CONFIG.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    Logger.log('❌ Primero guarda el TELEGRAM_BOT_TOKEN (Paso 1 y 2 del setup)');
+    return;
+  }
+
+  var url  = 'https://api.telegram.org/bot' + token + '/getUpdates?limit=5';
+  var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  var data = JSON.parse(resp.getContentText());
+
+  if (!data.ok || !data.result || data.result.length === 0) {
+    Logger.log('⚠️  No se encontraron mensajes. Envíale cualquier mensaje a tu bot en Telegram y vuelve a ejecutar esta función.');
+    return;
+  }
+
+  var chatId = data.result[0].message.chat.id;
+  var nombre = data.result[0].message.chat.first_name || '';
+  Logger.log('✅ Chat ID detectado: ' + chatId + ' (usuario: ' + nombre + ')');
+  Logger.log('📋 Copia este número y pégalo en la fila TELEGRAM_CHAT_ID de la hoja Setup, luego ejecuta Paso 2.');
+
+  // Guardar directamente si el usuario ya hizo el setup parcial
+  PropertiesService.getScriptProperties().setProperty('TELEGRAM_CHAT_ID', String(chatId));
+  Logger.log('💾 Chat ID guardado automáticamente en Script Properties.');
 }
 
 // ============================================================

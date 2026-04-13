@@ -34,9 +34,9 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 
 ### Pendiente — Producto
 
-- [ ] #19 Manual de instalacion (no tecnico, checklist)
-- [ ] #21 Guia de uso del bot (usuario final, comandos + ejemplos)
-- [ ] #16 Carga historica Gmail automatica (ultimo, mas complejo)
+- [x] #19 Setup wizard no-técnico (menú FinanceBot en Sheets + configurarTriggers + detectarMiChatId)
+- [x] #21 Guia de uso del bot (usuario final, comandos + ejemplos) — GUIA_USO.md
+- [ ] #16 Carga historica Gmail (infraestructura ✅, datos pendientes — cargar mes a mes)
 - [x] #23 Mejorar filtro suscripciones (filtros ATM/transferencias/categorias implementados; precision mejora con 6-12 meses de data)
 
 ### Pendiente — Limpieza (#20)
