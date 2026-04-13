@@ -6,7 +6,7 @@
 // ============================================================
 
 function reporteSemanal() {
-  if (!isFeatureEnabled_('reporte_semanal')) { Logger.log('⏸️ reporte_semanal desactivado.'); return; }
+  if (!isFeatureEnabled_('reporte_semanal')) { logInfo_('WEEKLY', 'reporte_semanal desactivado'); return; }
   enviarMensajeTelegram_(construirMensajeReporteSemanal_());
 }
 
@@ -76,7 +76,7 @@ function construirMensajeReporteSemanal_() {
 
   // Top 3 categorías — formato compacto
   var topStr = act.topCats.length > 0
-    ? act.topCats.map(function(c) { return c[0].split(' ')[0] + ' ' + fmtK(c[1]); }).join(' · ')
+    ? act.topCats.map(function(c) { return mdEscape_(c[0].split(' ')[0]) + ' ' + fmtK(c[1]); }).join(' · ')
     : 'Sin egresos';
 
   // Insight de Gemini (1 oración)
@@ -96,7 +96,7 @@ function construirMensajeReporteSemanal_() {
   if (mes.ingresos > 0) msg += ' · ingresaste *' + fmt(mes.ingresos) + '*';
   msg += '\n';
 
-  if (insight) msg += '\n💡 ' + insight;
+  if (insight) msg += '\n💡 ' + mdEscape_(insight);
 
   return msg;
 }
@@ -120,7 +120,7 @@ function _geminiInsightSemanal_(act) {
     if (!texto) return '';
     return texto.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
   } catch(e) {
-    Logger.log('⚠️ _geminiInsightSemanal_: ' + e.message);
+    logError_('WEEKLY', '_geminiInsightSemanal_', e);
     return '';
   }
 }

@@ -15,11 +15,11 @@
 // ------------------------------------------------------------
 function configurarFinancialInsights_(ss) {
   const ssObj = ss || SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  let sheet = ssObj.getSheetByName('Financial Insights');
+  let sheet = ssObj.getSheetByName(SHEETS.FINANCIAL_INSIGHTS);
 
   if (!sheet) {
-    sheet = ssObj.insertSheet('Financial Insights');
-    Logger.log('✅ Hoja Financial Insights creada.');
+    sheet = ssObj.insertSheet(SHEETS.FINANCIAL_INSIGHTS);
+    logInfo_('FINANCIAL_INSIGHTS', 'Hoja Financial Insights creada');
   }
 
   // Headers (fila 1)
@@ -75,7 +75,7 @@ function configurarFinancialInsights_(ss) {
   // Congelar fila de headers
   sheet.setFrozenRows(1);
 
-  Logger.log('✅ Financial Insights configurada con ' + headers.length + ' columnas.');
+  logInfo_('FINANCIAL_INSIGHTS', 'Financial Insights configurada con ' + headers.length + ' columnas');
   return sheet;
 }
 
@@ -103,6 +103,6 @@ function probarFinancialInsights() {
     'Fila de prueba — borrar después de verificar.',
   ]);
 
-  Logger.log('✅ Fila de prueba insertada en Financial Insights. Verifica el Spreadsheet.');
+  logInfo_('FINANCIAL_INSIGHTS', 'Fila de prueba insertada en Financial Insights');
 }
 */

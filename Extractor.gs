@@ -18,7 +18,7 @@ function procesarExtractoTelegram_(fileId, fileName) {
     return '⚠️ No encontré movimientos en el extracto.\nVerifica que el archivo sea un extracto de Bancolombia con la sección "Movimientos".';
   }
 
-  Logger.log('Movimientos a clasificar: ' + resultado.filas.length);
+  logInfo_('EXTRACTOR', 'Movimientos a clasificar: ' + resultado.filas.length);
 
   // Clasificar con Gemini en chunks
   var transacciones = clasificarConGemini_(resultado.filas);
@@ -36,7 +36,7 @@ function procesarExtractoTelegram_(fileId, fileName) {
 
   if (nuevas.length > 0) {
     var ss       = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    var sheetTxn = ss.getSheetByName('Transactions');
+    var sheetTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
     nuevas.forEach(function(txn) {
       txn.fuente = 'extracto';
       txn.moneda = 'COP';
@@ -189,7 +189,7 @@ function leerMovimientosXlsx_(xlsxBlob) {
     filas.push(fechaStr + '\t' + desc + '\t' + val);
   });
 
-  Logger.log('XLSX: ' + filas.length + ' movimientos | año ' + anio);
+  logInfo_('EXTRACTOR', 'XLSX: ' + filas.length + ' movimientos | año ' + anio);
   return { anio: anio, filas: filas };
 }
 
@@ -280,7 +280,7 @@ function diagnosticarExtracto(driveFileId) {
 
 function run_diagnosticarExtracto(driveFileId) {
   var resultado = diagnosticarExtracto(driveFileId || '');
-  Logger.log(resultado);
+  logInfo_('EXTRACTOR', resultado);
   return resultado;
 }
 
@@ -301,7 +301,7 @@ function clasificarConGemini_(filas) {
     todas     = todas.concat(txns);
     if (i + CHUNK < filas.length) Utilities.sleep(6000);
   }
-  Logger.log('Transacciones clasificadas: ' + todas.length);
+  logInfo_('EXTRACTOR', 'Transacciones clasificadas: ' + todas.length);
   return todas;
 }
 
@@ -344,7 +344,7 @@ function geminiClasificar_(filas, categorias) {
 // ------------------------------------------------------------
 function deduplicarTransacciones_(transacciones) {
   var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Transactions');
+  var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
 
   if (!sheet || sheet.getLastRow() < 2) {
     return { nuevas: transacciones, duplicadas: [] };
@@ -389,7 +389,7 @@ function construirMensajeExtracto_(nuevas, duplicadas) {
   }
   msg += '⚠️ *' + duplicadas.length + ' ya existían (no importadas):*\n';
   duplicadas.slice(0, 10).forEach(function(txn) {
-    msg += '  • ' + txn.fecha + ' | $' + Number(txn.monto).toLocaleString('es-CO') + ' | ' + (txn.comercio || '').substring(0, 25) + '\n';
+    msg += '  • ' + mdEscape_(txn.fecha) + ' | $' + Number(txn.monto).toLocaleString('es-CO') + ' | ' + mdEscape_((txn.comercio || '').substring(0, 25)) + '\n';
   });
   if (duplicadas.length > 10) msg += '  _...y ' + (duplicadas.length - 10) + ' más_\n';
   msg += '\n_Revisa las duplicadas si alguna es nueva._';

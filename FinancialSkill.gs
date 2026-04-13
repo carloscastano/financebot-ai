@@ -102,7 +102,7 @@ function _llamarGeminiJson_(prompt, opts) {
   var rawBody  = resp.getContentText();
 
   if (httpCode === 429) {
-    Logger.log('Gemini 429 — esperando 65s y reintentando...');
+    logWarn_('GEMINI_JSON', '429 rate-limit, esperando 65s para reintento');
     Utilities.sleep(65000);
     resp     = UrlFetchApp.fetch(url, fetchOpts);
     httpCode = resp.getResponseCode();
@@ -126,7 +126,7 @@ function _llamarGeminiJson_(prompt, opts) {
 
   var text = json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('');
   text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  Logger.log('Gemini JSON (primeros 300): ' + text.substring(0, 300));
+  logInfo_('GEMINI_JSON', 'respuesta parseable (primeros 300): ' + text.substring(0, 300));
 
   try { return JSON.parse(text); } catch(e) {
     throw new Error('Gemini JSON parse error: ' + e.message + ' | ' + text.substring(0, 200));
@@ -152,13 +152,13 @@ function _llamarGeminiTexto_(prompt, opts) {
       payload: JSON.stringify(payload), muteHttpExceptions: true
     });
     var code = resp.getResponseCode();
-    if (code === 429) { Logger.log('⚠️ Gemini 429 — rate limit'); return null; }
-    if (code !== 200) { Logger.log('⚠️ Gemini HTTP ' + code); return null; }
+    if (code === 429) { logWarn_('GEMINI_TEXT', '429 rate-limit'); return null; }
+    if (code !== 200) { logWarn_('GEMINI_TEXT', 'HTTP ' + code); return null; }
     var json = JSON.parse(resp.getContentText());
     if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) return null;
     return json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
   } catch(e) {
-    Logger.log('⚠️ _llamarGeminiTexto_: ' + e.message);
+    logError_('GEMINI_TEXT', 'excepcion en llamada', e);
     return null;
   }
 }

@@ -26,7 +26,7 @@ function obtenerHojaGoals_() {
     sheet.getRange(1, 1, 1, 9).setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
     sheet.setColumnWidth(2, 200);
     sheet.setColumnWidth(8, 130);
-    Logger.log('Hoja Goals creada (v2).');
+    logInfo_('GOALS', 'Hoja Goals creada (v2)');
   } else {
     // Migración: añadir cols H e I si no existen
     var lastCol = sheet.getLastColumn();
@@ -102,7 +102,7 @@ function abonarMeta_(nombreBusqueda, monto) {
 function _registrarTransaccionAhorro_(nombreMeta, monto, fechaStr) {
   try {
     var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    var sheet = ss.getSheetByName('Transactions');
+    var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
     if (!sheet) return;
     escribirTransaccion_(sheet, {
       fecha: fechaStr, hora: null, tipo: 'egreso',
@@ -115,7 +115,7 @@ function _registrarTransaccionAhorro_(nombreMeta, monto, fechaStr) {
       fuente: 'meta'
     });
   } catch(e) {
-    Logger.log('⚠️ No se pudo registrar transacción de ahorro: ' + e.message);
+    logWarn_('GOALS', 'No se pudo registrar transaccion de ahorro: ' + _safeErrMsg_(e));
   }
 }
 
@@ -129,26 +129,11 @@ function _calcularFlujoCaja_() {
   if (!txnSh || txnSh.getLastRow() < 2) return null;
 
   var header = txnSh.getRange(1, 1, 1, txnSh.getLastColumn()).getValues()[0];
-  var norm = function(v) {
-    return String(v || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-  };
-  var idx = function(nombre) {
-    var n = norm(nombre);
-    for (var i = 0; i < header.length; i++) {
-      if (norm(header[i]) === n) return i;
-    }
-    return -1;
-  };
-
-  var iF   = idx('Fecha');
-  var iT   = idx('Tipo');
-  var iM   = idx('Monto');
-  var iC   = idx('Categoria');
-  var iSub = idx('Subcategoria');
+  var iF   = _headerIndex_(header, [HEADERS.TRANSACTIONS.DATE, 'Fecha']);
+  var iT   = _headerIndex_(header, [HEADERS.TRANSACTIONS.TYPE, 'Tipo']);
+  var iM   = _headerIndex_(header, [HEADERS.TRANSACTIONS.AMOUNT, 'Monto']);
+  var iC   = _headerIndex_(header, [HEADERS.TRANSACTIONS.CATEGORY, 'Categoria']);
+  var iSub = _headerIndex_(header, [HEADERS.TRANSACTIONS.SUBCATEGORY, 'Subcategoria']);
   if (iF < 0 || iT < 0 || iM < 0) return null;
 
   var datos  = txnSh.getRange(2, 1, txnSh.getLastRow() - 1, txnSh.getLastColumn()).getValues();
@@ -200,7 +185,7 @@ function _calcularFlujoCaja_() {
 // → Tipo: Temporizador mensual (o diario con check de día 1)
 // ------------------------------------------------------------
 function recordarMetasSinAbono() {
-  if (!isFeatureEnabled_('recordatorio_metas')) { Logger.log('⏸️ recordatorio_metas desactivado.'); return; }
+  if (!isFeatureEnabled_('recordatorio_metas')) { logInfo_('GOALS', 'recordatorio_metas desactivado'); return; }
   // Solo ejecutar el día 1 de cada mes si usas activador diario
   var hoy = new Date();
   if (hoy.getDate() !== 1) return;
@@ -228,7 +213,7 @@ function recordarMetasSinAbono() {
     var sinAbono = !ultimoAb || ultimoAb.substring(0, 7) !== mesHoy;
 
     var icono = sinAbono ? '⚠️' : '✅';
-    var linea = icono + ' *' + nombre + '* — ' + pct + '%\n';
+    var linea = icono + ' *' + mdEscape_(nombre) + '* — ' + pct + '%\n';
 
     if (faltante > 0) {
       var mesesRest = 999;
@@ -319,7 +304,7 @@ function run_recordarMetasSinAbono() {
     var sinAbono = !ultimoAb || ultimoAb.substring(0, 7) !== mesHoy;
 
     var icono = sinAbono ? '⚠️' : '✅';
-    var linea = icono + ' *' + nombre + '* — ' + pct + '%\n';
+    var linea = icono + ' *' + mdEscape_(nombre) + '* — ' + pct + '%\n';
 
     if (faltante > 0) {
       var mesesRest = 999;
@@ -404,7 +389,7 @@ function construirMensajeMetas_() {
     var pct      = objetivo > 0 ? (ahorrado / objetivo * 100) : 0;
     var faltante = Math.max(0, objetivo - ahorrado);
 
-    var linea = '\n🎯 *' + nombre + '*\n';
+    var linea = '\n🎯 *' + mdEscape_(nombre) + '*\n';
     linea += '   ' + barra(pct) + ' ' + pct.toFixed(0) + '%\n';
     linea += '   ' + fmt(ahorrado) + ' / ' + fmt(objetivo);
 
@@ -425,7 +410,7 @@ function construirMensajeMetas_() {
   var msg = '🎯 *Metas de Ahorro*\n' + lineas.join('\n');
 
   if (completadas.length > 0) {
-    msg += '\n\n✅ Completadas: ' + completadas.map(function(r) { return r[1]; }).join(', ');
+    msg += '\n\n✅ Completadas: ' + completadas.map(function(r) { return mdEscape_(r[1]); }).join(', ');
   }
 
   msg += '\n\n_Abona con:_ `/meta abonar <nombre> <monto>`';
@@ -471,7 +456,7 @@ function construirMensajeEstadoMetas_() {
     else if (urgente)        icono = '⏰';
     else                     icono = '⚠️';
 
-    var linea = icono + ' *' + nombre + '* — ' + pct + '% (' + fmt(ahorrado) + '/' + fmt(objetivo) + ')';
+    var linea = icono + ' *' + mdEscape_(nombre) + '* — ' + pct + '% (' + fmt(ahorrado) + '/' + fmt(objetivo) + ')';
     if (urgente)   linea += '\n   ⏰ ' + diasRestantes + ' días restantes';
     if (sinAbono)  linea += '\n   Sin abono este mes';
     alertas.push(linea);
@@ -524,9 +509,9 @@ function procesarComandoMeta_(texto) {
       return '❌ Formato: `/meta nueva <nombre> <monto> [YYYY-MM-DD]`\nEjemplo: `/meta nueva Vacaciones 2000000 2026-12-31`';
     }
     crearMeta_(nombre, monto, fechaLim);
-    return '✅ Meta *' + nombre + '* creada por ' + fmt(monto) +
+    return '✅ Meta *' + mdEscape_(nombre) + '* creada por ' + fmt(monto) +
            (fechaLim ? ' · fecha límite: ' + fechaLim : '') + '.\n\n' +
-           '_Abona con:_ `/meta abonar ' + nombre + ' <monto>`\n' +
+           '_Abona con:_ `/meta abonar ' + mdEscape_(nombre) + ' <monto>`\n' +
            '_Ver estado:_ `/meta estado`';
   }
 
@@ -537,13 +522,13 @@ function procesarComandoMeta_(texto) {
     var nombre = partes.slice(2, partes.length - 1).join(' ');
     if (!nombre || !monto || monto <= 0) return '❌ Formato: `/meta abonar <nombre> <monto>`';
     var res = abonarMeta_(nombre, monto);
-    if (!res.ok) return '❌ ' + res.error;
+    if (!res.ok) return '❌ ' + mdEscape_(res.error);
     var pct = res.objetivo > 0 ? (res.ahorrado / res.objetivo * 100).toFixed(0) : 0;
     var barra = (function(p) {
       var llenos = Math.round(Math.min(p, 100) / 10);
       return '█'.repeat(llenos) + '░'.repeat(10 - llenos);
     })(Number(pct));
-    var msg = '💰 Abono registrado en *' + res.meta + '*\n' +
+    var msg = '💰 Abono registrado en *' + mdEscape_(res.meta) + '*\n' +
               barra + ' ' + pct + '%\n' +
               fmt(res.ahorrado) + ' / ' + fmt(res.objetivo);
     if (res.ahorrado >= res.objetivo) msg += '\n\n🎉 ¡Meta completada!';
@@ -562,7 +547,7 @@ function procesarComandoMeta_(texto) {
       if (String(datos[i][1]).toLowerCase().indexOf(busq) >= 0 &&
           String(datos[i][5]).toLowerCase() === 'activo') {
         sheet.getRange(i + 2, 6).setValue('completado');
-        return '✅ Meta *' + datos[i][1] + '* marcada como completada. ¡Bien hecho!';
+        return '✅ Meta *' + mdEscape_(datos[i][1]) + '* marcada como completada. ¡Bien hecho!';
       }
     }
     return '❌ No encontré una meta activa con ese nombre.';

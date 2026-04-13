@@ -22,7 +22,7 @@ function run_reporteSuscripciones() {
 // ------------------------------------------------------------
 function detectarSuscripciones_() {
   var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Transactions');
+  var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
   if (!sheet || sheet.getLastRow() < 2) return [];
 
   var lastRow = sheet.getLastRow();
@@ -160,7 +160,7 @@ function construirMensajeSuscripciones_(subs) {
     var periodoEsperado = s.frecuencia === 'mensual' ? 30 : s.frecuencia === 'quincenal' ? 15 : 7;
     var alerta = s.diasDesdeUltimo > periodoEsperado * 1.5 ? ' ⚠️' : '';
     var ult    = Utilities.formatDate(s.ultimaCobro, 'America/Bogota', 'dd/MM');
-    return '• ' + s.comercio.substring(0, 22).padEnd(22) + ' ' +
+    return '• ' + mdEscape_(s.comercio.substring(0, 22).padEnd(22)) + ' ' +
            fmt(s.montoPromedio) + '/' + s.frecuencia.substring(0,3) +
            '  (último ' + ult + ')' + alerta;
   });

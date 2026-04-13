@@ -181,7 +181,7 @@ function responderChat_(pregunta) {
 
   var texto = _llamarGeminiTexto_(prompt, { temperature: 0.2, maxOutputTokens: 350 });
   if (texto === null) return '❌ No pude consultar el asistente ahora. Intenta de nuevo.';
-  return '🤖 ' + texto.replace(/\*\*/g, '').replace(/\*/g, '');
+  return '🤖 ' + mdEscape_(texto.replace(/\*\*/g, '').replace(/\*/g, '').trim());
 }
 
 function run_testChat() {

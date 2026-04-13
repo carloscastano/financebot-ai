@@ -5,6 +5,13 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 
 ---
 
+## Documentacion
+
+- Guia de uso del bot: `GUIA_USO.md`
+- Checklist de operacion y soporte: `OPERACION_SOPORTE.md`
+
+---
+
 ## Backlog
 
 ### Completado

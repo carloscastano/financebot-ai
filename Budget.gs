@@ -70,11 +70,11 @@ function verificarAlertaPresupuesto_(txn) {
   var msg;
 
   if (pct >= 1.0) {
-    msg = '🚨 *Presupuesto ' + cat + ' superado*\n' +
+    msg = '🚨 *Presupuesto ' + mdEscape_(cat) + ' superado*\n' +
           fmt(totalMes) + ' / ' + fmt(presupuesto) + ' (' + Math.round(pct * 100) + '%)\n' +
           '+' + fmt(totalMes - presupuesto) + ' sobre el límite este mes';
   } else {
-    msg = '⚠️ *Presupuesto ' + cat + '* — ' + Math.round(pct * 100) + '%\n' +
+    msg = '⚠️ *Presupuesto ' + mdEscape_(cat) + '* — ' + Math.round(pct * 100) + '%\n' +
           fmt(totalMes) + ' / ' + fmt(presupuesto) + '\n' +
           'Te quedan ' + fmt(resta) + ' para el resto del mes';
   }
@@ -86,7 +86,7 @@ function verificarAlertaPresupuesto_(txn) {
 // REVISIÓN CONSOLIDADA — DÍA 25 DE CADA MES
 // ------------------------------------------------------------
 function verificarPresupuestoMensual_() {
-  if (!isFeatureEnabled_('revision_dia25')) { Logger.log('⏸️ revision_dia25 desactivado.'); return; }
+  if (!isFeatureEnabled_('revision_dia25')) { logInfo_('BUDGET', 'revision_dia25 desactivado'); return; }
   var hoy = new Date();
   if (hoy.getDate() !== 25) return; // Solo actúa el día 25
   var msg = construirMensajePresupuesto_();
@@ -162,7 +162,7 @@ function construirMensajePresupuesto_() {
     var pctRound = Math.round(item.pct * 100);
     var icono = item.pct >= 1.0 ? '🚨' : item.pct >= 0.8 ? '⚠️' : item.pct >= 0.5 ? '🟡' : '✅';
     return (
-      icono + ' *' + item.cat + '* — ' + pctRound + '%\n' +
+      icono + ' *' + mdEscape_(item.cat) + '* — ' + pctRound + '%\n' +
       '   ' + barra(item.pct * 100) + '\n' +
       '   ' + fmt(item.gastado) + ' / ' + fmt(item.presupuesto)
     );

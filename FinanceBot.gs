@@ -22,6 +22,36 @@ function run_cargarMes()                { return cargarMesEspecifico_(); }
 function run_probarAsesor()             { analizarFinanzas(); }
 function run_resetearTelegram()         { resetearOffsetTelegram(); }
 function run_procesarMensajes()         { procesarMensajesTelegram(); }
+function run_testHistoricoTelegram()    { enviarMensajeTelegram_(contarHistoricoPorMes_()); }
+function run_cargarMesCLI(mes, lote)    { var r = cargarMesEspecifico_(mes, lote); Logger.log(r); return r; }
+function run_limpiarTriggers()          {
+  var borrados = 0;
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    var fn = t.getHandlerFunction();
+    if (fn === 'run_cargarMesAsync') { ScriptApp.deleteTrigger(t); borrados++; }
+  });
+  var msg = 'Triggers run_cargarMesAsync eliminados: ' + borrados;
+  Logger.log(msg);
+  return msg;
+}
+
+// Ejecutor async de carga histórica — llamado por trigger de un solo disparo.
+// No llamar directamente. Lo programa procesarComandoHistorico_() vía ScriptApp.
+function run_cargarMesAsync() {
+  // Eliminar este trigger para no re-ejecutarse
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'run_cargarMesAsync') ScriptApp.deleteTrigger(t);
+  });
+  var mes = PropertiesService.getScriptProperties().getProperty('HISTORICO_CARGAR_MES_PENDING');
+  if (!mes) return;
+  PropertiesService.getScriptProperties().deleteProperty('HISTORICO_CARGAR_MES_PENDING');
+  try {
+    var resultado = cargarMesEspecifico_(mes);
+    enviarMensajeTelegram_('✅ ' + mdEscape_(resultado));
+  } catch(e) {
+    enviarMensajeTelegram_('❌ Error cargando ' + mes + ': ' + mdEscape_(_safeErrMsg_(e)));
+  }
+}
 
 // ------------------------------------------------------------
 // FUNCIÓN PRINCIPAL
@@ -301,11 +331,11 @@ function obtenerOCrearLabel_(nombre) {
 // Usar run_contarHistorico() primero para ver qué hay.
 // Usar run_cargarMes() para cargar de a un mes.
 // ------------------------------------------------------------
-function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar) {
+function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) {
   const INICIO = fechaInicio || '2024/01/01';
   const FIN    = fechaFin    || '';
   const DRY    = soloContar  === true;
-  const LOTE   = 25;  // seguro para timeout de 6 min (no subir de 30)
+  const LOTE   = loteOverride || 10;  // con 4s/email: 10 threads × 2 emails × 4s ≈ 80s
 
   const cfg      = leerConfiguracion_();
   const label    = obtenerOCrearLabel_(CONFIG.GMAIL_LABEL);
@@ -385,14 +415,14 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar) {
         procesados++;
         logInfo_('HISTORICO', `[${procesados}] ${txn.fecha} | ${txn.comercio} | $${txn.monto} COP`);
 
-        Utilities.sleep(500);  // pausa para no saturar Gemini
+        Utilities.sleep(4000);  // 4s entre calls = ~15 RPM, respeta límite free tier Gemini
 
       } catch (e) {
         errores++;
         logError_('HISTORICO', `Email ${emailId}`, e);
         if (!DRY) registrarError_(sheetErr, e.message, asunto, emailId);
         // Pausa extra si Gemini está bajo presión
-        if (e.message.includes('503') || e.message.includes('429')) Utilities.sleep(3000);
+        if (e.message.includes('503') || e.message.includes('429')) Utilities.sleep(10000);
       }
     }
   }
@@ -411,21 +441,22 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar) {
 }
 
 // ------------------------------------------------------------
-// CUENTA EMAILS POR MES — dry-run sin Gemini ni escritura
+// CUENTA HILOS POR MES — rápido, sin leer contenido de emails
+// Solo cuenta threads por mes (no clasifica). Es seguro para
+// llamar desde Telegram (no lee mensajes, no llama a Gemini).
 // Lee la fecha de inicio desde Configurations > "Historico Desde".
 // ------------------------------------------------------------
 function contarHistoricoPorMes_() {
-  const DESDE = leerConfiguracion_().historicoDesde || '2024/01';
-
-  const cfg      = leerConfiguracion_();
-  const hoyCal   = new Date();
+  const cfg       = leerConfiguracion_();
+  const DESDE     = cfg.historicoDesde || '2024/01';
+  const hoyCal    = new Date();
   const hastaAnio = hoyCal.getFullYear();
   const hastaMes  = hoyCal.getMonth() + 1;
 
   const [desdeAnio, desdeMes] = DESDE.split('/').map(Number);
 
   const filas = [];
-  let totalHilos = 0, totalTransac = 0;
+  let totalHilos = 0;
 
   let anio = desdeAnio, mes = desdeMes;
   while (anio < hastaAnio || (anio === hastaAnio && mes <= hastaMes)) {
@@ -437,30 +468,34 @@ function contarHistoricoPorMes_() {
     const q       = `${cfg.gmailQuery} after:${inicio} before:${fin} -label:${CONFIG.GMAIL_LABEL}`;
     const threads = GmailApp.search(q, 0, 100);
 
-    let transac = 0;
-    threads.forEach(function(t) {
-      t.getMessages().forEach(function(m) {
-        try {
-          if (esEmailTransaccional_(extraerTextoEmail_(m))) transac++;
-        } catch(e) { /* ignorar errores de extracción en conteo */ }
-      });
-    });
-
     const etiqueta = `${anio}/${String(mes).padStart(2,'0')}`;
-    const estado   = threads.length === 0 ? '(sin emails)' : `${threads.length} hilos, ~${transac} a procesar con Gemini`;
-    filas.push(`  ${etiqueta}: ${estado}`);
-    totalHilos  += threads.length;
-    totalTransac += transac;
+    if (threads.length > 0) {
+      // ~1.8 msgs/hilo promedio Bancolombia (estimado fijo, evita llamadas extra de API)
+      const emailsEst = Math.round(threads.length * 1.8);
+      filas.push(`  ${etiqueta}: ${threads.length} hilos, ~${emailsEst} emails`);
+      totalHilos += threads.length;
+    }
 
     if (mes === 12) { anio++; mes = 1; } else { mes++; }
   }
 
+  const mesesConData = filas.length;
+  var recomendacion = '';
+  if (totalHilos === 0) {
+    recomendacion = '✅ No hay emails pendientes de procesar.';
+  } else if (totalHilos <= 50) {
+    recomendacion = `💡 Carga ligera (~${Math.ceil(totalHilos / 25)} runs). Puedes cargar todos los meses sin problemas.`;
+  } else if (totalHilos <= 200) {
+    recomendacion = `⚡ Carga moderada. Recomiendo cargar mes a mes con /historico cargar YYYY/MM (~${Math.ceil(totalHilos / 25)} runs de 25).`;
+  } else {
+    recomendacion = `⚠️ Carga alta (${totalHilos} hilos). Carga mes a mes para evitar timeouts (~${Math.ceil(totalHilos / 25)} runs de 25 en total).`;
+  }
   const resumen =
-    `📊 Histórico pendiente (${DESDE} → hoy)\n` +
-    filas.join('\n') + '\n' +
-    `  ─────────────────────────\n` +
-    `  Total: ${totalHilos} hilos, ~${totalTransac} emails a procesar\n` +
-    `  Runs necesarios (lote 25): ~${Math.ceil(totalTransac / 25)}`;
+    `📊 *Histórico pendiente* (${DESDE} → hoy)\n\n` +
+    (filas.length > 0 ? filas.join('\n') : '  _(sin emails pendientes)_') + '\n\n' +
+    `*Total: ${totalHilos} hilos* en ${mesesConData} meses\n\n` +
+    recomendacion + '\n\n' +
+    `_/historico cargar YYYY/MM — carga un mes_`;
 
   Logger.log(resumen);
   return resumen;
@@ -470,7 +505,7 @@ function contarHistoricoPorMes_() {
 // CARGA UN MES ESPECÍFICO
 // mes: 'YYYY/MM' — si no se pasa, lee Historico Desde de Configurations.
 // ------------------------------------------------------------
-function cargarMesEspecifico_(mes) {
+function cargarMesEspecifico_(mes, lote) {
   const MES = mes || leerConfiguracion_().historicoDesde || '2024/01';
 
   const [anio, m] = MES.split('/').map(Number);
@@ -480,8 +515,8 @@ function cargarMesEspecifico_(mes) {
   const inicio = `${anio}/${String(m).padStart(2,'0')}/01`;
   const fin    = `${anioF}/${String(mesF).padStart(2,'0')}/01`;
 
-  Logger.log(`▶ Cargando mes ${MES}: ${inicio} → ${fin}`);
-  return cargarHistoricoEmails(inicio, fin, false);
+  Logger.log(`▶ Cargando mes ${MES}: ${inicio} → ${fin}${lote ? ' (lote=' + lote + ')' : ''}`);
+  return cargarHistoricoEmails(inicio, fin, false, lote);
 }
 
 // ------------------------------------------------------------
@@ -504,7 +539,14 @@ function procesarComandoHistorico_(texto) {
         '_Ejecuta de nuevo si quedan más emails en ese mes_'
       );
     }
-    return cargarMesEspecifico_(mes);
+    // Programar carga async — no correr inline (excedería los 6 min del trigger de Telegram)
+    // Primero limpiar triggers huérfanos para no acumular
+    ScriptApp.getProjectTriggers().forEach(function(t) {
+      if (t.getHandlerFunction() === 'run_cargarMesAsync') ScriptApp.deleteTrigger(t);
+    });
+    PropertiesService.getScriptProperties().setProperty('HISTORICO_CARGAR_MES_PENDING', mes);
+    ScriptApp.newTrigger('run_cargarMesAsync').timeBased().after(5000).create();
+    return '⏳ Iniciando carga de *' + mes + '*\\.\\.\\.\n_En ~2 min te aviso el resultado\\._';
   }
 
   const cfg   = leerConfiguracion_();

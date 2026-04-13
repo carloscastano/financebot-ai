@@ -5,9 +5,9 @@
 // ============================================================
 
 function analizarFinanzas() {
-  if (!isFeatureEnabled_('reporte_mensual')) { Logger.log('⏸️ reporte_mensual desactivado.'); return; }
+  if (!isFeatureEnabled_('reporte_mensual')) { logInfo_('ADVISOR', 'reporte_mensual desactivado'); return; }
   if (!CONFIG.TELEGRAM_BOT_TOKEN || !CONFIG.TELEGRAM_CHAT_ID) {
-    Logger.log('⚠️ Telegram no configurado.');
+    logWarn_('ADVISOR', 'Telegram no configurado');
     return;
   }
 
@@ -16,7 +16,7 @@ function analizarFinanzas() {
   const lastRow = sheet ? sheet.getLastRow() : 1;
 
   if (!sheet || lastRow < 2) {
-    Logger.log('⚠️ No hay transacciones para analizar.');
+    logWarn_('ADVISOR', 'No hay transacciones para analizar');
     return;
   }
 
@@ -58,7 +58,7 @@ function analizarFinanzas() {
   const mensaje = construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anomalias, sensib, analisis, mesAct, anioAct, mesPrev, anioPrev);
   enviarMensajeTelegram_(mensaje);
 
-  Logger.log('✅ Reporte financiero v2 enviado.');
+  logInfo_('ADVISOR', 'Reporte financiero v2 enviado');
 }
 
 // ------------------------------------------------------------
@@ -249,7 +249,7 @@ function guardarInsight_(ss, act, score, proyeccion, escenarios, sensib, analisi
     analisis,                            // N — Análisis IA
   ]);
 
-  Logger.log('✅ Insight guardado en Financial Insights.');
+  logInfo_('ADVISOR', 'Insight guardado en Financial Insights');
 }
 
 // ------------------------------------------------------------
@@ -317,7 +317,7 @@ function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anom
   // Top categorías
   const topLine = act.topCats.map(function(item, i) {
     const pct = act.egresos > 0 ? (item[1] / act.egresos * 100).toFixed(0) : 0;
-    return '  ' + (i + 1) + '. ' + item[0] + ': ' + fmt(item[1]) + ' (' + pct + '%)';
+    return '  ' + (i + 1) + '. ' + mdEscape_(item[0]) + ': ' + fmt(item[1]) + ' (' + pct + '%)';
   }).join('\n') || '  Sin datos';
 
   // Proyección
@@ -340,7 +340,7 @@ function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anom
   let anomLine = '';
   if (anomalias.length > 0) {
     anomLine = '\n⚠️ *Gastos inusuales*\n' +
-      anomalias.map(function(a) { return '  • ' + a.comercio + ': ' + fmt(a.monto); }).join('\n') + '\n';
+      anomalias.map(function(a) { return '  • ' + mdEscape_(a.comercio) + ': ' + fmt(a.monto); }).join('\n') + '\n';
   }
 
   // Alerta balance negativo
@@ -358,7 +358,7 @@ function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anom
     '\n📊 *Proyección*\n' + proyLine + '\n' +
     escLine +
     anomLine +
-    '\n🧠 *Análisis IA*\n' + analisis
+    '\n🧠 *Análisis IA*\n' + mdEscape_(analisis)
   );
 }
 
@@ -366,7 +366,7 @@ function construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anom
 /* PRUEBA — descomentar para ejecutar manualmente
 // ------------------------------------------------------------
 function probarAsesorFinanciero() {
-  Logger.log('🔍 Ejecutando análisis financiero v2...');
+  logInfo_('ADVISOR', 'Ejecutando análisis financiero v2');
   analizarFinanzas();
 }
 */

@@ -229,7 +229,12 @@ function leerConfiguracion_() {
       diasRecordatorio:     cfg['Dias recordatorio pagos'] || 3,
       tarjetaCredito:       cfg['Tarjeta credito']         || '',
       tarjetaDebito:        cfg['Tarjeta debito']          || '',
-      historicoDesde:       String(cfg['Historico Desde']  || '2024/01').trim(),
+      historicoDesde: (function() {
+        var v = cfg['Historico Desde'];
+        if (!v) return '2024/01';
+        if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy/MM');
+        return String(v).trim();
+      })(),
       gmailQuery:           gmailQuery,
       categorias:           categorias,
       presupuestos:         presupuestos,
