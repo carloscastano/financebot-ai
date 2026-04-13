@@ -159,7 +159,7 @@ function construirMensajeSuscripciones_(subs) {
     // Alerta si no ha cobrado en más de 1.5 períodos esperados
     var periodoEsperado = s.frecuencia === 'mensual' ? 30 : s.frecuencia === 'quincenal' ? 15 : 7;
     var alerta = s.diasDesdeUltimo > periodoEsperado * 1.5 ? ' ⚠️' : '';
-    var ult    = Utilities.formatDate(s.ultimaCobro, 'America/Bogota', 'dd/MM');
+    var ult    = Utilities.formatDate(s.ultimaCobro, Session.getScriptTimeZone(), 'dd/MM');
     return '• ' + mdEscape_(s.comercio.substring(0, 22).padEnd(22)) + ' ' +
            fmt(s.montoPromedio) + '/' + s.frecuencia.substring(0,3) +
            '  (último ' + ult + ')' + alerta;

@@ -368,7 +368,7 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
       const m = montos[i][0];
       if (!f || !m) continue;
       const fs = (f instanceof Date)
-        ? Utilities.formatDate(f, 'America/Bogota', 'yyyy-MM-dd')
+        ? Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd')
         : String(f).substring(0, 10);
       existentes[fs + '|' + Number(m)] = true;
     }

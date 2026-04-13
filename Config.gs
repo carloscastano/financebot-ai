@@ -27,6 +27,7 @@ const SETUP_SHEET_NAME_ = '🔧 Setup';
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet().addMenu('🤖 FinanceBot', [
     { name: '🚀 Paso 1 — Crear formulario de configuración', functionName: 'crearHojaSetup'       },
+    { name: '🔑 Paso 1b — Detectar mi Chat ID de Telegram',  functionName: 'detectarMiChatId'      },
     { name: '✅ Paso 2 — Aplicar configuración',             functionName: 'aplicarSetup'          },
     { name: '─────────────────────',                         functionName: 'menuSeparador_'         },
     { name: '📊 Reconstruir dashboard',                      functionName: 'reconstruirDashboard'   },
@@ -253,29 +254,72 @@ function mostrarEstadoTriggers() {
 // llama getUpdates para extraer el chat_id automáticamente.
 // ============================================================
 function detectarMiChatId() {
+  var ui = SpreadsheetApp.getUi();
+
   var token = CONFIG.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    Logger.log('❌ Primero guarda el TELEGRAM_BOT_TOKEN (Paso 1 y 2 del setup)');
+    // Intentar leerlo desde la hoja Setup si aún no se aplicó
+    try {
+      var ss    = SpreadsheetApp.getActiveSpreadsheet();
+      var setup = ss.getSheetByName(SETUP_SHEET_NAME_);
+      if (setup) token = String(setup.getRange(9, 2).getValue()).trim(); // fila TELEGRAM_BOT_TOKEN
+    } catch(e) { /* ignorar */ }
+  }
+
+  if (!token) {
+    ui.alert('⚠️ Token no encontrado',
+      'Primero completa el TELEGRAM_BOT_TOKEN en la hoja Setup (Paso 1).',
+      ui.ButtonSet.OK);
     return;
   }
 
-  var url  = 'https://api.telegram.org/bot' + token + '/getUpdates?limit=5';
+  var url  = 'https://api.telegram.org/bot' + token + '/getUpdates?limit=10&allowed_updates=message';
   var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  var data = JSON.parse(resp.getContentText());
+  var data;
+  try { data = JSON.parse(resp.getContentText()); } catch(e) {
+    ui.alert('❌ Error', 'No se pudo conectar a Telegram. Verifica que el token sea correcto.', ui.ButtonSet.OK);
+    return;
+  }
 
   if (!data.ok || !data.result || data.result.length === 0) {
-    Logger.log('⚠️  No se encontraron mensajes. Envíale cualquier mensaje a tu bot en Telegram y vuelve a ejecutar esta función.');
+    ui.alert('⚠️ Sin mensajes detectados',
+      '1. Abre Telegram\n2. Busca tu bot por su nombre de usuario\n3. Envíale cualquier mensaje (ej: "hola")\n4. Vuelve aquí y ejecuta este paso de nuevo.',
+      ui.ButtonSet.OK);
     return;
   }
 
-  var chatId = data.result[0].message.chat.id;
-  var nombre = data.result[0].message.chat.first_name || '';
-  Logger.log('✅ Chat ID detectado: ' + chatId + ' (usuario: ' + nombre + ')');
-  Logger.log('📋 Copia este número y pégalo en la fila TELEGRAM_CHAT_ID de la hoja Setup, luego ejecuta Paso 2.');
+  // Buscar el primer mensaje válido
+  var chatId = null, nombre = '';
+  for (var i = 0; i < data.result.length; i++) {
+    var msg = data.result[i].message || data.result[i].channel_post;
+    if (msg && msg.chat && msg.chat.id) {
+      chatId = msg.chat.id;
+      nombre = msg.chat.first_name || msg.chat.username || '';
+      break;
+    }
+  }
 
-  // Guardar directamente si el usuario ya hizo el setup parcial
+  if (!chatId) {
+    ui.alert('⚠️ No se encontró el Chat ID',
+      'Envía un mensaje a tu bot en Telegram y vuelve a ejecutar este paso.',
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // Guardar en Script Properties
   PropertiesService.getScriptProperties().setProperty('TELEGRAM_CHAT_ID', String(chatId));
-  Logger.log('💾 Chat ID guardado automáticamente en Script Properties.');
+
+  // También escribirlo en la hoja Setup si está abierta
+  try {
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var setup = ss.getSheetByName(SETUP_SHEET_NAME_);
+    if (setup) setup.getRange(10, 2).setValue(String(chatId)); // fila TELEGRAM_CHAT_ID
+  } catch(e) { /* ignorar si Setup ya no existe */ }
+
+  ui.alert('✅ Chat ID detectado y guardado',
+    'Tu Chat ID es: ' + chatId + (nombre ? ' (' + nombre + ')' : '') + '\n\n' +
+    'Ya está guardado automáticamente. Continúa con el Paso 2 — Aplicar configuración.',
+    ui.ButtonSet.OK);
 }
 
 // ============================================================

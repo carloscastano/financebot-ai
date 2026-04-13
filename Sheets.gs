@@ -715,7 +715,10 @@ function sheetConfigurations_(sheet) {
     ['Banco 2 sender', '',                                                   'Ejemplo: @nequi.com.co — vacío = se ignora en la búsqueda de Gmail'],
     ['Banco 3 nombre', '',                                                   'Ejemplo: Davivienda, Daviplata, etc.'],
     ['Banco 3 sender', '',                                                   'Ejemplo: @davivienda.com'],
-    ['Historico Desde', '2024/01',                                           'AñoMes de inicio para /historico contar y /historico cargar. Formato: YYYY/MM. Cambia según tu historial disponible.'],
+    ['Historico Desde', (function() {
+      var d = new Date(); d.setFullYear(d.getFullYear() - 1);
+      return d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2,'0');
+    })(),                                                                     'AñoMes de inicio para /historico contar y /historico cargar. Formato: YYYY/MM. Cambia según tu historial disponible.'],
   ];
   sheet.getRange(1, 1, datos.length, 3).setValues(datos);
   sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#e8f0fe');
@@ -731,7 +734,7 @@ function sheetPendingPayments_(sheet) {
                    'Frecuencia','DiasAnticipacion','Estado','Referencia','Notas'];
   const notas   = [
     'Categoria del pago: Servicios publicos, Salud, Vivienda, Suscripcion, Credito, etc.',
-    'Nombre especifico del servicio o proveedor (Aguas de Manizales, Smart Fit, etc.)',
+    'Nombre especifico del servicio o proveedor (Empresa de Agua, Smart Fit, Netflix, etc.)',
     'Monto aproximado a pagar en COP. Puede quedar en blanco si varia mes a mes.',
     'Fecha del proximo pago en formato DD/MM/YYYY. Este campo dispara el recordatorio de Telegram.',
     'Hasta cuando debes pagar este servicio. Usa 31/12/2090 si es un pago recurrente sin fecha limite.',
@@ -741,11 +744,19 @@ function sheetPendingPayments_(sheet) {
     'Numero de referencia, cuenta o codigo de pago. Util para incluirlo en el recordatorio.',
     'Notas adicionales: banco, metodo de pago, observaciones.',
   ];
-  const ejemplos = [
-    ['Servicios publicos','Aguas de Manizales','','01/04/2026','31/12/2090','Mensual',3,'Activo','140715','Factura agua Manizales'],
-    ['Salud','Smart Fit / Gimnasio',0,'20/04/2026','31/12/2090','Mensual',3,'Activo','','Ejemplo — reemplaza con tus datos'],
-    ['Vivienda','Administracion','','05/04/2026','31/12/2090','Mensual',5,'Activo','',''],
-    ['Servicios publicos','Internet/Cable','','15/04/2026','31/12/2090','Mensual',3,'Activo','',''],
+  // Fechas ejemplo: próximo mes para que no lleguen como vencidos
+  var tz  = Session.getScriptTimeZone();
+  var hoy = new Date();
+  var prox = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+  var f1  = Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() + 1,  1), tz, 'dd/MM/yyyy');
+  var f2  = Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 15), tz, 'dd/MM/yyyy');
+  var f3  = Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() + 1,  5), tz, 'dd/MM/yyyy');
+  var f4  = Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 20), tz, 'dd/MM/yyyy');
+  var ejemplos = [
+    ['Servicios publicos', 'Empresa de Agua',    '', f1, '31/12/2090', 'Mensual', 3, 'Activo', '', 'Ejemplo — reemplaza con tus datos'],
+    ['Salud',              'Gimnasio',             0, f4, '31/12/2090', 'Mensual', 3, 'Activo', '', 'Ejemplo — reemplaza con tus datos'],
+    ['Vivienda',           'Administración',      '', f3, '31/12/2090', 'Mensual', 5, 'Activo', '', 'Ejemplo — reemplaza con tus datos'],
+    ['Servicios publicos', 'Internet / Cable',    '', f2, '31/12/2090', 'Mensual', 3, 'Activo', '', 'Ejemplo — reemplaza con tus datos'],
   ];
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -789,51 +800,70 @@ function sheetSearchProducts_(sheet) {
 // HOJA: DataDictionary
 // ------------------------------------------------------------
 function sheetDataDictionary_(sheet) {
-  const headers = ['Hoja','Campo','Tipo','Descripcion','Ejemplo'];
+  const headers = ['Hoja','Campo','Tipo','Descripcion','Valores posibles / Ejemplo'];
   const datos = [
+    // ── TRANSACTIONS ──────────────────────────────────────────────────────────
     ['Transactions','ID','Texto','Identificador unico generado automaticamente','TXN-1711234567-A3F9B'],
-    ['Transactions','Fecha','Texto YYYY-MM-DD','Fecha de la transaccion segun el email de Bancolombia','2026-03-22'],
-    ['Transactions','Hora','Texto HH:MM','Hora de la transaccion','14:30'],
-    ['Transactions','Tipo','Texto','Flujo: ingreso / egreso / informativo','egreso'],
-    ['Transactions','Tipo Transaccion','Texto','Tipo especifico de operacion bancaria','compra_tc'],
-    ['Transactions','Monto','Numero','Valor en COP sin decimales','50000'],
-    ['Transactions','Moneda','Texto','Siempre COP','COP'],
-    ['Transactions','Comercio/Destino','Texto','Nombre del comercio o destinatario de transferencia','TIENDA D1 MANIZALES'],
-    ['Transactions','Cuenta Origen','Texto','Ultimos 4 digitos de la cuenta o tarjeta que realizo el pago','1234'],
-    ['Transactions','Categoria','Texto','Categoria principal asignada por Gemini','Alimentación'],
-    ['Transactions','Subcategoria','Texto','Subcategoria especifica','Supermercados'],
-    ['Transactions','Necesidad','Texto','Clasificacion: necesario / prescindible / lujo / n/a','necesario'],
-    ['Transactions','Sugerencia','Texto','Consejo de ahorro de Gemini para esta transaccion','Compara precios en otras tiendas'],
-    ['Transactions','Referencia','Texto','Cuenta destino en transferencias o codigo de factura','3225768527'],
-    ['Transactions','Confianza','Numero 0-1','Nivel de certeza del parsing de Gemini','0.95'],
-    ['Transactions','Fuente','Texto','Origen del dato (siempre email en esta version)','email'],
-    ['Transactions','Procesado','Texto ISO 8601','Timestamp de cuando el bot proceso este email','2026-03-22T21:38:28.000Z'],
+    ['Transactions','Fecha','Texto YYYY-MM-DD','Fecha de la transaccion extraida del email o extracto','2026-03-22'],
+    ['Transactions','Hora','Texto HH:MM','Hora de la transaccion (vacia si no viene en el email)','14:30'],
+    ['Transactions','Tipo','Texto','Flujo de dinero clasificado por Gemini','ingreso | egreso | informativo'],
+    ['Transactions','Tipo Transaccion','Texto','Tipo especifico de operacion bancaria',
+     'compra_tc | compra_debito | transferencia_enviada | transferencia_recibida | retiro_cajero | pago_servicio | ingreso_nomina | otro'],
+    ['Transactions','Monto','Numero','Valor absoluto en COP sin decimales','50000'],
+    ['Transactions','Moneda','Texto','Moneda de la transaccion','COP'],
+    ['Transactions','Comercio','Texto','Nombre del comercio o destinatario/remitente de transferencia','TIENDA D1 MANIZALES'],
+    ['Transactions','Cuenta','Texto','Ultimos 4 digitos de la cuenta o tarjeta usada','8352'],
+    ['Transactions','Categoria','Texto','Categoria principal — configurada en Configurations','Alimentación | Transporte | Vivienda | ...'],
+    ['Transactions','Subcategoria','Texto','Subcategoria especifica asignada por Gemini','Supermercados | Gasolina | Servicios públicos | ...'],
+    ['Transactions','Necesidad','Texto','Nivel de necesidad clasificado por Gemini','necesario | prescindible | lujo | n/a'],
+    ['Transactions','Sugerencia','Texto','Consejo de ahorro personalizado de Gemini','Compara precios en otras tiendas'],
+    ['Transactions','Referencia','Texto','Cuenta destino, llave Nequi o codigo de factura','3225768527'],
+    ['Transactions','Confianza','Numero 0-1','Certeza del parsing de Gemini (1 = muy seguro)','0.95 | 0.98'],
+    ['Transactions','Fuente','Texto','Como entro este registro al sistema',
+     'email — procesado automaticamente del inbox\nextracto — importado desde ZIP/XLSX Bancolombia\ntelegram — registrado manualmente via chat\nhistorico — cargado desde historial de Gmail'],
+    ['Transactions','Procesado','Texto ISO 8601','Timestamp exacto de cuando el bot proceso la transaccion','2026-03-22T21:38:28.000Z'],
+    ['Transactions','Banco Origen','Texto','Banco que genero la notificacion (detectado por remitente del email)','Bancolombia | Nequi | Davivienda | ...'],
+    // ── GOALS ─────────────────────────────────────────────────────────────────
+    ['Goals','ID','Texto','Identificador unico de la meta','GOAL-1711234567-X9A'],
+    ['Goals','Meta','Texto','Nombre descriptivo de la meta de ahorro','Vacaciones Europa'],
+    ['Goals','Objetivo','Numero','Monto total en COP a alcanzar','5000000'],
+    ['Goals','Fecha Limite','Texto DD/MM/YYYY','Fecha objetivo para completar la meta (opcional)','31/12/2026'],
+    ['Goals','Ahorrado','Numero','Monto acumulado hasta ahora (suma de abonos registrados)','1250000'],
+    ['Goals','Estado','Texto','Estado actual de la meta','activa | completada | pausada'],
+    ['Goals','Creado','Texto ISO 8601','Cuando se creo la meta','2026-01-15T10:00:00.000Z'],
+    ['Goals','Último Abono','Texto ISO 8601','Fecha del ultimo abono registrado via /meta abonar','2026-03-20T15:30:00.000Z'],
+    ['Goals','Etiqueta','Texto','Etiqueta libre para agrupar metas','viaje | emergencia | hogar'],
+    // ── ERRORS ────────────────────────────────────────────────────────────────
     ['Errors','ID','Texto','Identificador unico del error','ERR-1711234567'],
-    ['Errors','Error','Texto','Descripcion del error ocurrido','Gemini respondio con codigo 429'],
-    ['Errors','Asunto Email','Texto','Asunto del email que no se pudo procesar','Alertas y Notificaciones'],
-    ['Errors','Email ID','Texto','ID del mensaje en Gmail para buscarlo manualmente','18e8a1b2c3d4e5f6'],
+    ['Errors','Error','Texto','Descripcion del error ocurrido','Gemini HTTP 429: quota exceeded'],
+    ['Errors','Asunto Email','Texto','Asunto del email que no se pudo procesar','Alertas y Notificaciones Transaccionales'],
+    ['Errors','Email ID','Texto','ID del mensaje en Gmail — buscar con este ID si necesitas reprocesar','18e8a1b2c3d4e5f6'],
     ['Errors','Procesado','Texto ISO 8601','Cuando ocurrio el error','2026-03-22T21:38:28.000Z'],
+    // ── CONFIGURATIONS ────────────────────────────────────────────────────────
     ['Configurations','Parametro','Texto','Nombre del parametro de configuracion','Umbral alerta Telegram'],
-    ['Configurations','Valor','Variable','Valor actual del parametro','200000'],
-    ['Configurations','Descripcion','Texto','Que hace este parametro y como afecta el comportamiento del bot','COP — envia alerta si un egreso supera este valor'],
+    ['Configurations','Valor','Variable','Valor actual del parametro — editable directamente en la hoja','300000'],
+    ['Configurations','Descripcion','Texto','Que hace este parametro','COP — envia alerta si un egreso supera este valor'],
+    ['Configurations','[col C] Presupuesto','Numero','En filas de Categoria X: presupuesto mensual en COP para esa categoria','400000'],
+    // ── PENDING PAYMENTS ──────────────────────────────────────────────────────
     ['Pending Payments','Servicio','Texto','Categoria del pago recurrente','Servicios publicos'],
     ['Pending Payments','Nombre','Texto','Nombre especifico del proveedor o servicio','Aguas de Manizales'],
     ['Pending Payments','Valor','Numero','Monto aproximado en COP','140000'],
-    ['Pending Payments','FechaPago','Fecha DD/MM/YYYY','Proximo vencimiento — dispara el recordatorio Telegram','01/04/2026'],
-    ['Pending Payments','FechaLimitePago','Fecha DD/MM/YYYY','Hasta cuando aplica este pago. 31/12/2090 = sin limite','31/12/2090'],
-    ['Pending Payments','Frecuencia','Texto','Con que frecuencia se repite','Mensual'],
+    ['Pending Payments','FechaPago','Fecha DD/MM/YYYY','Proximo vencimiento — dispara el recordatorio por Telegram','01/04/2026'],
+    ['Pending Payments','FechaLimitePago','Fecha DD/MM/YYYY','Hasta cuando aplica. Usa 31/12/2090 para sin limite','31/12/2090'],
+    ['Pending Payments','Frecuencia','Texto','Con que frecuencia se repite','Mensual | Bimestral | Anual | Unico'],
     ['Pending Payments','DiasAnticipacion','Numero','Dias antes del vencimiento para recibir el recordatorio','3'],
-    ['Pending Payments','Estado','Texto','Activo (recordatorio activo) / Inactivo / Pagado','Activo'],
+    ['Pending Payments','Estado','Texto','Control del recordatorio','Activo | Inactivo | Pagado'],
     ['Pending Payments','Referencia','Texto','Codigo de pago, cuenta o referencia del servicio','140715'],
-    ['Pending Payments','Notas','Texto','Observaciones adicionales','Debito automatico TC *1234'],
-    ['Search Products','Producto','Texto','Nombre del producto que quieres comprar','iPhone 15'],
-    ['Search Products','Descripcion','Texto','Modelo, marca, especificaciones','128GB, Negro'],
-    ['Search Products','Precio Objetivo','Numero','Maximo que pagas en COP','3500000'],
-    ['Search Products','Prioridad','Texto','Alta / Media / Baja','Media'],
-    ['Search Products','URL Referencia','Texto','Link al producto en tienda o marketplace','https://...'],
-    ['Search Products','Estado','Texto','Pendiente / Comprado / Descartado','Pendiente'],
+    ['Pending Payments','Notas','Texto','Observaciones adicionales','Debito automatico TC *8352'],
+    // ── SEARCH PRODUCTS ───────────────────────────────────────────────────────
+    ['Search Products','Producto','Texto','Nombre del producto que quieres comprar','iPhone 16'],
+    ['Search Products','Descripcion','Texto','Modelo, marca, especificaciones relevantes','128GB, Negro'],
+    ['Search Products','Precio Objetivo','Numero','Maximo que estas dispuesto a pagar en COP','3500000'],
+    ['Search Products','Prioridad','Texto','Urgencia de compra','Alta | Media | Baja'],
+    ['Search Products','URL Referencia','Texto','Link de referencia en tienda o marketplace','https://...'],
+    ['Search Products','Estado','Texto','Estado de seguimiento','Pendiente | Comprado | Descartado'],
     ['Search Products','Fecha Agregado','Fecha','Cuando lo agregaste a la lista','23/03/2026'],
-    ['Search Products','Notas','Texto','Por que lo necesitas, alternativas','Para reemplazar iPhone 11'],
+    ['Search Products','Notas','Texto','Por que lo necesitas o alternativas evaluadas','Para reemplazar el que se daño'],
   ];
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -844,7 +874,7 @@ function sheetDataDictionary_(sheet) {
   sheet.setColumnWidth(3, 140); sheet.setColumnWidth(4, 380); sheet.setColumnWidth(5, 200);
 
   const colores = {
-    'Transactions':'#e8f4e8','Errors':'#ffe8e8',
+    'Transactions':'#e8f4e8','Goals':'#e8f9e8','Errors':'#ffe8e8',
     'Configurations':'#e8f0fe','Pending Payments':'#fff8e1','Search Products':'#f3e8ff'
   };
   datos.forEach((fila, i) => {

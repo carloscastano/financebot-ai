@@ -24,16 +24,20 @@ Se abre la copia. Ahora limpia los datos personales:
 En la copia que se acaba de abrir:
 
 **Hoja `Transactions`:**
+
 - Selecciona todas las filas de datos (desde fila 2 hacia abajo)
 - Elimínalas. Deja solo la fila de encabezados.
 
 **Hoja `Goals`:**
+
 - Elimina todas las metas personales (deja los encabezados)
 
 **Hoja `Pending Payments`:**
+
 - Elimina todos los pagos (deja los encabezados)
 
 **Hoja `Configurations`:**
+
 - Fila `Tarjeta crédito`: borra el número de tu tarjeta, deja vacío o escribe `*0000`
 - Fila `Tarjeta debito`: igual
 - Fila `Meta ahorro`: cambia a `1000000` (valor ejemplo)
@@ -41,18 +45,23 @@ En la copia que se acaba de abrir:
 - Los **bancos y categorías** puedes dejarlos — son genéricos y sirven para cualquier usuario Bancolombia
 
 **Hojas `Errors`, `Logs`, `Financial Insights`, `Dashboard`:**
+
 - Borra todo el contenido si tiene datos. Deja los encabezados.
 
 ### Paso 1.3 — Obtener el link de instalación directa
 
 1. En la barra de dirección del navegador verás algo como:
-   ```
+
+   ```text
    https://docs.google.com/spreadsheets/d/XXXXXXXXXX/edit
    ```
+
 2. Cambia `/edit` por `/copy`:
-   ```
+
+   ```text
    https://docs.google.com/spreadsheets/d/XXXXXXXXXX/copy
    ```
+
 3. Copia esa URL — ese es el **link que compartes con tus amigos**
 
 Cuando alguien abre ese link, Google les pregunta automáticamente si quieren hacer una copia. No ven tus datos ni tus claves.
@@ -78,9 +87,9 @@ Cuando alguien abre ese link, Google les pregunta automáticamente si quieren ha
 
 Antes de empezar necesitas:
 
-- [x] Una cuenta de **Gmail** activa (la que recibe notificaciones del banco)
-- [x] **Telegram** instalado en tu celular
-- [x] Una cuenta en **Google** (seguramente ya la tienes si usas Gmail)
+- Una cuenta de **Gmail** activa (la que recibe notificaciones del banco)
+- **Telegram** instalado en tu celular
+- Una cuenta en **Google** (seguramente ya la tienes si usas Gmail)
 
 ---
 
@@ -105,9 +114,11 @@ Antes de empezar necesitas:
 4. BotFather te pregunta el **nombre** del bot: escribe algo como `Mi FinanceBot`
 5. BotFather te pregunta el **username** (debe terminar en `bot`): escribe algo como `mifinancebot_bot`
 6. BotFather te responde con un **token** que se ve así:
-   ```
+
+   ```text
    7234567890:AAF-XXXXXXXXXXXXXXXXXXXXXXXXXXX
    ```
+
 7. Copia ese token — lo necesitas en el Paso 2.5
 
 > El username debe ser único en Telegram. Si dice "ya existe", prueba con otro nombre.
@@ -116,7 +127,11 @@ Antes de empezar necesitas:
 
 ### Paso 2.4 — Copiar la hoja del FinanceBot
 
-1. Abre el link que te pasó Carlos (termina en `/copy`)
+**Link directo del template:**
+
+> 👉 **[Abrir template de FinanceBot AI](https://docs.google.com/spreadsheets/d/11wCqYnWxWEjnZGyLg2nB2nOJhRBleI_Xl_vUqCflPXw/copy)**
+
+1. Abre el link de arriba (o el que te pasó Carlos)
 2. Google te muestra una ventana: **"Crear una copia"**
 3. Ponle un nombre a tu copia: `FinanceBot AI — Mi Nombre`
 4. Elige dónde guardarla en tu Drive
@@ -132,6 +147,7 @@ Se abre tu copia personal. Verás varias hojas abajo (`Transactions`, `Configura
 2. Clic en **"🚀 Paso 1 — Crear formulario de configuración"**
 
 **Primera vez: Google te pedirá permisos** — esto es normal y necesario:
+
 - Aparece una ventana: *"Este script necesita permisos"*
 - Clic en **"Revisar permisos"**
 - Selecciona tu cuenta de Google
@@ -154,17 +170,16 @@ La hoja Setup tiene una tabla con 4 filas. Solo necesitas llenar **2 celdas** (e
 | `GEMINI_API_KEY` | La clave que copiaste en el Paso 2.2 |
 | `SPREADSHEET_ID` | **No tocar** — ya aparece llenado automáticamente ✅ |
 | `TELEGRAM_BOT_TOKEN` | El token que copiaste en el Paso 2.3 |
-| `TELEGRAM_CHAT_ID` | Lo detectamos automáticamente en el siguiente paso |
+| `TELEGRAM_CHAT_ID` | Se detecta automáticamente en el siguiente paso |
 
 **Para el Chat ID de Telegram** (tu número de usuario):
+
 1. Abre Telegram y busca el bot que acabas de crear (por el username que elegiste)
-2. Envíale cualquier mensaje, por ejemplo: `hola`
+2. Envíale cualquier mensaje — por ejemplo: `hola`
 3. Vuelve a la hoja de Google Sheets
-4. Menú **Extensiones → Apps Script** → se abre el editor de código
-5. En la barra superior del editor, donde dice "Seleccionar función", busca **`detectarMiChatId`**
-6. Clic en **▶ Ejecutar**
-7. En el registro de ejecución (abajo) verás: `✅ Chat ID detectado: 123456789`
-8. Cierra el editor — el Chat ID ya quedó guardado automáticamente
+4. Menú **🤖 FinanceBot → "🔑 Paso 1b — Detectar mi Chat ID de Telegram"**
+5. Aparece un popup: **✅ Chat ID detectado y guardado: 123456789**
+6. Listo — el Chat ID quedó guardado automáticamente
 
 ---
 
@@ -174,6 +189,7 @@ La hoja Setup tiene una tabla con 4 filas. Solo necesitas llenar **2 celdas** (e
 2. Menú **🤖 FinanceBot → "✅ Paso 2 — Aplicar configuración"**
 
 El sistema automáticamente:
+
 - Guarda tus claves de forma segura (invisibles, en Script Properties)
 - Crea todas las hojas necesarias (`Transactions`, `Dashboard`, `Goals`, etc.)
 - Configura los 5 activadores automáticos:
@@ -191,7 +207,7 @@ El sistema automáticamente:
 
 Abre Telegram y busca tu bot. Debería haber llegado:
 
-```
+```text
 🎉 FinanceBot AI activado
 
 Hola! Tu bot está configurado y listo.
@@ -225,19 +241,19 @@ Abre la hoja **Configurations** y ajusta estos valores a los tuyos:
 
 | Problema | Solución |
 |----------|---------|
-| No aparece el menú 🤖 FinanceBot | Cierra y vuelve a abrir la hoja. Si sigue sin aparecer, Extensiones → Apps Script → Ejecutar `onOpen` |
-| "Este script necesita permisos" | Normal. Sigue las instrucciones del Paso 2.5 |
-| No llegó el mensaje de bienvenida | Verifica que le enviaste un mensaje al bot antes de detectarMiChatId. Luego re-ejecuta el Paso 2.7 |
-| Chat ID dice "No se encontraron mensajes" | Envíale un mensaje a tu bot en Telegram y vuelve a ejecutar `detectarMiChatId` |
-| El bot no responde a mis mensajes | Menú FinanceBot → Estado de triggers. Debe haber un trigger de `procesarMensajesTelegram`. Si no hay, ejecuta Paso 2.7 de nuevo |
-| Error "Gemini quota exceeded" | Espera hasta el día siguiente. La cuota gratuita es diaria |
-| No detecta emails del banco | Verifica en Configurations que el dominio del sender coincide con el remitente real de los emails de tu banco |
+| No aparece el menú 🤖 FinanceBot | Cierra y vuelve a abrir la hoja |
+| "Este script necesita permisos" | Normal — sigue las instrucciones del Paso 2.5 |
+| No llegó el mensaje de bienvenida | Verifica que enviaste un mensaje al bot antes del Paso 1b, luego re-ejecuta el Paso 2.7 |
+| Chat ID dice "Sin mensajes detectados" | Envíale un mensaje a tu bot en Telegram y vuelve a ejecutar el Paso 1b |
+| El bot no responde a mis mensajes | Menú FinanceBot → Estado de triggers. Debe haber un trigger de `procesarMensajesTelegram` |
+| Error "Gemini quota exceeded" | Espera hasta el día siguiente. La cuota gratuita se resetea a diario |
+| No detecta emails del banco | Verifica en Configurations que el `Banco 1 sender` coincide con el remitente real de los emails |
 
 ---
 
 ## Resumen: lo que necesita el usuario X
 
-```
+```text
 ✅ Gmail activo (el que recibe emails del banco)
 ✅ Telegram instalado
 ✅ API key de Gemini → aistudio.google.com (gratis)

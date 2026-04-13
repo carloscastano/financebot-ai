@@ -217,7 +217,7 @@ function procesarMensajesTelegram() {
 // Prompt calibrado para lenguaje coloquial colombiano
 // ------------------------------------------------------------
 function parsearTransaccionManual_(texto) {
-  const hoy    = Utilities.formatDate(new Date(), 'America/Bogota', 'yyyy-MM-dd');
+  const hoy    = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const prompt =
     'Eres el asistente financiero personal de un colombiano. ' +
     'El usuario te envió este mensaje describiendo un gasto o ingreso:\n\n' +
@@ -287,7 +287,7 @@ function recordarPagosPendientes() {
     // Si ya fue pagado este mes, no recordar
     if (ultimoPago instanceof Date && !isNaN(ultimoPago)) {
       if (ultimoPago.getMonth() === hoy.getMonth() && ultimoPago.getFullYear() === hoy.getFullYear()) {
-        logInfo_('PENDING_PAYMENTS', servicio + ': ya pagado este mes (' + Utilities.formatDate(ultimoPago,'America/Bogota','dd/MM/yyyy') + ')');
+        logInfo_('PENDING_PAYMENTS', servicio + ': ya pagado este mes (' + Utilities.formatDate(ultimoPago,Session.getScriptTimeZone(),'dd/MM/yyyy') + ')');
         return;
       }
     }
@@ -324,7 +324,7 @@ function recordarPagosPendientes() {
   // Construir mensaje con IDs fijos por fila
   const lineas = pagosARecordar.map(function(p) {
     const id       = p.filaNum - 1;  // ID permanente basado en fila
-    const fecha    = Utilities.formatDate(p.fechaPago, 'America/Bogota', 'dd/MM/yyyy');
+    const fecha    = Utilities.formatDate(p.fechaPago, Session.getScriptTimeZone(), 'dd/MM/yyyy');
     const montoStr = p.monto ? '\n💰 $' + Number(p.monto).toLocaleString('es-CO') + ' COP' : '';
     const ref      = p.referencia ? '\n🔑 Ref: ' + mdEscape_(p.referencia) : '';
     let estado;
@@ -387,7 +387,7 @@ function marcarPagoPendiente_(idStr) {
   enviarMensajeTelegram_(
     '✅ *Pago registrado*\n' +
     '🧾 ' + mdEscape_(servicio) + '\n' +
-    '📅 Pagado: ' + Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy') + '\n\n' +
+    '📅 Pagado: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy') + '\n\n' +
     '_No recibirás recordatorio de este pago hasta el próximo mes._'
   );
   logInfo_('PENDING_PAYMENTS', 'Pago marcado: ' + servicio + ' (fila ' + filaNum + ')');

@@ -360,7 +360,7 @@ function deduplicarTransacciones_(transacciones) {
     var m = montos[i][0];
     if (!f || !m) continue;
     var fs = (f instanceof Date)
-      ? Utilities.formatDate(f, 'America/Bogota', 'yyyy-MM-dd')
+      ? Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd')
       : String(f).substring(0, 10);
     existentes[fs + '|' + Number(m)] = true;
   }
