@@ -27,12 +27,12 @@ const SETUP_SHEET_NAME_ = '🔧 Setup';
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet().addMenu('🤖 FinanceBot', [
     { name: '🚀 Paso 1 — Crear formulario de configuración', functionName: 'crearHojaSetup'       },
-    { name: '🔑 Paso 1b — Detectar mi Chat ID de Telegram',  functionName: 'detectarMiChatId'      },
     { name: '✅ Paso 2 — Aplicar configuración',             functionName: 'aplicarSetup'          },
     { name: '─────────────────────',                         functionName: 'menuSeparador_'         },
     { name: '📊 Reconstruir dashboard',                      functionName: 'reconstruirDashboard'   },
     { name: '🔍 Verificar credenciales',                     functionName: 'verificarCredenciales'  },
     { name: '⚙️  Estado de triggers',                        functionName: 'mostrarEstadoTriggers'  },
+    { name: '🔑 Detectar Chat ID manualmente',               functionName: 'detectarMiChatId'       },
   ]);
 }
 function menuSeparador_() { /* separador visual */ }
@@ -59,22 +59,19 @@ function crearHojaSetup() {
   const datos = [
     ['FINANCEBOT AI — CONFIGURACIÓN INICIAL', '', ''],
     ['', '', ''],
-    ['📋 INSTRUCCIONES:', '1) Llena la columna B con tus valores  2) Menú FinanceBot → Paso 2 Aplicar', ''],
-    ['🔒 Seguridad:', 'Esta hoja se elimina sola al aplicar. Las claves quedan en Script Properties (invisibles).', ''],
+    ['📋 INSTRUCCIONES:', '1) Llena las 2 celdas amarillas  2) Envíale "hola" a tu bot en Telegram  3) Menú FinanceBot → Paso 2 Aplicar', ''],
+    ['🔒 Seguridad:', 'Esta hoja se elimina sola al aplicar. Las claves quedan guardadas en tu cuenta de Google (invisibles).', ''],
     ['', '', ''],
     ['Parámetro', 'Tu valor (edita esta columna)', 'Cómo obtenerlo — paso a paso'],
     ['GEMINI_API_KEY',
      '',
-     '→ Entra a aistudio.google.com → botón "Get API Key" → "Create API key" → copia'],
+     '→ Entra a aistudio.google.com → botón "Get API Key" → "Create API key" → copia la clave (empieza con AIzaSy...)'],
     ['SPREADSHEET_ID',
      _detectarSpreadsheetId_(),
      '✅ Detectado automáticamente — no tocar'],
     ['TELEGRAM_BOT_TOKEN',
      '',
-     '→ Abre Telegram → busca @BotFather → escribe /newbot → sigue los pasos → copia el token (formato 123456:ABC-DEF...)'],
-    ['TELEGRAM_CHAT_ID',
-     '',
-     '→ Después de crear el bot, escríbele cualquier mensaje → vuelve aquí y corre detectarMiChatId() desde el menú Extensiones → Apps Script → Ejecutar'],
+     '→ Abre Telegram → busca @BotFather → escribe /newbot → sigue los pasos → copia el token (formato 123456789:AAF-XXXX...)'],
   ];
 
   sheet.getRange(1, 1, datos.length, 3).setValues(datos);
@@ -82,12 +79,13 @@ function crearHojaSetup() {
   // Formato visual
   sheet.getRange('A1').setFontWeight('bold').setFontSize(14).setBackground('#1a73e8').setFontColor('#ffffff');
   sheet.getRange('A6:C6').setFontWeight('bold').setBackground('#e8f0fe');
-  sheet.getRange('A7:A10').setFontWeight('bold');
-  sheet.getRange('B7:B10').setBackground('#fffde7').setFontWeight('bold');  // celdas a llenar
+  sheet.getRange('A7:A9').setFontWeight('bold');
+  sheet.getRange('B7:B9').setBackground('#fffde7').setFontWeight('bold');  // celdas a llenar (B8 es auto)
+  sheet.getRange('B8').setBackground('#e8f4e8');  // verde = auto-detectado, no tocar
   sheet.getRange('A3:C4').setFontStyle('italic').setFontColor('#555555');
   sheet.setColumnWidth(1, 200);
   sheet.setColumnWidth(2, 280);
-  sheet.setColumnWidth(3, 380);
+  sheet.setColumnWidth(3, 420);
   sheet.setFrozenRows(6);
 
   logInfo_('SETUP', 'Hoja "' + SETUP_SHEET_NAME_ + '" creada en tu Spreadsheet');
@@ -100,94 +98,108 @@ function crearHojaSetup() {
 // Lee los valores, los guarda en Script Properties y elimina la hoja.
 // ============================================================
 function aplicarSetup() {
-  const props = PropertiesService.getScriptProperties();
+  var ui    = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
 
-  // Detectar spreadsheet
-  const spreadsheetId = props.getProperty('SPREADSHEET_ID') || _detectarSpreadsheetId_();
+  // ── 1. Localizar spreadsheet y hoja Setup ──────────────────
+  var spreadsheetId = props.getProperty('SPREADSHEET_ID') || _detectarSpreadsheetId_();
   if (!spreadsheetId) {
-    logError_('SETUP', 'No se pudo detectar el Spreadsheet. Ejecuta crearHojaSetup() primero');
+    ui.alert('❌ Error', 'No se pudo detectar el Spreadsheet. Ejecuta el Paso 1 primero.', ui.ButtonSet.OK);
     return;
   }
-
-  const ss    = SpreadsheetApp.openById(spreadsheetId);
-  const sheet = ss.getSheetByName(SETUP_SHEET_NAME_);
+  var ss    = SpreadsheetApp.openById(spreadsheetId);
+  var sheet = ss.getSheetByName(SETUP_SHEET_NAME_);
   if (!sheet) {
-    logError_('SETUP', 'No se encontro la hoja "' + SETUP_SHEET_NAME_ + '". Ejecuta crearHojaSetup() primero');
+    ui.alert('❌ Error', 'No se encontró la hoja Setup. Ejecuta el Paso 1 primero.', ui.ButtonSet.OK);
     return;
   }
 
-  // Leer valores (filas 7-10, columna B = col 2)
-  const valores = sheet.getRange(7, 2, 4, 1).getValues().flat();
-  const geminiKey    = String(valores[0]).trim();
-  const sheetId      = String(valores[1]).trim();
-  const tgToken      = String(valores[2]).trim();
-  const tgChatId     = String(valores[3]).trim();
+  // ── 2. Leer valores (filas 7-9, columna B) ─────────────────
+  var valores   = sheet.getRange(7, 2, 3, 1).getValues().flat();
+  var geminiKey = String(valores[0]).trim();
+  var sheetId   = String(valores[1]).trim();
+  var tgToken   = String(valores[2]).trim();
 
-  let errores = 0;
-
-  if (geminiKey && geminiKey !== '') {
-    props.setProperty('GEMINI_API_KEY', geminiKey);
-    logInfo_('SETUP', 'GEMINI_API_KEY guardada');
-  } else {
-    logWarn_('SETUP', 'GEMINI_API_KEY vacia - no se actualizo');
-    errores++;
+  // ── 3. Validar campos obligatorios ─────────────────────────
+  if (!geminiKey) {
+    ui.alert('⚠️ Falta la clave de Gemini',
+      'Llena el campo GEMINI_API_KEY en la hoja Setup y vuelve a ejecutar el Paso 2.',
+      ui.ButtonSet.OK);
+    return;
+  }
+  if (!tgToken) {
+    ui.alert('⚠️ Falta el token de Telegram',
+      'Llena el campo TELEGRAM_BOT_TOKEN en la hoja Setup y vuelve a ejecutar el Paso 2.',
+      ui.ButtonSet.OK);
+    return;
   }
 
-  if (sheetId && sheetId !== '') {
-    props.setProperty('SPREADSHEET_ID', sheetId);
-    logInfo_('SETUP', 'SPREADSHEET_ID guardado');
-  } else {
-    logWarn_('SETUP', 'SPREADSHEET_ID vacio - no se actualizo');
-    errores++;
+  // ── 4. Validar token de Telegram (getMe) ───────────────────
+  logInfo_('SETUP', 'Validando token de Telegram...');
+  if (!_validarTelegramToken_(tgToken)) {
+    ui.alert('❌ Token de Telegram inválido',
+      'El token que pegaste no funciona. Verifica que lo copiaste completo desde @BotFather (formato: 123456789:AAF-XXXX...).',
+      ui.ButtonSet.OK);
+    return;
   }
+  logInfo_('SETUP', 'Token de Telegram ✅');
 
-  if (tgToken && tgToken !== '') {
-    props.setProperty('TELEGRAM_BOT_TOKEN', tgToken);
-    logInfo_('SETUP', 'TELEGRAM_BOT_TOKEN guardado');
-  } else {
-    logInfo_('SETUP', 'TELEGRAM_BOT_TOKEN vacio - Telegram desactivado');
+  // ── 5. Validar clave de Gemini ─────────────────────────────
+  logInfo_('SETUP', 'Validando clave de Gemini...');
+  if (!_validarGeminiKey_(geminiKey)) {
+    ui.alert('❌ Clave de Gemini inválida',
+      'La API Key de Gemini no funciona. Verifica que la copiaste completa desde aistudio.google.com (empieza con AIzaSy...).',
+      ui.ButtonSet.OK);
+    return;
   }
+  logInfo_('SETUP', 'Clave de Gemini ✅');
 
-  if (tgChatId && tgChatId !== '') {
-    props.setProperty('TELEGRAM_CHAT_ID', tgChatId);
-    logInfo_('SETUP', 'TELEGRAM_CHAT_ID guardado');
+  // ── 6. Auto-detectar Chat ID ───────────────────────────────
+  logInfo_('SETUP', 'Detectando Chat ID de Telegram...');
+  var chatId = _detectarChatIdSilencioso_(tgToken);
+  if (!chatId) {
+    ui.alert('⚠️ No se detectó tu Chat ID',
+      'Abre Telegram, busca tu bot y envíale cualquier mensaje (ej: "hola").\n\nLuego vuelve aquí y ejecuta el Paso 2 de nuevo.',
+      ui.ButtonSet.OK);
+    return;
   }
+  logInfo_('SETUP', 'Chat ID detectado: ' + chatId + ' ✅');
 
-  // Eliminar hoja Setup para no dejar credenciales visibles
+  // ── 7. Guardar todas las propiedades ───────────────────────
+  props.setProperty('GEMINI_API_KEY',     geminiKey);
+  props.setProperty('SPREADSHEET_ID',     sheetId || spreadsheetId);
+  props.setProperty('TELEGRAM_BOT_TOKEN', tgToken);
+  props.setProperty('TELEGRAM_CHAT_ID',   chatId);
+  logInfo_('SETUP', 'Credenciales guardadas');
+
+  // ── 8. Eliminar hoja Setup ─────────────────────────────────
   ss.deleteSheet(sheet);
   logInfo_('SETUP', 'Hoja Setup eliminada');
 
-  if (errores > 0) {
-    logWarn_('SETUP', 'Setup incompleto — abre el menú FinanceBot → Paso 1 y completa los campos faltantes');
-    return;
-  }
-
-  // Auto: crear hojas si no existen
-  logInfo_('SETUP', 'Creando hojas del Spreadsheet...');
+  // ── 9. Crear hojas del Spreadsheet ────────────────────────
+  logInfo_('SETUP', 'Creando hojas...');
   try { configurarSpreadsheet(); } catch(e) { logWarn_('SETUP', 'configurarSpreadsheet: ' + e.message); }
 
-  // Auto: crear todos los triggers
-  logInfo_('SETUP', 'Configurando triggers automáticos...');
+  // ── 10. Crear triggers ────────────────────────────────────
+  logInfo_('SETUP', 'Activando automatizaciones...');
   configurarTriggers();
 
-  // Auto: enviar mensaje de bienvenida a Telegram
+  // ── 11. Mensaje de bienvenida ─────────────────────────────
   try {
     enviarMensajeTelegram_(
       '🎉 *FinanceBot AI activado*\n\n' +
       'Hola\\! Tu bot está configurado y listo\\.\n' +
       'Escribe /ayuda para ver todos los comandos disponibles\\.'
     );
-    logInfo_('SETUP', 'Mensaje de bienvenida enviado a Telegram ✅');
+    logInfo_('SETUP', 'Mensaje de bienvenida enviado ✅');
   } catch(e) {
-    logWarn_('SETUP', 'Telegram no disponible: ' + e.message + ' — verifica TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID');
+    logWarn_('SETUP', 'Bienvenida no enviada: ' + e.message);
   }
 
   logInfo_('SETUP', '');
   logInfo_('SETUP', '✅ SETUP COMPLETO — tu FinanceBot está activo');
-  logInfo_('SETUP', 'Próximos pasos:');
-  logInfo_('SETUP', '  1) Abre la hoja Configurations y ajusta tus categorías y presupuestos');
-  logInfo_('SETUP', '  2) Asegúrate que tu banco envía emails a ' + Session.getEffectiveUser().getEmail());
-  logInfo_('SETUP', '  3) Escribe /ayuda en Telegram para explorar el bot');
+  logInfo_('SETUP', '  → Escribe /ayuda en Telegram para explorar el bot');
+  logInfo_('SETUP', '  → Gmail monitorizado: ' + Session.getEffectiveUser().getEmail());
 
   verificarCredenciales();
 }
@@ -339,6 +351,56 @@ function verificarCredenciales() {
       logInfo_('SETUP', k + ': ' + preview);
     }
   });
+}
+
+// ============================================================
+// HELPERS PRIVADOS DE VALIDACIÓN Y DETECCIÓN
+// ============================================================
+
+// Verifica que el token de Telegram sea válido llamando getMe
+function _validarTelegramToken_(token) {
+  try {
+    var resp = UrlFetchApp.fetch(
+      'https://api.telegram.org/bot' + token + '/getMe',
+      { muteHttpExceptions: true }
+    );
+    var data = JSON.parse(resp.getContentText());
+    return data.ok === true;
+  } catch(e) { return false; }
+}
+
+// Verifica que la API Key de Gemini sea válida con una llamada mínima
+function _validarGeminiKey_(key) {
+  try {
+    var resp = UrlFetchApp.fetch(
+      CONFIG.GEMINI_URL + '?key=' + key,
+      {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({ contents: [{ parts: [{ text: 'ok' }] }] }),
+        muteHttpExceptions: true,
+      }
+    );
+    return resp.getResponseCode() === 200;
+  } catch(e) { return false; }
+}
+
+// Detecta el chat_id del primer mensaje recibido por el bot. Sin UI.
+// Retorna el chatId como string, o null si no hay mensajes.
+function _detectarChatIdSilencioso_(token) {
+  try {
+    var resp = UrlFetchApp.fetch(
+      'https://api.telegram.org/bot' + token + '/getUpdates?limit=10',
+      { muteHttpExceptions: true }
+    );
+    var data = JSON.parse(resp.getContentText());
+    if (!data.ok || !data.result || data.result.length === 0) return null;
+    for (var i = 0; i < data.result.length; i++) {
+      var msg = data.result[i].message || data.result[i].channel_post;
+      if (msg && msg.chat && msg.chat.id) return String(msg.chat.id);
+    }
+  } catch(e) { /* ignorar */ }
+  return null;
 }
 
 // Detecta el ID del spreadsheet activo o desde la URL del proyecto

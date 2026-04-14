@@ -101,35 +101,26 @@ Google te pedirá permisos para que el script funcione. Esto es normal y necesar
 
 Después de aceptar, se crea una pestaña **🔧 Setup**.
 
-### 4.3 — Llenar tus datos
+### 4.3 — Llenar tus datos y activar
 
-En la pestaña **🔧 Setup** encontrarás una tabla. Llena las celdas amarillas:
+En la pestaña **🔧 Setup** encontrarás una tabla. Llena las 2 celdas amarillas:
 
 | Campo | Qué escribir |
 | ----- | ------------ |
 | `GEMINI_API_KEY` | La clave que copiaste en el Paso 1 |
 | `SPREADSHEET_ID` | Ya aparece llenado automáticamente — no tocar ✅ |
 | `TELEGRAM_BOT_TOKEN` | El token que copiaste en el Paso 2 |
-| `TELEGRAM_CHAT_ID` | Lo detectamos en el siguiente punto |
 
-### 4.4 — Detectar tu Chat ID de Telegram
+Antes de continuar: **abre Telegram, busca tu bot y envíale cualquier mensaje** (ej: `hola`). El sistema lo necesita para identificarte automáticamente.
 
-El Chat ID es el identificador interno de tu cuenta en Telegram. El bot lo necesita para saber a quién enviarle mensajes.
-
-1. Abre Telegram y busca el bot que acabas de crear (por el nombre de usuario que elegiste)
-2. Envíale cualquier mensaje — por ejemplo: `hola`
-3. Vuelve a tu hoja de Google Sheets
-4. Menú **🤖 FinanceBot → "🔑 Paso 1b — Detectar mi Chat ID de Telegram"**
-5. Aparece un popup: **✅ Chat ID detectado y guardado: 123456789**
-
-El Chat ID queda guardado automáticamente. No necesitas copiarlo.
-
-### 4.5 — Activar todo
+### 4.4 — Activar todo
 
 1. Menú **🤖 FinanceBot → "✅ Paso 2 — Aplicar configuración"**
 
 Esto puede tardar 15–30 segundos. Durante ese tiempo el sistema:
 
+- Verifica que tus claves sean válidas
+- Detecta automáticamente tu cuenta de Telegram
 - Guarda tus claves de forma segura (quedan ocultas, solo tú puedes accederlas)
 - Crea todas las pestañas necesarias (`Dashboard`, `Goals`, `Pending Payments`, etc.)
 - Activa las automatizaciones:
@@ -139,6 +130,8 @@ Esto puede tardar 15–30 segundos. Durante ese tiempo el sistema:
   - Reporte semanal los lunes a las 7am
 - Borra la pestaña Setup (para que tus claves no queden visibles)
 - Envía un mensaje de bienvenida a tu Telegram
+
+> Si alguna clave es incorrecta, el sistema te avisa con un mensaje específico y **no borra** la pestaña Setup para que puedas corregirla.
 
 ---
 
@@ -196,8 +189,8 @@ Si usas otro banco, abre la pestaña **Configurations** y ajusta:
 | -------- | -------- |
 | No aparece el menú 🤖 FinanceBot | Cierra y vuelve a abrir la hoja |
 | El popup de permisos no avanza | Asegúrate de seleccionar la misma cuenta de Gmail que recibe correos del banco |
-| No llegó el mensaje de bienvenida | Verifica que enviaste un mensaje al bot (Paso 4.4) antes de aplicar la configuración. Luego re-ejecuta el Paso 4.5 |
-| Chat ID dice "Sin mensajes detectados" | Envíale un mensaje a tu bot en Telegram y vuelve a ejecutar el Paso 4.4 |
+| No llegó el mensaje de bienvenida | Verifica que enviaste un mensaje al bot en Telegram antes de aplicar la configuración. Luego re-ejecuta el Paso 4.4 |
+| "No se detectó tu Chat ID" | Envíale cualquier mensaje a tu bot en Telegram y vuelve a ejecutar el Paso 4.4 |
 | El bot no responde a mis mensajes | Menú FinanceBot → "Estado de triggers". Verifica que exista uno llamado `procesarMensajesTelegram` |
 | Error "Gemini quota exceeded" | La cuota gratuita se agotó por hoy. Se recupera automáticamente al día siguiente |
 | No detecta correos del banco | Abre Configurations y verifica que `Banco 1 sender` coincida con el remitente real de los correos de tu banco |
