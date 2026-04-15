@@ -247,6 +247,44 @@ function configurarTriggers() {
 }
 
 // ============================================================
+// PAUSAR / REANUDAR TRIGGERS DE TIEMPO REAL
+// Usar durante carga histórica para liberar cuota Gemini.
+// run_pausarTriggers()   → elimina email (5m) y Telegram (1m)
+// run_reanudarTriggers() → los restaura con las frecuencias originales
+// ============================================================
+function run_pausarTriggers() {
+  var pausar = ['procesarEmailsBancolombia', 'procesarMensajesTelegram'];
+  var eliminados = 0;
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (pausar.indexOf(t.getHandlerFunction()) !== -1) {
+      ScriptApp.deleteTrigger(t);
+      eliminados++;
+      logInfo_('SETUP', 'Trigger pausado: ' + t.getHandlerFunction());
+    }
+  });
+  logInfo_('SETUP', '⏸ Triggers de tiempo real pausados (' + eliminados + ')');
+  logInfo_('SETUP', '  → Los correos y mensajes Telegram NO se procesarán hasta reanudar');
+  logInfo_('SETUP', '  → Ejecuta run_reanudarTriggers() cuando termines la carga histórica');
+}
+
+function run_reanudarTriggers() {
+  // Eliminar primero por si quedó alguno duplicado
+  var funciones = ['procesarEmailsBancolombia', 'procesarMensajesTelegram'];
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (funciones.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
+  });
+
+  ScriptApp.newTrigger('procesarEmailsBancolombia')
+    .timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('procesarMensajesTelegram')
+    .timeBased().everyMinutes(1).create();
+
+  logInfo_('SETUP', '▶ Triggers de tiempo real reanudados');
+  logInfo_('SETUP', '  → procesarEmailsBancolombia: cada 5 min');
+  logInfo_('SETUP', '  → procesarMensajesTelegram: cada 1 min');
+}
+
+// ============================================================
 // ESTADO DE TRIGGERS — muestra qué hay activo
 // ============================================================
 function mostrarEstadoTriggers() {
