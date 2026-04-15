@@ -84,24 +84,22 @@ Se abre tu hoja personal. Verás varias pestañas abajo (`Transactions`, `Config
 
 ## Paso 4 — Configurar el bot
 
-### 4.1 — Abrir el asistente
+### 4.1 — Abrir el asistente y aceptar permisos
 
 1. Clic en el menú **🤖 FinanceBot** en la barra superior
 2. Clic en **"🚀 Paso 1 — Crear formulario de configuración"**
 
-### 4.2 — Permisos de Google (solo la primera vez)
-
-Google te pedirá permisos para que el script funcione. Esto es normal y necesario:
+Google te pedirá permisos la primera vez — es normal y necesario:
 
 - Aparece *"Este script necesita permisos"* → clic en **"Revisar permisos"**
 - Selecciona tu cuenta de Google
 - Si aparece **"Google no verificó esta app"** → clic en **"Opciones avanzadas"** → **"Ir a FinanceBot AI (no seguro)"** → **"Permitir"**
 
-> **¿Por qué aparece esa advertencia?** Google muestra este mensaje cuando un script no ha pasado su proceso de verificación comercial — lo mismo que pasa con cualquier herramienta personal o de código abierto. No significa que sea inseguro. El código es visible y puedes revisarlo en cualquier momento desde el menú Extensiones → Apps Script.
+> Esta advertencia aparece porque FinanceBot es un proyecto personal, no una app comercial verificada por Google. No significa que sea inseguro — el código es tuyo y puedes revisarlo en cualquier momento desde Extensiones → Apps Script.
 
-Después de aceptar, se crea una pestaña **🔧 Setup**.
+Después de aceptar, se crea la pestaña **🔧 Setup**.
 
-### 4.3 — Llenar tus datos y activar
+### 4.2 — Llenar tus datos y activar
 
 En la pestaña **🔧 Setup** encontrarás una tabla. Llena las 2 celdas amarillas:
 
@@ -113,7 +111,7 @@ En la pestaña **🔧 Setup** encontrarás una tabla. Llena las 2 celdas amarill
 
 Antes de continuar: **abre Telegram, busca tu bot y envíale cualquier mensaje** (ej: `hola`). El sistema lo necesita para identificarte automáticamente.
 
-### 4.4 — Activar todo
+### 4.3 — Activar todo
 
 1. Menú **🤖 FinanceBot → "✅ Paso 2 — Aplicar configuración"**
 
@@ -189,8 +187,8 @@ Si usas otro banco, abre la pestaña **Configurations** y ajusta:
 | -------- | -------- |
 | No aparece el menú 🤖 FinanceBot | Cierra y vuelve a abrir la hoja |
 | El popup de permisos no avanza | Asegúrate de seleccionar la misma cuenta de Gmail que recibe correos del banco |
-| No llegó el mensaje de bienvenida | Verifica que enviaste un mensaje al bot en Telegram antes de aplicar la configuración. Luego re-ejecuta el Paso 4.4 |
-| "No se detectó tu Chat ID" | Envíale cualquier mensaje a tu bot en Telegram y vuelve a ejecutar el Paso 4.4 |
+| No llegó el mensaje de bienvenida | Verifica que enviaste un mensaje al bot en Telegram antes de aplicar la configuración. Luego re-ejecuta el Paso 4.3 |
+| "No se detectó tu Chat ID" | Envíale cualquier mensaje a tu bot en Telegram y vuelve a ejecutar el Paso 4.3 |
 | El bot no responde a mis mensajes | Menú FinanceBot → "Estado de triggers". Verifica que exista uno llamado `procesarMensajesTelegram` |
 | Error "Gemini quota exceeded" | La cuota gratuita se agotó por hoy. Se recupera automáticamente al día siguiente |
 | No detecta correos del banco | Abre Configurations y verifica que `Banco 1 sender` coincida con el remitente real de los correos de tu banco |
