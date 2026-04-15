@@ -20,7 +20,10 @@
       "Bash(curl -s 'https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=ya29.a0Aa7MYiqF3IAGcD5atNca-5y9h3FMvm1iUrbtyL13vCi4KS0N9OloTH4oK8jU0gilligd6_cRq6S26fiTGyv_8Ke1NokiZYPi9QVWHQiCDn3MZhLTovJ1gwYCryS4ddNms_cQ-ePtryWU663dQrm-WTQPDCog8elmw9BINDeMMwgEDwghRkWs_3bOuySsPRanPRuY5yoaCgYKAW0SARASFQHGX2MiLShezo66JKclWTbpxQJE7A0206')",
       "Bash(node -e ':*)",
       "Bash(clasp deploy:*)",
-      "Bash(node gas-run.js run_diagnosticarExtracto '[\"1wObPByODi7FWkwMcs6JZRZEI0TpqMAC4\"]')"
+      "Bash(node gas-run.js run_diagnosticarExtracto '[\"1wObPByODi7FWkwMcs6JZRZEI0TpqMAC4\"]')",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
     ]
   }
 }
