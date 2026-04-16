@@ -418,11 +418,20 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
         Utilities.sleep(4000);  // 4s entre calls = ~15 RPM, respeta límite free tier Gemini
 
       } catch (e) {
+        // Cuota diaria agotada — abortar todo el lote inmediatamente
+        if (e.message.startsWith('GEMINI_QUOTA_DIARIA')) {
+          const msg = `⏹ Carga histórica detenida — cuota diaria de Gemini agotada.\n` +
+                      `Procesados hasta ahora: ${procesados} transacciones.\n` +
+                      `Reintenta mañana con el mismo comando.`;
+          logWarn_('HISTORICO', msg);
+          try { enviarMensajeTelegram_('⏹ *Carga histórica detenida*\n\nCuota diaria de Gemini agotada\\. ' +
+            procesados + ' transacciones guardadas\\. Reintenta mañana\\.'); } catch(_) {}
+          return msg;
+        }
         errores++;
         logError_('HISTORICO', `Email ${emailId}`, e);
         if (!DRY) registrarError_(sheetErr, e.message, asunto, emailId);
-        // Pausa extra si Gemini está bajo presión
-        if (e.message.includes('503') || e.message.includes('429')) Utilities.sleep(10000);
+        if (e.message.includes('503')) Utilities.sleep(10000);
       }
     }
   }
