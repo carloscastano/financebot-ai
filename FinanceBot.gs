@@ -35,6 +35,146 @@ function run_limpiarTriggers()          {
   return msg;
 }
 
+// ------------------------------------------------------------
+// HEALTH CHECK — verifica todas las integraciones del sistema
+// Solo lectura, no modifica nada.
+// Uso: node gas-run.js run_checkSistema
+// ------------------------------------------------------------
+function run_checkSistema() {
+  var props  = PropertiesService.getScriptProperties();
+  var checks = {};
+
+  // 1. Script Properties
+  var claves = ['GEMINI_API_KEY', 'SPREADSHEET_ID', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'];
+  var faltantes = claves.filter(function(k) { return !props.getProperty(k); });
+  checks.credenciales = faltantes.length === 0 ? 'OK' : 'FALTA: ' + faltantes.join(', ');
+
+  // 2. Telegram getMe
+  try {
+    var tgResp = UrlFetchApp.fetch(
+      'https://api.telegram.org/bot' + props.getProperty('TELEGRAM_BOT_TOKEN') + '/getMe',
+      { muteHttpExceptions: true }
+    );
+    var tg = JSON.parse(tgResp.getContentText());
+    checks.telegram = tg.ok ? 'OK — @' + tg.result.username : 'ERROR HTTP ' + tgResp.getResponseCode();
+  } catch(e) { checks.telegram = 'ERROR: ' + e.message; }
+
+  // 3. Gemini (llamada mínima de 1 token)
+  try {
+    var gmResp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      payload: JSON.stringify({ contents: [{ parts: [{ text: 'di: OK' }] }],
+        generationConfig: { maxOutputTokens: 3 } })
+    });
+    var gmCode = gmResp.getResponseCode();
+    var modelo = CONFIG.GEMINI_URL.match(/models\/([^:]+)/)[1];
+    checks.gemini = gmCode === 200 ? 'OK — ' + modelo
+                  : gmCode === 429 ? 'CUOTA AGOTADA — ' + modelo
+                  : 'ERROR HTTP ' + gmCode;
+  } catch(e) { checks.gemini = 'ERROR: ' + e.message; }
+
+  // 4. Google Sheets
+  try {
+    var ss     = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var shTxn  = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    var total  = shTxn ? Math.max(0, shTxn.getLastRow() - 1) : 0;
+    checks.spreadsheet = 'OK — ' + total + ' transacciones en hoja';
+  } catch(e) { checks.spreadsheet = 'ERROR: ' + e.message; }
+
+  // 5. Triggers activos
+  var triggers = ScriptApp.getProjectTriggers().map(function(t) { return t.getHandlerFunction(); });
+  checks.triggers = triggers.length > 0 ? 'Activos: ' + triggers.join(', ') : 'NINGUNO (pausados)';
+
+  // Resumen
+  var errores = Object.keys(checks).filter(function(k) { return checks[k].indexOf('ERROR') === 0 || checks[k].indexOf('FALTA') === 0; });
+  return { ok: errores.length === 0, resumen: errores.length === 0 ? 'Sistema OK' : errores.length + ' problema(s)', checks: checks };
+}
+
+// ------------------------------------------------------------
+// PERFORMANCE CHECK — métricas de procesamiento (solo lectura)
+// Uso: node gas-run.js run_checkPerformance
+// ------------------------------------------------------------
+function run_checkPerformance() {
+  var ss     = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var shTxn  = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  var shErr  = ss.getSheetByName(SHEETS.ERRORS);
+  var ahora  = new Date();
+  var hoy    = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  var hace7  = new Date(hoy.getTime() - 7  * 86400000);
+  var hace14 = new Date(hoy.getTime() - 14 * 86400000);
+
+  // ── Transactions ──────────────────────────────────────────
+  var txnData     = shTxn && shTxn.getLastRow() > 1
+    ? shTxn.getRange(2, 1, shTxn.getLastRow() - 1, 17).getValues() : [];
+  var semanaActual = 0, semanaAnterior = 0, ultimaFecha = null;
+  var categorias  = {};
+
+  txnData.forEach(function(row) {
+    var fecha = row[1]; // col B — Fecha
+    if (!fecha) return;
+    var d = typeof fecha === 'string' ? new Date(fecha) : fecha;
+    if (isNaN(d)) return;
+    if (!ultimaFecha || d > ultimaFecha) ultimaFecha = d;
+    if (d >= hace7)       semanaActual++;
+    else if (d >= hace14) semanaAnterior++;
+    var cat = row[9]; // col J — Categoria
+    if (cat) categorias[cat] = (categorias[cat] || 0) + 1;
+  });
+
+  var topCats = Object.entries(categorias)
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .slice(0, 3)
+    .map(function(e) { return e[0] + '(' + e[1] + ')'; })
+    .join(', ');
+
+  var diasDesde = ultimaFecha
+    ? Math.floor((ahora - ultimaFecha) / 86400000) : null;
+
+  // ── Errors (últimos 7 días) ───────────────────────────────
+  var errData  = shErr && shErr.getLastRow() > 1
+    ? shErr.getRange(2, 1, shErr.getLastRow() - 1, 5).getValues() : [];
+  var errRecientes = 0, errTipos = {};
+
+  errData.forEach(function(row) {
+    var procesado = row[4]; // col E — Procesado
+    if (!procesado) return;
+    var d = typeof procesado === 'string' ? new Date(procesado) : procesado;
+    if (isNaN(d) || d < hace7) return;
+    errRecientes++;
+    var tipo = String(row[1] || '').substring(0, 40); // col B — Error
+    var clave = tipo.replace(/\d+/g, '#').substring(0, 30);
+    errTipos[clave] = (errTipos[clave] || 0) + 1;
+  });
+
+  var topErr = Object.entries(errTipos)
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .slice(0, 2)
+    .map(function(e) { return '"' + e[0] + '" x' + e[1]; })
+    .join(', ');
+
+  var tasaExito = (semanaActual + errRecientes) > 0
+    ? Math.round(semanaActual / (semanaActual + errRecientes) * 100) : 100;
+
+  return {
+    pipeline: {
+      ultimaTransaccion: ultimaFecha ? ultimaFecha.toISOString().substring(0, 10) : 'sin datos',
+      diasSinProcesar:   diasDesde !== null ? diasDesde : 'sin datos',
+      semanaActual:      semanaActual,
+      semanaAnterior:    semanaAnterior,
+      tendencia:         semanaAnterior > 0
+        ? (semanaActual >= semanaAnterior ? '+' : '') + (semanaActual - semanaAnterior) + ' vs semana anterior'
+        : 'sin comparación',
+      topCategorias:     topCats || 'sin datos',
+    },
+    errores: {
+      ultimos7dias:  errRecientes,
+      tiposComunes:  topErr || 'ninguno',
+      tasaExito:     tasaExito + '%',
+    },
+    totalTransacciones: txnData.length,
+  };
+}
+
 // Ejecutor async de carga histórica — llamado por trigger de un solo disparo.
 // No llamar directamente. Lo programa procesarComandoHistorico_() vía ScriptApp.
 function run_cargarMesAsync() {

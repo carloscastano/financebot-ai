@@ -8,3 +8,5 @@ node_modules/
 credentials.json
 reauth.js
 gas-run.js
+deploy.js
+perf.js

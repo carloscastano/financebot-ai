@@ -9,7 +9,7 @@ const CONFIG = {
 
   GMAIL_LABEL:              'FinanceBot-Procesado',
   MAX_EMAILS_POR_EJECUCION: 20,
-  GEMINI_URL:               'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent',
+  GEMINI_URL:               'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b-001:generateContent',
 
   // Credenciales — se leen desde Script Properties (nunca del código)
   get GEMINI_API_KEY()     { return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');     },
