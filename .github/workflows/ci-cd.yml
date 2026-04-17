@@ -1,0 +1,111 @@
+name: FinanceBot AI CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Lint code (if config present)
+        run: |
+          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
+            npx eslint .
+          else
+            echo 'No ESLint config found, skipping lint.'
+          fi
+
+  qa:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Run QA skill
+        run: |
+          if [ -f gas-run.js ]; then
+            node gas-run.js run_checkQA || exit 1
+          else
+            echo 'gas-run.js not found, skipping QA.'
+          fi
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: qa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Run Performance skill
+        run: |
+          if [ -f gas-run.js ]; then
+            node gas-run.js run_checkPerformance || exit 1
+          else
+            echo 'gas-run.js not found, skipping performance.'
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: performance
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Set up clasp
+        run: npm install -g @google/clasp
+      - name: Authenticate clasp
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          echo "$CLASPRC" > ~/.clasprc.json
+      - name: Deploy to Google Apps Script
+        run: |
+          clasp push --force
+          clasp deploy -d "CI/CD auto-deploy $GITHUB_SHA"
+      - name: Run Deploy skill
+        run: |
+          if [ -f gas-run.js ]; then
+            node gas-run.js run_checkDeploy || exit 1
+          else
+            echo 'gas-run.js not found, skipping deploy skill.'
+          fi
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+    steps:
+      - name: Notify on failure (Telegram)
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ FinanceBot AI CI/CD falló en el job ${{ github.job }}
+            Commit: ${{ github.sha }}
+            Autor: ${{ github.actor }}
+            Ver detalles: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
