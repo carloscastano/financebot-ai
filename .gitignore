@@ -1,7 +1,7 @@
 secrets.env
 .env
 *.env
-.clasp.json
+# .clasp.json
 .clasp.json.bak
 CLAUDE.md
 node_modules/
