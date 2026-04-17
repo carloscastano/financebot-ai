@@ -47,6 +47,8 @@ function run_cargarMesAsync() {
   PropertiesService.getScriptProperties().deleteProperty('HISTORICO_CARGAR_MES_PENDING');
   try {
     var resultado = cargarMesEspecifico_(mes);
+    // Si la función ya envió la alerta de cuota Gemini, no duplicar el mensaje
+    if (resultado && resultado.indexOf('cuota diaria') !== -1) return;
     enviarMensajeTelegram_('✅ ' + mdEscape_(resultado));
   } catch(e) {
     enviarMensajeTelegram_('❌ Error cargando ' + mes + ': ' + mdEscape_(_safeErrMsg_(e)));
@@ -335,7 +337,7 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
   const INICIO = fechaInicio || '2024/01/01';
   const FIN    = fechaFin    || '';
   const DRY    = soloContar  === true;
-  const LOTE   = loteOverride || 10;  // con 4s/email: 10 threads × 2 emails × 4s ≈ 80s
+  const LOTE   = loteOverride || 25;  // con 4s/email: 25 threads × 2 emails × 4s ≈ 200s
 
   const cfg      = leerConfiguracion_();
   const label    = obtenerOCrearLabel_(CONFIG.GMAIL_LABEL);
