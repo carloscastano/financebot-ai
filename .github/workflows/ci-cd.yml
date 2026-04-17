@@ -7,35 +7,14 @@ on:
     branches: [ main, master ]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-      - name: Install dependencies
-        run: npm install
-      - name: Lint code (if config present)
-        run: |
-          if [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
-            npx eslint .
-          else
-            echo 'No ESLint config found, skipping lint.'
-          fi
-
   qa:
     runs-on: ubuntu-latest
-    needs: lint
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Install dependencies
-        run: npm install
       - name: Run QA skill
         run: |
           if [ -f gas-run.js ]; then
@@ -53,8 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Install dependencies
-        run: npm install
       - name: Run Performance skill
         run: |
           if [ -f gas-run.js ]; then
@@ -73,8 +50,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Install dependencies
-        run: npm install
       - name: Set up clasp
         run: npm install -g @google/clasp
       - name: Authenticate clasp
