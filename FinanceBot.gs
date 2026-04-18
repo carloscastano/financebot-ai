@@ -24,6 +24,11 @@ function run_resetearTelegram()         { resetearOffsetTelegram(); }
 function run_procesarMensajes()         { procesarMensajesTelegram(); }
 function run_testHistoricoTelegram()    { enviarMensajeTelegram_(contarHistoricoPorMes_()); }
 function run_cargarMesCLI(mes, lote)    { var r = cargarMesEspecifico_(mes, lote); Logger.log(r); return r; }
+function run_checkCuota()               { return consultarCuotaGemini(); }
+function run_limpiarAnio(anio)          { return limpiarTransaccionesAnio_(anio); }
+function run_limpiarRango(ini, fin)     { return limpiarTransaccionesRango_(ini, fin); }
+function run_quitarLabelAnio(anio)      { return quitarLabelAnio_(anio); }
+function run_quitarLabelRango(ini, fin) { return quitarLabelRango_(ini, fin); }
 function run_limpiarTriggers()          {
   var borrados = 0;
   ScriptApp.getProjectTriggers().forEach(function(t) {
@@ -40,6 +45,18 @@ function run_limpiarTriggers()          {
 // Solo lectura, no modifica nada.
 // Uso: node gas-run.js run_checkSistema
 // ------------------------------------------------------------
+/**
+ * QA/Health Check — Verifica integraciones, integridad de datos y comandos críticos.
+ * Incluye:
+ * 1. Script Properties (credenciales)
+ * 2. Telegram getMe
+ * 3. Gemini (API y cuota)
+ * 4. Google Sheets (acceso y total transacciones)
+ * 5. Triggers activos
+ * 6. Integridad de datos en hoja de transacciones (filas vacías, duplicados, montos fuera de rango)
+ * 7. Simulación de comandos críticos de Telegram (/metas, /presupuesto, /config, /suscripciones)
+ * Uso: node gas-run.js run_checkSistema
+ */
 function run_checkSistema() {
   var props  = PropertiesService.getScriptProperties();
   var checks = {};
@@ -60,6 +77,7 @@ function run_checkSistema() {
   } catch(e) { checks.telegram = 'ERROR: ' + e.message; }
 
   // 3. Gemini (llamada mínima de 1 token)
+  /*
   try {
     var gmResp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
@@ -72,11 +90,14 @@ function run_checkSistema() {
                   : gmCode === 429 ? 'CUOTA AGOTADA — ' + modelo
                   : 'ERROR HTTP ' + gmCode;
   } catch(e) { checks.gemini = 'ERROR: ' + e.message; }
+  */
+  checks.gemini = 'OMITIDO (sin RPD temporalmente)';
 
   // 4. Google Sheets
+  var ss, shTxn;
   try {
-    var ss     = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    var shTxn  = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    ss     = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    shTxn  = ss.getSheetByName(SHEETS.TRANSACTIONS);
     var total  = shTxn ? Math.max(0, shTxn.getLastRow() - 1) : 0;
     checks.spreadsheet = 'OK — ' + total + ' transacciones en hoja';
   } catch(e) { checks.spreadsheet = 'ERROR: ' + e.message; }
@@ -85,8 +106,105 @@ function run_checkSistema() {
   var triggers = ScriptApp.getProjectTriggers().map(function(t) { return t.getHandlerFunction(); });
   checks.triggers = triggers.length > 0 ? 'Activos: ' + triggers.join(', ') : 'NINGUNO (pausados)';
 
+  // 6. Integridad de datos en hoja de transacciones
+  try {
+    if (shTxn && shTxn.getLastRow() > 1) {
+      var data = shTxn.getRange(2, 1, shTxn.getLastRow() - 1, shTxn.getLastColumn()).getValues();
+      var vacias = 0, duplicados = 0, fueraRango = 0;
+      var seen = {}, duplicadosInfo = [];
+      var otros = [], categoriasNoMapeadas = {}, categoriasMaestras = [];
+      // Leer categorías maestras desde Configurations
+      try {
+        var cfg = leerConfiguracion_();
+        categoriasMaestras = (cfg && cfg.categorias) ? cfg.categorias.map(function(c) { return c.toLowerCase(); }) : [];
+      } catch(e) { categoriasMaestras = []; }
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        // Filas completamente vacías
+        if (row.every(function(cell) { return cell === '' || cell === null; })) vacias++;
+        // Duplicados (fecha, monto, referencia)
+        var key = row[1] + '|' + row[5] + '|' + row[12]; // Fecha|Monto|Referencia (col 2,6,13)
+        if (seen[key]) {
+          duplicados++;
+          duplicadosInfo.push({ fila: i+2, id: row[0], fecha: row[1], monto: row[5], referencia: row[12] });
+        } else {
+          seen[key] = true;
+        }
+        // Montos fuera de rango
+        var monto = Number(row[5]);
+        if (isNaN(monto) || monto < -100000000 || monto > 100000000) fueraRango++;
+        // Reporte de "Otro"
+        var categoria = String(row[9] || '').trim();
+        if (categoria.toLowerCase() === 'otro') {
+          otros.push({ fila: i+2, id: row[0], fecha: row[1], monto: row[5], descripcion: row[7], sugerencia: row[12], referencia: row[13] });
+        }
+        // Categorías no mapeadas
+        if (categoria && categoriasMaestras.length > 0 && categoriasMaestras.indexOf(categoria.toLowerCase()) === -1) {
+          if (!categoriasNoMapeadas[categoria]) categoriasNoMapeadas[categoria] = [];
+          categoriasNoMapeadas[categoria].push({ fila: i+2, id: row[0], fecha: row[1], monto: row[5], descripcion: row[7], sugerencia: row[12], referencia: row[13] });
+        }
+      }
+      var msg = (vacias === 0 && duplicados === 0 && fueraRango === 0)
+        ? 'OK'
+        : 'VACÍAS: ' + vacias + ', DUPLICADOS: ' + duplicados + ', FUERA RANGO: ' + fueraRango;
+      if (duplicadosInfo.length > 0) {
+        msg += ' | Duplicados: ' + duplicadosInfo.map(function(d) {
+          return '[Fila ' + d.fila + ' | ID: ' + d.id + ' | Fecha: ' + d.fecha + ' | Monto: ' + d.monto + ' | Ref: ' + d.referencia + ']';
+        }).join('; ');
+      }
+      // Reporte de transacciones "Otro"
+      if (otros.length > 0) {
+        msg += ' | Transacciones "Otro": ' + otros.length + ' → Ejemplos: ' + otros.slice(0,5).map(function(o) {
+          var sug = o.sugerencia ? (' | Sugerencia: ' + o.sugerencia) : '';
+          return '[Fila ' + o.fila + ' | ID: ' + o.id + ' | Fecha: ' + o.fecha + ' | Monto: ' + o.monto + ' | Desc: ' + o.descripcion + sug + ' | Ref: ' + o.referencia + ']';
+        }).join('; ');
+        if (otros.length > 5) msg += ' ...';
+      }
+      // Reporte de categorías no mapeadas
+      var catsNoMap = Object.keys(categoriasNoMapeadas);
+      if (catsNoMap.length > 0) {
+        msg += ' | Categorías NO mapeadas: ' + catsNoMap.length + ' → Ejemplos: ' + catsNoMap.map(function(cat) {
+          var ejemplos = categoriasNoMapeadas[cat].slice(0,2).map(function(e) {
+            return '[Fila ' + e.fila + ' | ID: ' + e.id + ' | Fecha: ' + e.fecha + ' | Monto: ' + e.monto + ' | Desc: ' + e.descripcion + (e.sugerencia ? (' | Sugerencia: ' + e.sugerencia) : '') + ' | Ref: ' + e.referencia + ']';
+          }).join('; ');
+          return cat + ': ' + ejemplos;
+        }).join(' | ');
+        msg += ' | SUGERENCIA: Revisa y agrega estas categorías a la hoja Configurations si son válidas.';
+      }
+      checks.integridadSheets = msg;
+    } else {
+      checks.integridadSheets = 'SIN DATOS';
+    }
+  } catch(e) { checks.integridadSheets = 'ERROR: ' + e.message; }
+
+  // 7. Simulación de comandos críticos de Telegram
+  try {
+    var comandos = ['/metas','/presupuesto','/config','/suscripciones'];
+    var errores = [];
+    var token = props.getProperty('TELEGRAM_BOT_TOKEN');
+    var chatId = props.getProperty('TELEGRAM_CHAT_ID');
+    if (token && chatId) {
+      comandos.forEach(function(cmd) {
+        var resp = UrlFetchApp.fetch(
+          'https://api.telegram.org/bot' + token + '/sendMessage',
+          {
+            method: 'post',
+            muteHttpExceptions: true,
+            contentType: 'application/json',
+            payload: JSON.stringify({ chat_id: chatId, text: '[QA] Test comando: ' + cmd })
+          }
+        );
+        var code = resp.getResponseCode();
+        if (code !== 200) errores.push(cmd + ' (' + code + ')');
+      });
+      checks.telegramComandos = errores.length === 0 ? 'OK' : 'FALLAN: ' + errores.join(', ');
+    } else {
+      checks.telegramComandos = 'FALTA TOKEN O CHAT_ID';
+    }
+  } catch(e) { checks.telegramComandos = 'ERROR: ' + e.message; }
+
   // Resumen
-  var errores = Object.keys(checks).filter(function(k) { return checks[k].indexOf('ERROR') === 0 || checks[k].indexOf('FALTA') === 0; });
+  var errores = Object.keys(checks).filter(function(k) { return checks[k].indexOf('ERROR') === 0 || checks[k].indexOf('FALTA') === 0 || (k === 'integridadSheets' && checks[k] !== 'OK' && checks[k] !== 'SIN DATOS') || (k === 'telegramComandos' && checks[k] !== 'OK'); });
   return { ok: errores.length === 0, resumen: errores.length === 0 ? 'Sistema OK' : errores.length + ' problema(s)', checks: checks };
 }
 
@@ -314,6 +432,21 @@ function extraerTextoEmail_(message) {
 // ------------------------------------------------------------
 function esEmailTransaccional_(texto) {
   const lower = texto.toLowerCase();
+
+  // Transacciones fallidas/rechazadas — no afectan el saldo, no registrar
+  const fallidas = [
+    'no fue exitosa',
+    'no se afecto',
+    'no se afectó',
+    'transacción rechazada',
+    'transaccion rechazada',
+    'compra rechazada',
+    'pago rechazado',
+    'no se realizó',
+    'no se realizo',
+  ];
+  if (fallidas.some(k => lower.includes(k))) return false;
+
   const keywords = [
     'compraste', 'compra por', 'transferiste', 'transferencia',
     'recibiste', 'abono', 'retiro', 'cajero', 'pse',
@@ -499,12 +632,13 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
 
   logInfo_('HISTORICO', `[${DRY ? 'DRY' : 'CARGA'}] ${threads.length} hilo(s) | ${INICIO}${FIN ? ' → ' + FIN : ''}`);
 
-  // Construir set fecha+monto de lo ya existente en Transactions — una sola lectura
+  // Construir set fecha+monto+referencia de lo ya existente en Transactions — una sola lectura
   const existentes = {};
   if (!DRY && sheetTxn && sheetTxn.getLastRow() > 1) {
     const lastRow = sheetTxn.getLastRow();
     const fechas  = sheetTxn.getRange(2, 2, lastRow - 1, 1).getValues();
     const montos  = sheetTxn.getRange(2, 6, lastRow - 1, 1).getValues();
+    const refs    = sheetTxn.getRange(2, 13, lastRow - 1, 1).getValues();
     for (let i = 0; i < fechas.length; i++) {
       const f = fechas[i][0];
       const m = montos[i][0];
@@ -512,7 +646,7 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
       const fs = (f instanceof Date)
         ? Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd')
         : String(f).substring(0, 10);
-      existentes[fs + '|' + Number(m)] = true;
+      existentes[fs + '|' + Number(m) + '|' + (refs[i][0] || '')] = true;
     }
     logInfo_('HISTORICO', `Set de dedup cargado: ${Object.keys(existentes).length} transacciones existentes`);
   }
@@ -534,16 +668,22 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
         }
 
         transaccionales++;
-        if (DRY) continue;  // solo contamos, sin llamar a Gemini
+        if (DRY) continue;  // solo contamos
 
-        const txn = llamarGemini_(texto);
+        const txn = parsearEmailBancolombia_(texto);
+        if (!txn) {
+          omitidos++;
+          thread.addLabel(label);
+          logInfo_('HISTORICO', `Regex sin match: ${asunto}`);
+          continue;
+        }
         txn.email_asunto = asunto;
         txn.email_id     = emailId;
         txn.fuente       = 'historico';
         txn.banco        = detectarBanco_(message.getFrom(), cfg);
 
-        // Dedup contra Transactions existentes (fecha+monto)
-        const key = String(txn.fecha).substring(0, 10) + '|' + Number(txn.monto);
+        // Dedup contra Transactions existentes (fecha+monto+referencia)
+        const key = String(txn.fecha).substring(0, 10) + '|' + Number(txn.monto) + '|' + (txn.referencia || '');
         if (existentes[key]) {
           duplicados++;
           thread.addLabel(label);  // marcar para no reprocesar
@@ -557,23 +697,10 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
         procesados++;
         logInfo_('HISTORICO', `[${procesados}] ${txn.fecha} | ${txn.comercio} | $${txn.monto} COP`);
 
-        Utilities.sleep(4000);  // 4s entre calls = ~15 RPM, respeta límite free tier Gemini
-
       } catch (e) {
-        // Cuota diaria agotada — abortar todo el lote inmediatamente
-        if (e.message.startsWith('GEMINI_QUOTA_DIARIA')) {
-          const msg = `⏹ Carga histórica detenida — cuota diaria de Gemini agotada.\n` +
-                      `Procesados hasta ahora: ${procesados} transacciones.\n` +
-                      `Reintenta mañana con el mismo comando.`;
-          logWarn_('HISTORICO', msg);
-          try { enviarMensajeTelegram_('⏹ *Carga histórica detenida*\n\nCuota diaria de Gemini agotada\\. ' +
-            procesados + ' transacciones guardadas\\. Reintenta mañana\\.'); } catch(_) {}
-          return msg;
-        }
         errores++;
         logError_('HISTORICO', `Email ${emailId}`, e);
         if (!DRY) registrarError_(sheetErr, e.message, asunto, emailId);
-        if (e.message.includes('503')) Utilities.sleep(10000);
       }
     }
   }
@@ -668,6 +795,143 @@ function cargarMesEspecifico_(mes, lote) {
 
   Logger.log(`▶ Cargando mes ${MES}: ${inicio} → ${fin}${lote ? ' (lote=' + lote + ')' : ''}`);
   return cargarHistoricoEmails(inicio, fin, false, lote);
+}
+
+// ------------------------------------------------------------
+// UTILIDADES DE LIMPIEZA — resetear un año para recarga limpia
+// ------------------------------------------------------------
+
+// Borra filas cuya fecha está dentro del rango [ini, fin] en formato "YYYY/MM".
+// Uso: node gas-run.js run_limpiarRango 2026/01 2026/03
+function limpiarTransaccionesRango_(ini, fin) {
+  if (!ini || !fin) return 'Uso: run_limpiarRango YYYY/MM YYYY/MM';
+  var partsIni = String(ini).replace('-','/').split('/');
+  var partsFin = String(fin).replace('-','/').split('/');
+  if (partsIni.length < 2 || partsFin.length < 2) return 'Formato inválido. Usa YYYY/MM';
+
+  var desdeStr = partsIni[0] + '-' + partsIni[1].padStart(2,'0') + '-01';
+  var hastaAnio = parseInt(partsFin[0]);
+  var hastaMes  = parseInt(partsFin[1]);
+  var mesSig    = hastaMes === 12 ? 1 : hastaMes + 1;
+  var anioSig   = hastaMes === 12 ? hastaAnio + 1 : hastaAnio;
+  var hastaStr  = anioSig + '-' + String(mesSig).padStart(2,'0') + '-01'; // exclusivo
+
+  var desde = new Date(desdeStr);
+  var hasta = new Date(hastaStr);
+
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  if (!sheet || sheet.getLastRow() <= 1) return 'Hoja vacía';
+
+  var lastRow = sheet.getLastRow();
+  var fechas  = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  var filas   = [];
+
+  for (var i = fechas.length - 1; i >= 0; i--) {
+    var f = fechas[i][0];
+    var d = (f instanceof Date) ? f : new Date(String(f).substring(0,10));
+    if (d >= desde && d < hasta) filas.push(i + 2);
+  }
+
+  filas.sort(function(a, b) { return b - a; });
+  filas.forEach(function(fila) { sheet.deleteRow(fila); });
+
+  var msg = 'Eliminadas ' + filas.length + ' transacciones de ' + ini + ' a ' + fin;
+  logInfo_('LIMPIEZA', msg);
+  return msg;
+}
+
+// Quita el label de threads en el rango [ini, fin] formato "YYYY/MM".
+// Uso: node gas-run.js run_quitarLabelRango 2026/01 2026/03
+function quitarLabelRango_(ini, fin) {
+  if (!ini || !fin) return 'Uso: run_quitarLabelRango YYYY/MM YYYY/MM';
+  var partsIni = String(ini).replace('-','/').split('/');
+  var partsFin = String(fin).replace('-','/').split('/');
+
+  var label = GmailApp.getUserLabelByName(CONFIG.GMAIL_LABEL);
+  if (!label) return 'Label no encontrado: ' + CONFIG.GMAIL_LABEL;
+
+  var cfg    = leerConfiguracion_();
+  var after  = partsIni[0] + '/' + partsIni[1].padStart(2,'0') + '/01';
+  var hastaAnio = parseInt(partsFin[0]);
+  var hastaMes  = parseInt(partsFin[1]);
+  var mesSig    = hastaMes === 12 ? 1 : hastaMes + 1;
+  var anioSig   = hastaMes === 12 ? hastaAnio + 1 : hastaAnio;
+  var before = anioSig + '/' + String(mesSig).padStart(2,'0') + '/01';
+
+  var query = cfg.gmailQuery + ' label:' + CONFIG.GMAIL_LABEL +
+              ' after:' + after + ' before:' + before;
+  var total = 0;
+
+  while (true) {
+    var threads = GmailApp.search(query, 0, 100);
+    if (!threads.length) break;
+    threads.forEach(function(t) { t.removeLabel(label); });
+    total += threads.length;
+    if (threads.length < 100) break;
+    Utilities.sleep(1000);
+  }
+
+  var msg = 'Label removido de ' + total + ' threads (' + ini + ' a ' + fin + ')';
+  logInfo_('LIMPIEZA', msg);
+  return msg;
+}
+
+// Borra todas las filas del año indicado en Transactions.
+// Uso: node gas-run.js run_limpiarAnio 2025
+function limpiarTransaccionesAnio_(anio) {
+  anio = parseInt(anio);
+  if (!anio || anio < 2020 || anio > 2099) return 'Año inválido: ' + anio;
+
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  if (!sheet || sheet.getLastRow() <= 1) return 'Hoja vacía';
+
+  var lastRow = sheet.getLastRow();
+  var fechas  = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  var filas   = [];
+
+  for (var i = fechas.length - 1; i >= 0; i--) {
+    var f = fechas[i][0];
+    var year = (f instanceof Date) ? f.getFullYear() : parseInt(String(f).substring(0, 4));
+    if (year === anio) filas.push(i + 2);
+  }
+
+  filas.sort(function(a, b) { return b - a; }); // de abajo hacia arriba
+  filas.forEach(function(fila) { sheet.deleteRow(fila); });
+
+  var msg = 'Eliminadas ' + filas.length + ' transacciones de ' + anio;
+  logInfo_('LIMPIEZA', msg);
+  return msg;
+}
+
+// Quita el label FinanceBot-Procesado de todos los threads del año indicado.
+// Permite recargar un año completo desde cero.
+// Uso: node gas-run.js run_quitarLabelAnio 2025
+function quitarLabelAnio_(anio) {
+  anio = parseInt(anio);
+  if (!anio || anio < 2020 || anio > 2099) return 'Año inválido: ' + anio;
+
+  var label = GmailApp.getUserLabelByName(CONFIG.GMAIL_LABEL);
+  if (!label) return 'Label no encontrado: ' + CONFIG.GMAIL_LABEL;
+
+  var cfg   = leerConfiguracion_();
+  var query = cfg.gmailQuery + ' label:' + CONFIG.GMAIL_LABEL +
+              ' after:' + anio + '/01/01 before:' + (anio + 1) + '/01/01';
+  var total = 0;
+
+  while (true) {
+    var threads = GmailApp.search(query, 0, 100);
+    if (!threads.length) break;
+    threads.forEach(function(t) { t.removeLabel(label); });
+    total += threads.length;
+    if (threads.length < 100) break;
+    Utilities.sleep(1000);
+  }
+
+  var msg = 'Label removido de ' + total + ' threads de ' + anio;
+  logInfo_('LIMPIEZA', msg);
+  return msg;
 }
 
 // ------------------------------------------------------------

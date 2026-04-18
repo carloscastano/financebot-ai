@@ -3,6 +3,32 @@
 // Base alineada con .claude/commands/finanzas.md
 // ============================================================
 
+// ------------------------------------------------------------
+// TRACKER DE CUOTA GEMINI (auto-conteo diario en ScriptProperties)
+// Límite configurable: ajusta GEMINI_RPD_LIMITE según tu cuenta.
+// ------------------------------------------------------------
+var GEMINI_RPD_LIMITE = 1000;
+
+function _trackGeminiCall_() {
+  var props = PropertiesService.getScriptProperties();
+  var hoy   = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var fecha = props.getProperty('GEMINI_QUOTA_FECHA') || '';
+  var count = fecha === hoy ? parseInt(props.getProperty('GEMINI_QUOTA_COUNT') || '0', 10) : 0;
+  count++;
+  props.setProperties({ 'GEMINI_QUOTA_FECHA': hoy, 'GEMINI_QUOTA_COUNT': String(count) });
+  return count;
+}
+
+function consultarCuotaGemini() {
+  var props   = PropertiesService.getScriptProperties();
+  var hoy     = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var fecha   = props.getProperty('GEMINI_QUOTA_FECHA') || '';
+  var usados  = fecha === hoy ? parseInt(props.getProperty('GEMINI_QUOTA_COUNT') || '0', 10) : 0;
+  var restantes = Math.max(0, GEMINI_RPD_LIMITE - usados);
+  return { usados: usados, limite: GEMINI_RPD_LIMITE, restantes: restantes,
+           pct: Math.round(usados / GEMINI_RPD_LIMITE * 100) + '%' };
+}
+
 function construirSkillFinancieroObjetivo_(opts) {
   var nombreUsuario = (opts && opts.nombreUsuario) ? opts.nombreUsuario : 'el usuario';
   var fechaIso = (opts && opts.fechaIso) ? opts.fechaIso : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -101,6 +127,8 @@ function _llamarGeminiJson_(prompt, opts) {
   var httpCode = resp.getResponseCode();
   var rawBody  = resp.getContentText();
 
+  if (httpCode === 200) _trackGeminiCall_();
+
   if (httpCode === 429) {
     // Cuota diaria agotada — no tiene sentido reintentar hoy
     if (rawBody.indexOf('current quota') !== -1 || rawBody.indexOf('quota exceeded') !== -1 ||
@@ -166,6 +194,7 @@ function _llamarGeminiTexto_(prompt, opts) {
     var code = resp.getResponseCode();
     if (code === 429) { logWarn_('GEMINI_TEXT', '429 rate-limit'); return null; }
     if (code !== 200) { logWarn_('GEMINI_TEXT', 'HTTP ' + code); return null; }
+    _trackGeminiCall_();
     var json = JSON.parse(resp.getContentText());
     if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) return null;
     return json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();

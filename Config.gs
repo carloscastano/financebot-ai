@@ -9,7 +9,7 @@ const CONFIG = {
 
   GMAIL_LABEL:              'FinanceBot-Procesado',
   MAX_EMAILS_POR_EJECUCION: 20,
-  GEMINI_URL:               'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b-001:generateContent',
+  GEMINI_URL:               'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
 
   // Credenciales — se leen desde Script Properties (nunca del código)
   get GEMINI_API_KEY()     { return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');     },
@@ -247,41 +247,35 @@ function configurarTriggers() {
 }
 
 // ============================================================
-// PAUSAR / REANUDAR TRIGGERS DE TIEMPO REAL
-// Usar durante carga histórica para liberar cuota Gemini.
-// run_pausarTriggers()   → elimina email (5m) y Telegram (1m)
-// run_reanudarTriggers() → los restaura con las frecuencias originales
+// PAUSAR / REANUDAR TRIGGERS
+// Usar durante carga histórica para dedicar toda la cuota Gemini.
+// run_pausarTriggers()   → elimina TODOS los triggers
+// run_reanudarTriggers() → restaura el set completo
 // ============================================================
 function run_pausarTriggers() {
-  var pausar = ['procesarEmailsBancolombia', 'procesarMensajesTelegram'];
-  var eliminados = 0;
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (pausar.indexOf(t.getHandlerFunction()) !== -1) {
-      ScriptApp.deleteTrigger(t);
-      eliminados++;
-      logInfo_('SETUP', 'Trigger pausado: ' + t.getHandlerFunction());
-    }
-  });
-  logInfo_('SETUP', '⏸ Triggers de tiempo real pausados (' + eliminados + ')');
-  logInfo_('SETUP', '  → Los correos y mensajes Telegram NO se procesarán hasta reanudar');
-  logInfo_('SETUP', '  → Ejecuta run_reanudarTriggers() cuando termines la carga histórica');
+  var triggers = ScriptApp.getProjectTriggers();
+  var nombres = triggers.map(function(t) { return t.getHandlerFunction(); });
+  triggers.forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  logInfo_('SETUP', '⏸ TODOS los triggers pausados (' + nombres.length + '): ' + nombres.join(', '));
+  logInfo_('SETUP', '  → Cuota Gemini 100% disponible para carga histórica');
+  logInfo_('SETUP', '  → Ejecuta run_reanudarTriggers() al terminar');
+  return 'Pausados (' + nombres.length + '): ' + nombres.join(', ');
 }
 
 function run_reanudarTriggers() {
-  // Eliminar primero por si quedó alguno duplicado
-  var funciones = ['procesarEmailsBancolombia', 'procesarMensajesTelegram'];
-  ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (funciones.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
-  });
+  // Limpiar duplicados primero
+  ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
 
-  ScriptApp.newTrigger('procesarEmailsBancolombia')
-    .timeBased().everyMinutes(5).create();
-  ScriptApp.newTrigger('procesarMensajesTelegram')
-    .timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('procesarEmailsBancolombia').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('procesarMensajesTelegram').timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('analizarFinanzas').timeBased().atHour(7).everyDays(1).create();
+  ScriptApp.newTrigger('recordarPagosPendientes').timeBased().atHour(9).everyDays(1).create();
+  ScriptApp.newTrigger('recordarMetasSinAbono').timeBased().atHour(9).everyDays(1).create();
+  ScriptApp.newTrigger('run_reporteSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(7).create();
+  ScriptApp.newTrigger('run_verificarPresupuestoMensual').timeBased().atHour(8).everyDays(1).create();
 
-  logInfo_('SETUP', '▶ Triggers de tiempo real reanudados');
-  logInfo_('SETUP', '  → procesarEmailsBancolombia: cada 5 min');
-  logInfo_('SETUP', '  → procesarMensajesTelegram: cada 1 min');
+  logInfo_('SETUP', '▶ Todos los triggers reanudados (7 triggers)');
+  return 'Reanudados: emails(5m), Telegram(1m), análisis(7am), pagos(9am), metas(9am), reporte(lun 7am), presupuesto(8am)';
 }
 
 // ============================================================

@@ -4,6 +4,21 @@ Eres el agente de QA de FinanceBot AI. Ejecuta los siguientes checks EN ORDEN y 
 
 ## Checks a ejecutar
 
+### 6. Integridad de datos en Sheets
+Valida en la hoja principal de transacciones:
+- Que no existan filas completamente vacías (todas las celdas vacías).
+- Que no existan transacciones duplicadas (mismo monto, fecha y descripción).
+- Que los montos estén dentro de un rango razonable (por ejemplo, -100,000,000 a 100,000,000 COP).
+Reporta el número de filas vacías, duplicados y montos fuera de rango. Si hay problemas, sugiere limpiar o revisar la hoja.
+
+### 7. Validación de comandos críticos de Telegram (simulación)
+Simula (dry-run) la ejecución de los siguientes comandos de Telegram y reporta si responden correctamente:
+- `/metas`
+- `/presupuesto`
+- `/config`
+- `/suscripciones`
+Si algún comando falla o no responde, indica el comando y el error. Si no hay RPD de Gemini, marca la validación de Gemini como ❌ pero no detengas el resto de checks.
+
 ### 1. Archivos locales críticos
 Verifica que existan estos archivos en el directorio del proyecto:
 - `credentials.json` — OAuth client para clasp run
@@ -42,6 +57,10 @@ Corre `git status` y reporta:
 - Si hay archivos nuevos sin trackear relevantes (.gs, .json, .js)
 
 ## Formato del reporte final
+
+Incluye los resultados de los nuevos checks en la sección REMOTO (GAS):
+  ✅/❌ Integridad de datos en Sheets
+  ✅/❌ Comandos críticos de Telegram
 
 Presenta un resumen así:
 

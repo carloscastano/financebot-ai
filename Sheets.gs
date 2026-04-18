@@ -486,31 +486,32 @@ function configurarDashboard_(sheet) {
   }
 
   // ── TITULO ──
-  sheet.getRange('A1').setValue('FINANCEBOT AI - DASHBOARD');
+  sheet.getRange('A1').setValue('💸 FINANCEBOT AI - DASHBOARD').setFontWeight('bold').setFontSize(16).setBackground('#e3f2fd');
 
   // ── MES ACTUAL ──
-  sheet.getRange('A3').setValue('MES ACTUAL');
-  sheet.getRange('B3').setValue('Valor COP');
-  sheet.getRange('C3').setValue('% Meta');
+  sheet.getRange('A3').setValue('📅 MES ACTUAL').setFontWeight('bold').setBackground('#e8f0fe');
+  sheet.getRange('B3').setValue('Valor COP').setFontWeight('bold').setBackground('#e8f0fe');
+  sheet.getRange('C3').setValue('% Meta').setFontWeight('bold').setBackground('#e8f0fe');
 
-  sheet.getRange('A4').setValue('Total Egresos');
-  sheet.getRange('B4').setFormula(fMes('egreso'));
+  sheet.getRange('A4').setValue('💸 Total Egresos').setFontWeight('bold').setFontColor('#d32f2f');
+  sheet.getRange('B4').setFormula(fMes('egreso')).setFontColor('#d32f2f');
   sheet.getRange('C4').setFormula('=B4/' + C + '!B2');
 
-  sheet.getRange('A5').setValue('Total Ingresos');
-  sheet.getRange('B5').setFormula(fMes('ingreso'));
+  sheet.getRange('A5').setValue('💰 Total Ingresos').setFontWeight('bold').setFontColor('#388e3c');
+  sheet.getRange('B5').setFormula(fMes('ingreso')).setFontColor('#388e3c');
 
-  sheet.getRange('A6').setValue('Flujo de Caja');
+  sheet.getRange('A6').setValue('💡 Flujo de Caja').setFontWeight('bold');
   sheet.getRange('B6').setFormula('=B5-B4');
 
-  sheet.getRange('A7').setValue('Ratio Ahorro');
+  sheet.getRange('A7').setValue('💡 Ratio Ahorro').setFontWeight('bold');
   sheet.getRange('B7').setFormula('=(B5-B4)/(B5+(B5=0))*(B5>0)');
   sheet.getRange('C7').setFormula('=(B5-B4)/(B5+(B5=0))*(B5>0)');
+  sheet.getRange('B7').setNote('Porcentaje de tus ingresos que lograste ahorrar este mes. Si es negativo, gastaste más de lo que ingresó.');
 
   // ── GASTO POR CATEGORIA ──
-  sheet.getRange('A9').setValue('GASTO POR CATEGORIA');
-  sheet.getRange('B9').setValue('Total COP');
-  sheet.getRange('C9').setValue('% del gasto');
+  sheet.getRange('A9').setValue('📊 GASTO POR CATEGORIA').setFontWeight('bold').setBackground('#e8f0fe');
+  sheet.getRange('B9').setValue('Total COP').setFontWeight('bold').setBackground('#e8f0fe');
+  sheet.getRange('C9').setValue('% del gasto').setFontWeight('bold').setBackground('#e8f0fe');
 
   // Leer categorías desde Configurations (fuente de verdad)
   const cfg = leerConfiguracion_();
@@ -521,27 +522,43 @@ function configurarDashboard_(sheet) {
     sheet.getRange(row, 1).setValue(cat);
     sheet.getRange(row, 2).setFormula(fMesCat(cat));
     sheet.getRange(row, 3).setFormula('=B' + row + '/(B4+(B4=0))');
+    // Nota para "Otro"
+    if (cat.toLowerCase() === 'otro') {
+      sheet.getRange(row, 1, 1, 3).setBackground('#ffebee');
+      sheet.getRange(row, 3).setNote('⚠️ Si este valor supera 10%, revisa la clasificación de tus transacciones.');
+    }
   });
+
+  // Gráfico de pastel: Gasto por Categoría
+  try {
+    var chartRange = sheet.getRange(10, 1, cats.length, 2);
+    var chart = sheet.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(chartRange)
+      .setOption('title', 'Distribución de Gasto por Categoría')
+      .setPosition(10, 5, 0, 0)
+      .build();
+    sheet.insertChart(chart);
+  } catch(e) {}
 
   // ── ACUMULADO HISTORICO ──
   const fh = 10 + cats.length + 1;
-  sheet.getRange(fh, 1).setValue('ACUMULADO HISTORICO');
-  sheet.getRange(fh+1, 1).setValue('Total Egresos Historico');
-  sheet.getRange(fh+1, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="egreso")*' + T + '!F2:F)');
-  sheet.getRange(fh+2, 1).setValue('Total Ingresos Historico');
-  sheet.getRange(fh+2, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="ingreso")*' + T + '!F2:F)');
-  sheet.getRange(fh+3, 1).setValue('N de Transacciones');
+  sheet.getRange(fh, 1).setValue('📈 ACUMULADO HISTORICO').setFontWeight('bold').setBackground('#e8f0fe');
+  sheet.getRange(fh+1, 1).setValue('💸 Total Egresos Historico').setFontWeight('bold').setFontColor('#d32f2f');
+  sheet.getRange(fh+1, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="egreso")*' + T + '!F2:F)').setFontColor('#d32f2f');
+  sheet.getRange(fh+2, 1).setValue('💰 Total Ingresos Historico').setFontWeight('bold').setFontColor('#388e3c');
+  sheet.getRange(fh+2, 2).setFormula('=SUMPRODUCT((' + T + '!D2:D="ingreso")*' + T + '!F2:F)').setFontColor('#388e3c');
+  sheet.getRange(fh+3, 1).setValue('N de Transacciones').setFontWeight('bold');
   sheet.getRange(fh+3, 2).setFormula('=COUNTA(' + T + '!A2:A)');
 
   // ── CONSOLIDADO MENSUAL DEL AÑO ──
-  // Referencia la celda E2 (año editable del filtro por periodo)
   const fc = fh + 5;
   const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  sheet.getRange(fc, 1).setValue('CONSOLIDADO MENSUAL');
-  sheet.getRange(fc, 2).setValue('Egresos');
-  sheet.getRange(fc, 3).setValue('Ingresos');
-  sheet.getRange(fc, 4).setValue('Flujo');
-  sheet.getRange(fc, 5).setValue('# Txn');
+  sheet.getRange(fc, 1).setValue('📅 CONSOLIDADO MENSUAL').setFontWeight('bold').setBackground('#e8f4e8');
+  sheet.getRange(fc, 2).setValue('Egresos').setFontWeight('bold').setBackground('#e8f4e8');
+  sheet.getRange(fc, 3).setValue('Ingresos').setFontWeight('bold').setBackground('#e8f4e8');
+  sheet.getRange(fc, 4).setValue('Flujo').setFontWeight('bold').setBackground('#e8f4e8');
+  sheet.getRange(fc, 5).setValue('# Txn').setFontWeight('bold').setBackground('#e8f4e8');
   meses.forEach(function(mes, i) {
     const row = fc + 1 + i;
     const m   = i + 1;
@@ -555,6 +572,18 @@ function configurarDashboard_(sheet) {
       '=SUMPRODUCT((' + T + '!A2:A<>"")*(YEAR(' + T + '!B2:B)=E2)*(MONTH(' + T + '!B2:B)=' + m + '))');
   });
 
+  // Gráfico de barras: Consolidado Mensual
+  try {
+    var chartRange2 = sheet.getRange(fc+1, 1, 12, 4);
+    var chart2 = sheet.newChart()
+      .setChartType(Charts.ChartType.COLUMN)
+      .addRange(chartRange2)
+      .setOption('title', 'Egresos, Ingresos y Flujo por Mes')
+      .setPosition(fc+1, 7, 0, 0)
+      .build();
+    sheet.insertChart(chart2);
+  } catch(e) {}
+
   // ── FILTRO POR PERIODO (columnas E-G) ──
   // E2: Año editable | E3: Mes editable
   const Y = 'E2';  // celda año
@@ -567,55 +596,57 @@ function configurarDashboard_(sheet) {
     return '=SUMPRODUCT((' + T + '!D2:D<>"informativo")*(' + T + '!J2:J="' + cat + '")*(YEAR(' + T + '!B2:B)=' + Y + ')*(MONTH(' + T + '!B2:B)=' + M + ')*' + T + '!F2:F)';
   }
 
-  sheet.getRange('D1').setValue('FILTRO PERIODO');
-  sheet.getRange('D2').setValue('Año');
-  sheet.getRange('E2').setValue(new Date().getFullYear());
-  sheet.getRange('D3').setValue('Mes (1-12)');
-  sheet.getRange('E3').setValue(new Date().getMonth() + 1);
+  sheet.getRange('D1').setValue('🔎 FILTRO PERIODO').setFontWeight('bold').setFontSize(14).setBackground('#fff8e1');
+  sheet.getRange('D2').setValue('Año').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('E2').setValue(new Date().getFullYear()).setBackground('#fffde7').setFontWeight('bold').setNote('Edita el año para filtrar el consolidado mensual.');
+  sheet.getRange('D3').setValue('Mes (1-12)').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('E3').setValue(new Date().getMonth() + 1).setBackground('#fffde7').setFontWeight('bold').setNote('Edita el mes (1-12) para filtrar el periodo.');
 
-  sheet.getRange('D5').setValue('PERIODO');
-  sheet.getRange('E5').setValue('Valor COP');
-  sheet.getRange('F5').setValue('% Meta');
+  sheet.getRange('D5').setValue('PERIODO').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('E5').setValue('Valor COP').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('F5').setValue('% Meta').setFontWeight('bold').setBackground('#fff8e1');
 
-  sheet.getRange('D6').setValue('Total Egresos');
-  sheet.getRange('E6').setFormula(fPer('egreso'));
+  sheet.getRange('D6').setValue('Total Egresos').setFontWeight('bold').setFontColor('#d32f2f');
+  sheet.getRange('E6').setFormula(fPer('egreso')).setFontColor('#d32f2f');
   sheet.getRange('F6').setFormula('=E6/' + C + '!B2');
 
-  sheet.getRange('D7').setValue('Total Ingresos');
-  sheet.getRange('E7').setFormula(fPer('ingreso'));
+  sheet.getRange('D7').setValue('Total Ingresos').setFontWeight('bold').setFontColor('#388e3c');
+  sheet.getRange('E7').setFormula(fPer('ingreso')).setFontColor('#388e3c');
 
-  sheet.getRange('D8').setValue('Flujo de Caja');
+  sheet.getRange('D8').setValue('Flujo de Caja').setFontWeight('bold');
   sheet.getRange('E8').setFormula('=E7-E6');
 
-  sheet.getRange('D9').setValue('Ratio Ahorro');
+  sheet.getRange('D9').setValue('Ratio Ahorro').setFontWeight('bold');
   sheet.getRange('E9').setFormula('=(E7-E6)/(E7+(E7=0))*(E7>0)');
 
-  sheet.getRange('D11').setValue('POR CATEGORIA');
-  sheet.getRange('E11').setValue('Total COP');
-  sheet.getRange('F11').setValue('% del gasto');
+  sheet.getRange('D11').setValue('POR CATEGORIA').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('E11').setValue('Total COP').setFontWeight('bold').setBackground('#fff8e1');
+  sheet.getRange('F11').setValue('% del gasto').setFontWeight('bold').setBackground('#fff8e1');
 
   cats.forEach(function(cat, i) {
     const row = 12 + i;
     sheet.getRange(row, 4).setValue(cat);
     sheet.getRange(row, 5).setFormula(fPerCat(cat));
     sheet.getRange(row, 6).setFormula('=E' + row + '/(E6+(E6=0))');
+    if (cat.toLowerCase() === 'otro') {
+      sheet.getRange(row, 4, 1, 3).setBackground('#ffebee');
+      sheet.getRange(row, 6).setNote('⚠️ Si este valor supera 10%, revisa la clasificación de tus transacciones.');
+    }
   });
 
-  // ── FORMATOS ──
-  sheet.getRange('A1').setFontWeight('bold').setFontSize(14);
-  [3, 9, fh].forEach(function(r) {
-    sheet.getRange(r, 1, 1, 3).setFontWeight('bold').setBackground('#e8f0fe');
-  });
-  sheet.getRange('D1').setFontWeight('bold').setFontSize(14);
-  sheet.getRange('D1').setBackground('#fff8e1');
-  sheet.getRange('D2:D3').setBackground('#fff8e1');
-  sheet.getRange('E2:E3').setBackground('#fffde7').setFontWeight('bold');  // celdas editables destacadas
-  [5, 11].forEach(function(r) {
-    sheet.getRange(r, 4, 1, 3).setFontWeight('bold').setBackground('#fff8e1');
-  });
-  sheet.getRange(fc, 1, 1, 5).setFontWeight('bold').setBackground('#e8f4e8');
+  // Gráfico de pastel: Gasto por Categoría (periodo)
+  try {
+    var chartRange3 = sheet.getRange(12, 4, cats.length, 2);
+    var chart3 = sheet.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(chartRange3)
+      .setOption('title', 'Gasto por Categoría (Periodo)')
+      .setPosition(12, 8, 0, 0)
+      .build();
+    sheet.insertChart(chart3);
+  } catch(e) {}
 
-  // Formatos numéricos — izquierda
+  // Formatos y anchos de columna (igual que antes)
   sheet.getRange('B4:B6').setNumberFormat('#,##0');
   sheet.getRange('B7').setNumberFormat('0.0%');
   sheet.getRange('C4').setNumberFormat('0.0%');
@@ -624,8 +655,6 @@ function configurarDashboard_(sheet) {
   sheet.getRange(10, 3, cats.length, 1).setNumberFormat('0.0%');
   sheet.getRange(fh+1, 2, 3, 1).setNumberFormat('#,##0');
   sheet.getRange(fc+1, 2, 12, 3).setNumberFormat('#,##0');
-
-  // Formatos numéricos — derecha (filtro periodo)
   sheet.getRange('E6:E8').setNumberFormat('#,##0');
   sheet.getRange('E9').setNumberFormat('0.0%');
   sheet.getRange('F6').setNumberFormat('0.0%');
@@ -633,10 +662,47 @@ function configurarDashboard_(sheet) {
   sheet.getRange(12, 5, cats.length, 1).setNumberFormat('#,##0');
   sheet.getRange(12, 6, cats.length, 1).setNumberFormat('0.0%');
 
-  // Anchos de columna
+  // Anchos de columna y filas congeladas
   sheet.setColumnWidth(1, 210); sheet.setColumnWidth(2, 160); sheet.setColumnWidth(3, 130);
   sheet.setColumnWidth(4, 180); sheet.setColumnWidth(5, 160); sheet.setColumnWidth(6, 120);
   sheet.setFrozenRows(1);
+
+  // Formato condicional: Ratio Ahorro negativo (rojo)
+  try {
+    var rules = sheet.getConditionalFormatRules();
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberLessThan(0)
+      .setBackground('#ffebee')
+      .setFontColor('#d32f2f')
+      .setRanges([sheet.getRange('B7'), sheet.getRange('E9')])
+      .build());
+    // Formato condicional: % "Otro" > 10%
+    var rowOtro = cats.findIndex(function(c) { return c.toLowerCase() === 'otro'; });
+    if (rowOtro !== -1) {
+      var r1 = 10 + rowOtro, r2 = 12 + rowOtro;
+      rules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberGreaterThan(0.1)
+        .setBackground('#ffcdd2')
+        .setFontColor('#b71c1c')
+        .setRanges([sheet.getRange(r1, 3), sheet.getRange(r2, 6)])
+        .build());
+    }
+    sheet.setConditionalFormatRules(rules);
+  } catch(e) {}
+
+  // Notas explicativas en celdas clave
+  sheet.getRange('B4').setNote('Suma de todos los egresos del mes actual.');
+  sheet.getRange('B5').setNote('Suma de todos los ingresos del mes actual.');
+  sheet.getRange('B6').setNote('Ingresos menos egresos del mes actual.');
+  sheet.getRange('B7').setNote('Porcentaje de ahorro sobre ingresos.');
+  sheet.getRange('C4').setNote('Porcentaje del presupuesto mensual gastado.');
+  sheet.getRange('C7').setNote('Porcentaje de ahorro sobre ingresos.');
+  sheet.getRange('E6').setNote('Egresos del periodo filtrado.');
+  sheet.getRange('E7').setNote('Ingresos del periodo filtrado.');
+  sheet.getRange('E8').setNote('Flujo de caja del periodo filtrado.');
+  sheet.getRange('E9').setNote('Porcentaje de ahorro sobre ingresos en el periodo.');
+  sheet.getRange('F6').setNote('Porcentaje del presupuesto gastado en el periodo.');
+  sheet.getRange('F9').setNote('Porcentaje de ahorro sobre ingresos en el periodo.');
 }
 
 // ------------------------------------------------------------
