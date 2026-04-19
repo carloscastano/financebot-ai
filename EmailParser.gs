@@ -147,13 +147,13 @@ function parsearEmailBancolombia_(texto) {
   // ── 5a. RECIBISTE UN PAGO DE [tipo] DE [emisor] ──────────
   // "Recibiste un pago de Nomina de PUNTOS COLOMBIA por $3,518,827.00 en tu cuenta de Ahorros el 12/12/2025"
   // "Recibiste un pago de Dividendos de X por $..."
-  m = t.match(/recibiste\s+un\s+pago\s+de\s+(\w+)\s+de\s+(.+?)\s+por\s+(?:\$|cop\s*)?([\d.,]+)[^.]*el\s+(\d{1,2}\/\d{2}\/\d{4})/i);
+  m = t.match(/recibiste\s+un\s+pago\s+(?:de\s+)?([^\s]+)\s+de\s+(.+?)\s+por\s+(?:\$|cop\s*)?([\d.,]+)[^.]*el\s+(\d{1,2}\/\d{2}\/\d{4})/i);
   if (m) {
     var tipoPago5a = m[1].trim();
     var emisor5a   = m[2].trim();
     var r5a = base('ingreso','transferencia_recibida', parseMonto(m[3]), emisor5a,
       parseFechaStr(m[4]), parseHoraStr(t), parseCuenta(t));
-    if (/nomina|salario|sueldo/i.test(tipoPago5a) || /PROTECCION|PORVENIR|COLPENSIONES/i.test(emisor5a)) {
+    if (/nomina|salario|sueldo|cesant|vacacion|prima|interes/i.test(tipoPago5a) || /PROTECCION|PORVENIR|COLPENSIONES/i.test(emisor5a)) {
       r5a.categoria = 'Salario'; r5a.tipo_transaccion = 'otro';
     } else {
       r5a.categoria = 'Transferencia';

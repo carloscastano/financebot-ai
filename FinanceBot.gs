@@ -323,7 +323,7 @@ function procesarEmailsBancolombia() {
   const cfg = leerConfiguracion_();
 
   // Buscar emails no leídos de los bancos configurados en Configurations
-  const query = `${cfg.gmailQuery} is:unread -label:${CONFIG.GMAIL_LABEL}`;
+  const query = `${cfg.gmailQuery} is:unread`;
   const threads = GmailApp.search(query, 0, CONFIG.MAX_EMAILS_POR_EJECUCION);
 
   if (threads.length === 0) {
@@ -638,7 +638,7 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
     const lastRow = sheetTxn.getLastRow();
     const fechas  = sheetTxn.getRange(2, 2, lastRow - 1, 1).getValues();
     const montos  = sheetTxn.getRange(2, 6, lastRow - 1, 1).getValues();
-    const refs    = sheetTxn.getRange(2, 13, lastRow - 1, 1).getValues();
+    const refs    = sheetTxn.getRange(2, 14, lastRow - 1, 1).getValues();
     for (let i = 0; i < fechas.length; i++) {
       const f = fechas[i][0];
       const m = montos[i][0];
