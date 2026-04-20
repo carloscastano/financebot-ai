@@ -13,6 +13,7 @@ function run_agregarConfigCategorias()  { agregarConfigCategorias(); }
 function run_sincronizarCategorias()    { sincronizarCategorias(); }
 function run_normalizarCategorias()     { normalizarCategorias(); }
 function run_configurarDashboard()      { reconstruirDashboard(); }
+function run_reconstruirDashboard()     { reconstruirDashboard(); }
 function run_analizarFinanzas()         { analizarFinanzas(); }
 function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
 function run_procesarEmails()           { procesarEmailsBancolombia(); }
@@ -38,6 +39,41 @@ function run_limpiarTriggers()          {
   var msg = 'Triggers run_cargarMesAsync eliminados: ' + borrados;
   Logger.log(msg);
   return msg;
+}
+
+function run_inspeccionarDashboardLive() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sh = ss.getSheetByName(SHEETS.DASHBOARD);
+  if (!sh) return { ok: false, error: 'Dashboard no existe', spreadsheetId: ss.getId() };
+  return {
+    ok: true,
+    spreadsheetId: ss.getId(),
+    spreadsheetName: ss.getName(),
+    widths: {
+      A: sh.getColumnWidth(1), B: sh.getColumnWidth(2), C: sh.getColumnWidth(3), D: sh.getColumnWidth(4),
+      E: sh.getColumnWidth(5), F: sh.getColumnWidth(6), G: sh.getColumnWidth(7), H: sh.getColumnWidth(8),
+      I: sh.getColumnWidth(9), J: sh.getColumnWidth(10), K: sh.getColumnWidth(11)
+    },
+    merges: sh.getRange(1,1,45,11).getMergedRanges().map(function(r){ return r.getA1Notation(); }),
+    values: {
+      A5: sh.getRange('A5').getDisplayValue(),
+      C5: sh.getRange('C5').getDisplayValue(),
+      E5: sh.getRange('E5').getDisplayValue(),
+      G5: sh.getRange('G5').getDisplayValue(),
+      I5: sh.getRange('I5').getDisplayValue(),
+      A6: sh.getRange('A6').getDisplayValue(),
+      C6: sh.getRange('C6').getDisplayValue(),
+      E6: sh.getRange('E6').getDisplayValue(),
+      G6: sh.getRange('G6').getDisplayValue(),
+      J2: sh.getRange('J2').getDisplayValue()
+    },
+    formulas: {
+      A6: sh.getRange('A6').getFormula(),
+      C6: sh.getRange('C6').getFormula(),
+      E6: sh.getRange('E6').getFormula(),
+      G6: sh.getRange('G6').getFormula()
+    }
+  };
 }
 
 // ------------------------------------------------------------
@@ -123,10 +159,10 @@ function run_checkSistema() {
         // Filas completamente vacías
         if (row.every(function(cell) { return cell === '' || cell === null; })) vacias++;
         // Duplicados (fecha, monto, referencia)
-        var key = row[1] + '|' + row[5] + '|' + row[12]; // Fecha|Monto|Referencia (col 2,6,13)
+        var key = row[1] + '|' + row[5] + '|' + row[13]; // Fecha|Monto|Referencia (col 2,6,14)
         if (seen[key]) {
           duplicados++;
-          duplicadosInfo.push({ fila: i+2, id: row[0], fecha: row[1], monto: row[5], referencia: row[12] });
+          duplicadosInfo.push({ fila: i+2, id: row[0], fecha: row[1], monto: row[5], referencia: row[13] });
         } else {
           seen[key] = true;
         }

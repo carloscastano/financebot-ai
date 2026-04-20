@@ -465,8 +465,11 @@ function reconstruirDataDictionary() {
 // Para evitar /0: (denominador+(denominador=0)) — si es 0 suma 1
 // ------------------------------------------------------------
 function configurarDashboard_(sheet) {
-  const T = SHEETS.TRANSACTIONS;
-  const C = SHEETS.CONFIGURATIONS;
+  // DESACTIVADA — Dashboard configurado manualmente. No reconstruir.
+  logInfo_('SHEETS', 'configurarDashboard_ desactivada — usar dashboard manual');
+  return;
+  var T = SHEETS.TRANSACTIONS; // eslint-disable-line no-unreachable
+  var C = SHEETS.CONFIGURATIONS;
 
   // Suma por tipo (egreso/ingreso) — para totales del mes
   function fMes(tipo) {

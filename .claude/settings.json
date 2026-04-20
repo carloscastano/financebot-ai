@@ -31,7 +31,9 @@
       "Bash(node reauth.js)",
       "WebFetch(domain:help.apiyi.com)",
       "WebFetch(domain:blog.laozhang.ai)",
-      "Bash(node gas-run.js run_cargarMesCLI 2026/02)"
+      "Bash(node gas-run.js run_cargarMesCLI 2026/02)",
+      "Bash(git checkout *)",
+      "Bash(node gas-run.js run_configurarDashboard)"
     ]
   }
 }
