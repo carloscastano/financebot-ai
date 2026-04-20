@@ -199,9 +199,10 @@ function parsearEmailBancolombia_(texto) {
   // "pago Tarjeta de Crédito *8352 por $940.450"
   m = t.match(/pago\s+(?:de\s+(?:tu\s+)?)?tarjeta\s+de\s+cr[eé]dito[^$\n]*(?:\$|cop\s*)?([\d.,]+)/i);
   if (!m) m = t.match(/pago\s+tc\s+\*\d{4}[^$\n]*(?:\$|cop\s*)?([\d.,]+)/i);
+  if (!m) m = t.match(/pagaste\s+(?:\$|cop\s*)?([\d.,]+)\s+en\s+la\s+tarjeta\s+de\s+cr[eé]dito/i);
   if (m) {
     var cuenta7 = parseCuenta(t);
-    var r6 = base('egreso','pago_tc', parseMonto(m[1]), 'Pago TC' + (cuenta7 ? ' *'+cuenta7 : ''),
+    var r6 = base('informativo','pago_tc', parseMonto(m[1]), 'Pago TC' + (cuenta7 ? ' *'+cuenta7 : ''),
       parseFechaStr(t), parseHoraStr(t), cuenta7);
     r6.categoria = 'Financiero'; r6.subcategoria = 'Pago Tarjeta'; r6.necesidad = 'necesario';
     return r6;

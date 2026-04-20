@@ -541,7 +541,7 @@ PATRONES BANCOLOMBIA:
 • Factura pendiente: "su factura inscrita [SERVICIO] con referencia [REF] se vence el [DD/MM/YYYY]" → tipo=informativo, tipo_transaccion=factura_pendiente
 • Pago PSE: "pago exitoso de [SERVICIO] por COP[monto]" → tipo=egreso
 • Pago factura programada: "Bancolombia informa pago Factura Programada [SERVICIO] Ref [REF] por $[monto] desde [cuenta]" → tipo=egreso, tipo_transaccion=pago_servicio
-• Pago tarjeta de crédito: "Bancolombia informa pago Tarjeta de Crédito *[4dig] por $[monto]" o "pago de tu tarjeta de crédito" → tipo=egreso, tipo_transaccion=pago_tc, categoria=Financiero, subcategoria=Pago Tarjeta, comercio="Pago TC *[4dig]"
+• Pago tarjeta de crédito: "Bancolombia informa pago Tarjeta de Crédito *[4dig] por $[monto]" o "pago de tu tarjeta de crédito" → tipo=informativo, tipo_transaccion=pago_tc, categoria=Financiero, subcategoria=Pago Tarjeta, comercio="Pago TC *[4dig]"
 • Nequi envío Bre-B: "Enviaste de manera exitosa [monto] a la llave [número] de [NOMBRE] el [fecha] a la [hora]" → tipo=egreso, tipo_transaccion=transferencia_enviada, comercio=nombre del destinatario, referencia=número de llave, categoria=Transferencia
 • Nequi ingreso: "Recibiste [monto] de [NOMBRE]" → tipo=ingreso, tipo_transaccion=transferencia_recibida, comercio=nombre del remitente, categoria=Transferencia
 
