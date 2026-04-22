@@ -118,7 +118,6 @@ function run_checkSistema() {
   } catch(e) { checks.telegram = 'ERROR: ' + e.message; }
 
   // 3. Gemini (llamada mínima de 1 token)
-  /*
   try {
     var gmResp = UrlFetchApp.fetch(CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY, {
       method: 'post', contentType: 'application/json', muteHttpExceptions: true,
@@ -127,12 +126,17 @@ function run_checkSistema() {
     });
     var gmCode = gmResp.getResponseCode();
     var modelo = CONFIG.GEMINI_URL.match(/models\/([^:]+)/)[1];
-    checks.gemini = gmCode === 200 ? 'OK — ' + modelo
-                  : gmCode === 429 ? 'CUOTA AGOTADA — ' + modelo
-                  : 'ERROR HTTP ' + gmCode;
+    if (gmCode === 200) {
+      checks.gemini = 'OK — ' + modelo;
+    } else if (gmCode === 429) {
+      var gmBody = gmResp.getContentText();
+      var esDiaria = gmBody.indexOf('PerDay') !== -1 || gmBody.indexOf('quota exceeded') !== -1 || gmBody.indexOf('billing') !== -1;
+      checks.gemini = esDiaria ? 'CUOTA DIARIA AGOTADA — ' + modelo : 'CUOTA MINUTO — ' + modelo;
+      // No bloquea ok: la cuota diaria se renueva sola; clasificación usa fallback local
+    } else {
+      checks.gemini = 'ERROR HTTP ' + gmCode + ' — ' + gmResp.getContentText().substring(0, 100);
+    }
   } catch(e) { checks.gemini = 'ERROR: ' + e.message; }
-  */
-  checks.gemini = 'OMITIDO (sin RPD temporalmente)';
 
   // 4. Google Sheets
   var ss, shTxn;
