@@ -58,6 +58,9 @@ function analizarFinanzas() {
   const mensaje = construirMensajeReporte_(act, prev, proyeccion, escenarios, score, anomalias, sensib, analisis, mesAct, anioAct, mesPrev, anioPrev);
   enviarMensajeTelegram_(mensaje);
 
+  // Mantener _dashboarddata sincronizada con categorías reales
+  try { actualizarDashboardData_(); } catch(e) { logWarn_('ADVISOR', 'dashboarddata: ' + e.message); }
+
   logInfo_('ADVISOR', 'Reporte financiero v2 enviado');
 }
 

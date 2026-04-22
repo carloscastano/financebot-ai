@@ -1069,3 +1069,113 @@ function reordenarHojas_(ss) {
     if (s) { ss.setActiveSheet(s); ss.moveActiveSheet(i + 1); }
   });
 }
+
+// ------------------------------------------------------------
+// ACTUALIZAR _dashboarddata
+// Regenera la hoja _dashboarddata con categorías dinámicas leídas
+// de Transactions!J (DISTINCT real, no hardcoded).
+// Columnas: A=Categoria B=Gasto(mes) C=Pct  E=TopCat F=TopGasto G=TopPct
+// Se llama desde analizarFinanzas() (trigger diario) y manualmente
+// con run_actualizarDashboardData().
+// ------------------------------------------------------------
+function actualizarDashboardData_() {
+  var HOJA_DATA = '_dashboarddata';
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var shTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  var shData = ss.getSheetByName(HOJA_DATA);
+
+  if (!shTxn || shTxn.getLastRow() < 2) {
+    logWarn_('DASHBOARD_DATA', 'Transactions vacía, nada que actualizar');
+    return;
+  }
+  // Crear hoja si no existe
+  if (!shData) {
+    shData = ss.insertSheet(HOJA_DATA);
+    logInfo_('DASHBOARD_DATA', 'hoja _dashboarddata creada');
+  }
+
+  // Leer Transactions: col B=Fecha, D=Tipo, F=Monto, J=Categoria (índices 1,3,5,9)
+  var totalRows = shTxn.getLastRow() - 1;
+  var raw = shTxn.getRange(2, 1, totalRows, 10).getValues();
+
+  var ahora     = new Date();
+  var mesActual = ahora.getMonth() + 1;
+  var anioActual = ahora.getFullYear();
+
+  // DISTINCT de categorías + gasto del mes actual por categoría (solo egresos, no informativo)
+  var catSet      = {};   // todas las categorías vistas
+  var gastoPorCat = {};   // gasto del mes actual
+
+  raw.forEach(function(row) {
+    var tipo  = String(row[3] || '').toLowerCase().trim();
+    var cat   = String(row[9] || '').trim();
+    var fecha = row[1] instanceof Date ? row[1] : new Date(row[1]);
+    var monto = Number(row[5]) || 0;
+
+    if (!cat || tipo === 'informativo') return;
+
+    catSet[cat] = true;
+
+    // Suma solo egresos del mes actual
+    if (!isNaN(fecha.getTime()) &&
+        tipo === 'egreso' &&
+        fecha.getMonth() + 1 === mesActual &&
+        fecha.getFullYear() === anioActual) {
+      gastoPorCat[cat] = (gastoPorCat[cat] || 0) + monto;
+    }
+  });
+
+  // Categorías ordenadas alfabéticamente
+  var categorias  = Object.keys(catSet).sort();
+  var totalGasto  = Object.keys(gastoPorCat).reduce(function(s, k) { return s + gastoPorCat[k]; }, 0);
+
+  // Bloque A-C: todas las categorías
+  var rowsAC = categorias.map(function(cat) {
+    var gasto = gastoPorCat[cat] || 0;
+    var pct   = totalGasto > 0 ? gasto / totalGasto : 0;
+    return [cat, gasto, pct];
+  });
+
+  // Bloque E-G: top categorías ordenadas por gasto desc
+  var topEntries = Object.keys(gastoPorCat)
+    .map(function(cat) { return [cat, gastoPorCat[cat]]; })
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .slice(0, Math.min(categorias.length, 10));
+
+  var rowsEG = topEntries.map(function(entry) {
+    return [entry[0], entry[1], totalGasto > 0 ? entry[1] / totalGasto : 0];
+  });
+
+  // Escribir — limpiar datos (no formatos) y reescribir
+  shData.clearContents();
+
+  // Cabecera
+  shData.getRange(1, 1, 1, 7).setValues([['Categoria', 'Gasto', 'Pct', '', 'TopCat', 'TopGasto', 'TopPct']]);
+
+  // Datos A-C
+  if (rowsAC.length > 0) {
+    shData.getRange(2, 1, rowsAC.length, 3).setValues(rowsAC);
+    // Formato porcentaje en col C
+    shData.getRange(2, 3, rowsAC.length, 1).setNumberFormat('0.0%');
+  }
+
+  // Datos E-G (top)
+  if (rowsEG.length > 0) {
+    shData.getRange(2, 5, rowsEG.length, 3).setValues(rowsEG);
+    shData.getRange(2, 7, rowsEG.length, 1).setNumberFormat('0.0%');
+  }
+
+  // Formato moneda en col B y F
+  var maxRows = Math.max(rowsAC.length, rowsEG.length);
+  if (maxRows > 0) {
+    shData.getRange(2, 2, maxRows, 1).setNumberFormat('#,##0');
+    shData.getRange(2, 6, maxRows, 1).setNumberFormat('#,##0');
+  }
+
+  logInfo_('DASHBOARD_DATA', 'actualizado: ' + categorias.length + ' cats, totalGasto=' + totalGasto + ', mes=' + mesActual + '/' + anioActual);
+}
+
+function run_actualizarDashboardData() {
+  actualizarDashboardData_();
+  return 'OK';
+}

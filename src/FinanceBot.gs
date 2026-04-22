@@ -1195,6 +1195,90 @@ function diagnosticarEmailsFecha_(fecha) {
 }
 
 // ------------------------------------------------------------
+// RECLASIFICACIÓN MASIVA DE "Otro"
+// ------------------------------------------------------------
+function run_reclasificarOtros() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Transactions');
+  if (!sheet) { Logger.log('ERROR: hoja Transactions no encontrada'); return; }
+
+  var data = sheet.getDataRange().getValues();
+  var header = data[0];
+  var idxCat   = 9;  // col J (0-based)
+  var idxSub   = 10; // col K
+  var idxNec   = 11; // col L
+  var idxComercio = 7; // col H - Comercio/Destino
+  var idxTipo  = 3;  // col D - Tipo (egreso/ingreso)
+
+  var stats = { total: 0, local: 0, gemini: 0, sinCambio: 0 };
+  var pendientesGemini = []; // [{row, comercio}]
+
+  // Paso 1: LocalClassifier (sin cuota)
+  for (var i = 1; i < data.length; i++) {
+    var cat = data[i][idxCat];
+    if (!cat || cat !== 'Otro') continue;
+    stats.total++;
+
+    var comercio = data[i][idxComercio] || '';
+    if (!comercio) { stats.sinCambio++; continue; }
+
+    var local = clasificarLocal_(comercio);
+    if (local && local.categoria && local.categoria !== 'Otro') {
+      sheet.getRange(i + 1, idxCat + 1).setValue(local.categoria);
+      if (local.subcategoria) sheet.getRange(i + 1, idxSub + 1).setValue(local.subcategoria);
+      if (local.necesidad)    sheet.getRange(i + 1, idxNec + 1).setValue(local.necesidad);
+      stats.local++;
+    } else {
+      pendientesGemini.push({ row: i + 1, comercio: comercio });
+    }
+  }
+
+  Logger.log('Paso 1 (LocalClassifier): ' + stats.local + ' reclasificados de ' + stats.total);
+
+  // Paso 2: Gemini en lotes de 10
+  var BATCH = 10;
+  var geminiOk = 0;
+  for (var b = 0; b < pendientesGemini.length; b += BATCH) {
+    var lote = pendientesGemini.slice(b, b + BATCH);
+    for (var j = 0; j < lote.length; j++) {
+      try {
+        var txnFake = { descripcion: lote[j].comercio, tipo: 'egreso' };
+        var res = llamarGemini_(lote[j].comercio);
+        if (res && res.categoria && res.categoria !== 'Otro') {
+          sheet.getRange(lote[j].row, idxCat + 1).setValue(res.categoria);
+          if (res.subcategoria) sheet.getRange(lote[j].row, idxSub + 1).setValue(res.subcategoria);
+          if (res.necesidad)    sheet.getRange(lote[j].row, idxNec + 1).setValue(res.necesidad);
+          stats.gemini++;
+          geminiOk++;
+        } else {
+          stats.sinCambio++;
+        }
+        Utilities.sleep(300);
+      } catch (e) {
+        Logger.log('Gemini error fila ' + lote[j].row + ': ' + e.message);
+        stats.sinCambio++;
+        if (e.message && e.message.indexOf('CUOTA') !== -1) {
+          Logger.log('Cuota diaria agotada — deteniendo Gemini');
+          b = pendientesGemini.length; // salir del loop externo
+          break;
+        }
+      }
+    }
+    if (b + BATCH < pendientesGemini.length) Utilities.sleep(1000);
+  }
+
+  var resumen = {
+    total_otro: stats.total,
+    reclasificados_local: stats.local,
+    reclasificados_gemini: stats.gemini,
+    sin_cambio: stats.total - stats.local - stats.gemini,
+    pendientes_gemini_enviados: pendientesGemini.length
+  };
+  Logger.log('Resultado: ' + JSON.stringify(resumen));
+  return resumen;
+}
+
+// ------------------------------------------------------------
 // FUNCIÓN DE PRUEBA MANUAL
 /* PRUEBA — descomentar para verificar el parsing de emails
 // ------------------------------------------------------------
