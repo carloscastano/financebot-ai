@@ -319,6 +319,11 @@ function sincronizarCategorias(opciones) {
     'ropa': 'Ropa y Personal', 'viviendas': 'Vivienda', 'prestamo': 'Financiero',
     'préstamo': 'Financiero', 'pago tarjeta': 'Financiero', 'impuestos': 'Servicios',
     'ejercicio': 'Salud', 'alimentacion': 'Alimentación',
+    // Fusiones de categorías huérfanas detectadas en health check 2026-04
+    'leasing': 'Financiero',     // crédito estructurado
+    'retiro':  'Otro',           // retiros ATM — subcategoría "Retiro efectivo"
+    'retiros': 'Otro',
+    'hogar':   'Hogar',          // idempotente (ya existe), evita mismatch de casing
   };
   if (opciones && opciones.viejo && opciones.nuevo) {
     MAPA_NORM[opciones.viejo.toLowerCase()] = opciones.nuevo;

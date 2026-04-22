@@ -1,0 +1,26 @@
+{
+  "name": "financebot-ia",
+  "version": "1.0.0",
+  "description": "FINANCEBOT-IA — Asistente financiero personal sobre Google Apps Script (Telegram + Gmail + Gemini + Sheets).",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/tests/test-emailparser.js",
+    "deploy": "node scripts/deploy.js",
+    "push": "clasp push --force",
+    "pull": "clasp pull",
+    "open": "clasp open-script",
+    "logs": "clasp logs",
+    "reauth": "node scripts/reauth.js",
+    "perf": "node scripts/perf.js",
+    "load": "node scripts/load2025.js",
+    "gas": "node scripts/gas-run.js",
+    "health": "node scripts/gas-run.js run_checkSistema",
+    "qa": "node scripts/gas-run.js run_checkQA"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}

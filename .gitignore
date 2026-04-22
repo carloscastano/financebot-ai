@@ -1,13 +1,24 @@
+## Secrets / credenciales
 secrets.env
 .env
 *.env
-# .clasp.json
-.clasp.json.bak
-CLAUDE.md
-node_modules/
 credentials.json
-reauth.js
-gas-run.js
-deploy.js
-perf.js
-load2025.js
+.clasp.json.bak
+
+## Memoria local de Claude
+CLAUDE.md
+
+## Node
+node_modules/
+package-lock.json
+
+## Backups
+backupsheeets/
+backups/
+
+## Scripts locales (no se publican a GAS, no se versionan)
+scripts/gas-run.js
+scripts/deploy.js
+scripts/reauth.js
+scripts/perf.js
+scripts/load2025.js

@@ -33,7 +33,13 @@
       "WebFetch(domain:blog.laozhang.ai)",
       "Bash(node gas-run.js run_cargarMesCLI 2026/02)",
       "Bash(git checkout *)",
-      "Bash(node gas-run.js run_configurarDashboard)"
+      "Bash(node gas-run.js run_configurarDashboard)",
+      "Bash(npx clasp *)",
+      "Bash(node gas-run.js run_buscarPagoTC)",
+      "Bash(node gas-run.js run_cargarHistoricoCLI 2026/01/01 2026/04/19)",
+      "Bash(git mv *)",
+      "Bash(clasp status *)",
+      "Bash(node scripts/gas-run.js run_checkSistema)"
     ]
   }
 }

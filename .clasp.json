@@ -2,7 +2,7 @@
   "scriptId": "19hEt199VG1WMvRagXGwrjJ-O7EqRisKshfhHLo_sEYXMWn-2BFA5uSI2",
   "projectId": "financebot-ia",
   "deploymentId": "AKfycbwF3yxO0gfdaIudLDgF-uk_83VM7u5y1PDsyQTr_qx8wgzghAjNUHB6iXxBFKEEINOM",
-  "rootDir": "",
+  "rootDir": "./src",
   "scriptExtensions": [
     ".gs"
   ],

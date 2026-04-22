@@ -123,32 +123,50 @@ function _llamarGeminiJson_(prompt, opts) {
   var fetchOpts = { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true };
   var url = CONFIG.GEMINI_URL + '?key=' + CONFIG.GEMINI_API_KEY;
 
-  var resp     = UrlFetchApp.fetch(url, fetchOpts);
-  var httpCode = resp.getResponseCode();
-  var rawBody  = resp.getContentText();
+  // Retry exponencial: 1s, 2s, 4s para 5xx ; 65s una vez para 429-rate-limit ; abort para 429-cuota
+  var MAX_INTENTOS_TRANSIENT = 3;
+  var resp, httpCode, rawBody;
+  var intento = 0;
 
-  if (httpCode === 200) _trackGeminiCall_();
-
-  if (httpCode === 429) {
-    // Cuota diaria agotada — no tiene sentido reintentar hoy
-    if (rawBody.indexOf('current quota') !== -1 || rawBody.indexOf('quota exceeded') !== -1 ||
-        rawBody.indexOf('billing') !== -1) {
-      logError_('GEMINI_JSON', 'Cuota diaria de Gemini agotada — no se puede continuar hoy');
-      throw new Error('GEMINI_QUOTA_DIARIA: cuota diaria agotada. Reintenta mañana.');
-    }
-    // Rate-limit por minuto — esperar y reintentar una vez
-    logWarn_('GEMINI_JSON', '429 rate-limit, esperando 65s para reintento');
-    Utilities.sleep(65000);
+  while (true) {
     resp     = UrlFetchApp.fetch(url, fetchOpts);
     httpCode = resp.getResponseCode();
     rawBody  = resp.getContentText();
-    // Si el reintento también falla con cuota diaria, abortar
-    if (httpCode === 429 && (rawBody.indexOf('current quota') !== -1 || rawBody.indexOf('billing') !== -1)) {
-      logError_('GEMINI_JSON', 'Cuota diaria agotada tras reintento');
-      throw new Error('GEMINI_QUOTA_DIARIA: cuota diaria agotada. Reintenta mañana.');
+
+    if (httpCode === 200) {
+      _trackGeminiCall_();
+      break;
     }
-  }
-  if (httpCode !== 200) {
+
+    // 429 → distinguir cuota DIARIA (abort) vs rate-limit POR MINUTO (esperar 65s una vez)
+    if (httpCode === 429) {
+      var esCuotaDiaria = rawBody.indexOf('current quota') !== -1 ||
+                          rawBody.indexOf('quota exceeded') !== -1 ||
+                          rawBody.indexOf('billing') !== -1 ||
+                          rawBody.indexOf('PerDay') !== -1;
+      if (esCuotaDiaria) {
+        logError_('GEMINI_JSON', 'cuota diaria agotada — no se reintenta');
+        throw new Error('GEMINI_QUOTA_DIARIA: cuota diaria agotada. Reintenta mañana.');
+      }
+      if (intento === 0) {
+        logWarn_('GEMINI_JSON', '429 rate-limit por minuto, esperando 65s');
+        Utilities.sleep(65000);
+        intento++;
+        continue;
+      }
+      throw new Error('Gemini 429 persistente tras reintento: ' + rawBody.substring(0, 200));
+    }
+
+    // 5xx → backoff exponencial (1s, 2s, 4s)
+    if (httpCode >= 500 && httpCode < 600 && intento < MAX_INTENTOS_TRANSIENT) {
+      var espera = Math.pow(2, intento) * 1000;
+      logWarn_('GEMINI_JSON', httpCode + ' transient, intento ' + (intento+1) + '/' + MAX_INTENTOS_TRANSIENT + ' tras ' + espera + 'ms');
+      Utilities.sleep(espera);
+      intento++;
+      continue;
+    }
+
+    // 4xx (no 429) o 5xx tras agotar reintentos → abortar
     throw new Error('Gemini HTTP ' + httpCode + ': ' + rawBody.substring(0, 300));
   }
 

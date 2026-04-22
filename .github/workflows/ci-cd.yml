@@ -1,4 +1,4 @@
-name: FinanceBot AI CI/CD
+name: FINANCEBOT-IA CI/CD
 
 on:
   push:
@@ -7,71 +7,70 @@ on:
     branches: [ main, master ]
 
 jobs:
+  # ────────────────────────────────────────────────────────────
+  # 1) Tests locales (regex EmailParser) — corre en Node, sin creds
+  # ────────────────────────────────────────────────────────────
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Run EmailParser unit tests
+        run: npm test
+
+  # ────────────────────────────────────────────────────────────
+  # 2) QA remoto (opcional — solo si gas-run.js está en el checkout)
+  # ────────────────────────────────────────────────────────────
   qa:
     runs-on: ubuntu-latest
+    needs: tests
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Run QA skill
+      - name: Run QA skill (si gas-run.js disponible)
         run: |
-          if [ -f gas-run.js ]; then
-            node gas-run.js run_checkQA || exit 1
+          if [ -f scripts/gas-run.js ]; then
+            node scripts/gas-run.js run_checkQA || exit 1
           else
-            echo 'gas-run.js not found, skipping QA.'
+            echo 'scripts/gas-run.js gitignored — skipping remote QA (tests locales ya pasaron).'
           fi
 
-  performance:
-    runs-on: ubuntu-latest
-    needs: qa
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-      - name: Run Performance skill
-        run: |
-          if [ -f gas-run.js ]; then
-            node gas-run.js run_checkPerformance || exit 1
-          else
-            echo 'gas-run.js not found, skipping performance.'
-          fi
-
+  # ────────────────────────────────────────────────────────────
+  # 3) Deploy a GAS — usa .clasp.json (rootDir: ./src está versionado)
+  # ────────────────────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: performance
+    needs: qa
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
+      - name: Verificar rootDir en .clasp.json
+        run: |
+          node -e "const c=require('./.clasp.json'); if(c.rootDir!=='./src'){console.error('rootDir debe ser ./src, es: '+c.rootDir); process.exit(1);} console.log('✓ rootDir='+c.rootDir);"
       - name: Set up clasp
-        run: npm install -g @google/clasp
+        run: npm install -g @google/clasp@2.4.2
       - name: Authenticate clasp
         env:
           CLASPRC: ${{ secrets.CLASPRC_JSON }}
-        run: |
-          echo "$CLASPRC" > ~/.clasprc.json
+        run: echo "$CLASPRC" > ~/.clasprc.json
       - name: Deploy to Google Apps Script
         run: |
           clasp push --force
           clasp deploy -d "CI/CD auto-deploy $GITHUB_SHA"
-      - name: Run Deploy skill
-        run: |
-          if [ -f gas-run.js ]; then
-            node gas-run.js run_checkDeploy || exit 1
-          else
-            echo 'gas-run.js not found, skipping deploy skill.'
-          fi
 
+  # ────────────────────────────────────────────────────────────
+  # 4) Notify — alerta Telegram si algo falló
+  # ────────────────────────────────────────────────────────────
   notify:
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [tests, qa, deploy]
     if: failure()
     steps:
       - name: Notify on failure (Telegram)
@@ -80,7 +79,7 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ❌ FinanceBot AI CI/CD falló en el job ${{ github.job }}
+            ❌ FINANCEBOT-IA CI/CD falló
             Commit: ${{ github.sha }}
             Autor: ${{ github.actor }}
-            Ver detalles: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Detalles: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

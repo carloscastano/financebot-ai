@@ -1,15 +1,95 @@
-# FinanceBot AI
+# FINANCEBOT-IA
 
-Bot personal de finanzas para Telegram + Google Sheets + Google Apps Script.
-Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Gemini y genera reportes personalizados.
+Asistente financiero personal sobre **Google Apps Script**: procesa movimientos bancarios Bancolombia (email + extracto), clasifica con **Gemini**, controla presupuestos y metas, y conversa por **Telegram**.
 
 ---
 
-## Documentacion
+## Estructura del proyecto
 
-- Instalacion paso a paso (para compartir): `INSTALACION.md`
-- Guia de uso del bot: `GUIA_USO.md`
-- Checklist de operacion y soporte: `OPERACION_SOPORTE.md`
+```
+financebot-ai/
+├── src/                    # Código Apps Script (lo que se publica con clasp)
+│   ├── appsscript.json
+│   ├── FinanceBot.gs       # Orquestador principal
+│   ├── EmailParser.gs      # Parsing de notificaciones Bancolombia
+│   ├── Extractor.gs        # Importa extractos .xlsx/.zip
+│   ├── Sheets.gs           # Capa de acceso a Google Sheets
+│   ├── Telegram.gs         # Bot + comandos
+│   ├── Chat.gs             # Conversación libre con Gemini
+│   ├── Advisor.gs          # Métricas y reporte mensual
+│   ├── WeeklyReport.gs     # Reporte semanal automático
+│   ├── Budget.gs           # Alertas de presupuesto
+│   ├── Goals.gs            # Metas de ahorro
+│   ├── Subscriptions.gs    # Detección de suscripciones fantasma
+│   ├── Features.gs         # Feature flags
+│   ├── Config.gs           # Constantes del sistema
+│   ├── Ops.gs              # Operación / health checks / triggers
+│   ├── FinancialInsights.gs
+│   └── FinancialSkill.gs   # Skill IA centralizada
+│
+├── scripts/                # Herramientas locales (Node, no se publican)
+│   ├── gas-run.js          # Ejecuta funciones GAS desde CLI
+│   ├── deploy.js           # push + healthcheck + commit + perf
+│   ├── perf.js             # Métricas post-deploy
+│   ├── load2025.js         # Carga histórica mes a mes
+│   └── reauth.js           # Re-autoriza clasp con todos los scopes
+│
+├── docs/                   # Documentación de usuario
+│   ├── INSTALACION.md
+│   ├── GUIA_USO.md
+│   └── OPERACION_SOPORTE.md
+│
+├── .github/workflows/      # CI/CD (push → clasp deploy)
+├── .clasp.json             # Config clasp (rootDir → ./src)
+├── credentials.json        # OAuth client (gitignored)
+├── package.json            # Scripts npm
+└── README.md
+```
+
+---
+
+## Comandos rápidos
+
+```bash
+npm run health      # Health check remoto del sistema
+npm run deploy      # Push + healthcheck + commit + perf
+npm run perf        # Métricas de pipeline
+npm run reauth      # Re-autorizar clasp si caducó el token
+npm run gas <fn>    # Ejecutar cualquier función GAS desde CLI
+npm run load        # Carga histórica de emails Gmail
+```
+
+---
+
+## Stack
+
+- **Runtime:** Google Apps Script V8
+- **Datos:** Google Sheets (Transactions, Configurations, Dashboard, Goals, Pending Payments, Errors)
+- **IA:** Gemini 2.5 Flash-Lite (clasificación + chat + insights)
+- **Notificaciones:** Telegram Bot API
+- **Email:** Gmail API + label `FinanceBot-Procesado`
+- **CLI / deploy:** clasp + `scripts/gas-run.js` (Execution API, devMode)
+
+---
+
+## CI/CD
+
+Workflow en `.github/workflows/ci-cd.yml`. Cada push a `master` ejecuta:
+
+1. **QA** — checks de calidad
+2. **Performance** — métricas de pipeline
+3. **Deploy** — `clasp push --force` + `clasp deploy`
+4. **Notify** — alerta Telegram si algún job falla
+
+Secrets requeridos en GitHub: `CLASPRC_JSON`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+
+---
+
+## Documentación
+
+- [docs/INSTALACION.md](docs/INSTALACION.md) — Setup paso a paso (compartible)
+- [docs/GUIA_USO.md](docs/GUIA_USO.md) — Comandos del bot y ejemplos
+- [docs/OPERACION_SOPORTE.md](docs/OPERACION_SOPORTE.md) — Runbook ante fallos
 
 ---
 
@@ -17,82 +97,26 @@ Procesa movimientos bancarios Bancolombia via email y extracto, clasifica con Ge
 
 ### Completado
 
-- [x] #1  Importar extracto Bancolombia (.xlsx/.zip)
-- [x] #2  Clasificacion automatica con Gemini
-- [x] #3  Alertas Telegram por gasto alto
-- [x] #4  Registro manual de gastos/ingresos
-- [x] #5  Recordatorio de pagos pendientes
-- [x] #6  Reporte financiero mensual con IA
-- [x] #7  Dashboard en Google Sheets
-- [x] #8  Suscripciones fantasma (/suscripciones)
-- [x] #9  Metas de ahorro v2 (/metas, /meta estado)
+- [x] #1 Importar extracto Bancolombia (.xlsx/.zip)
+- [x] #2 Clasificación automática con Gemini
+- [x] #3 Alertas Telegram por gasto alto
+- [x] #4 Registro manual de gastos/ingresos
+- [x] #5 Recordatorio de pagos pendientes
+- [x] #6 Reporte financiero mensual con IA
+- [x] #7 Dashboard en Google Sheets
+- [x] #8 Suscripciones fantasma (`/suscripciones`)
+- [x] #9 Metas de ahorro v2 (`/metas`, `/meta estado`)
 - [x] #10 Recordatorio mensual metas + viabilidad
 - [x] #11 Alertas presupuesto en tiempo real
-- [x] #12 Reporte semanal automatico
-- [x] #13 /presupuesto — estado por categoria
-- [x] #14 Feature flags (/config, /activar, /desactivar)
+- [x] #12 Reporte semanal automático
+- [x] #13 `/presupuesto` — estado por categoría
+- [x] #14 Feature flags (`/config`, `/activar`, `/desactivar`)
 - [x] #15 Chat conversacional financiero
+- [x] #19 Setup wizard no-técnico
+- [x] #21 Guía de uso (GUIA_USO.md)
+- [x] #23 Mejorar filtro suscripciones
+- [x] Reorganización por carpetas (`src/`, `scripts/`, `docs/`)
 
-### Pendiente — Producto
-- [x] #19 Setup wizard no-técnico (menú FinanceBot en Sheets + configurarTriggers + detectarMiChatId)
-- [x] #21 Guia de uso del bot (usuario final, comandos + ejemplos) — GUIA_USO.md
-- [ ] #16 Carga historica Gmail (infraestructura ✅, datos pendientes — cargar mes a mes)
-- [x] #23 Mejorar filtro suscripciones (filtros ATM/transferencias/categorias implementados; precision mejora con 6-12 meses de data)
+### Pendiente
 
-### Pendiente — Limpieza (#20)
-
-- [x] Header norm: _calcularFlujoCaja_() case-insensitive
-- [x] Sort optimization: ordenarTransaccionesSheet_() + skip extracto/historico
-- [x] Centralized AI skill: construirSkillFinancieroObjetivo_() en FinancialSkill.gs
-- [x] Markdown fallback en enviarMensajeTelegram_()
-- [x] Gemini texto helper: _llamarGeminiTexto_() para Chat + Advisor + WeeklyReport
-- [x] Funciones probar* comentadas (5 funciones en 4 archivos)
-- [x] Dashboard rangos dinamicos (D2:D en vez de D2:D5000)
-- [x] Gemini JSON helper: _llamarGeminiJson_() para Extractor + Telegram + FinanceBot (retry/backoff unificado)
-- [x] Estandarizar manejo de errores y logs (formato unico por modulo)
-- [x] Normalizar nombres/acentos de headers y constantes en todo el repo
-- [x] Hardening Markdown: estandarizar fallback en todos los mensajes formateados
-- [x] Checklist de operacion y soporte (que ejecutar cuando falla X)
-- [x] Depurar run_probarAsesor (apunta a funcion comentada)
-
----
-
-## CI/CD y Soporte — FinanceBot AI
-
-### ¿Cómo funciona el pipeline CI/CD?
-
-- **Automatización:** Cada vez que haces push o pull request a la rama principal (`master`), se ejecuta automáticamente un workflow de GitHub Actions.
-- **Jobs principales:**
-  1. **QA:** Ejecuta validaciones automáticas de calidad y checks críticos del sistema.
-  2. **Performance:** Corre métricas de rendimiento y verifica la salud del procesamiento.
-  3. **Deploy:** Si todo pasa, despliega el código a Google Apps Script usando `clasp`.
-  4. **Alertas:** Si algún paso falla, se envía una alerta por correo (y opcionalmente por Telegram si se configuran los secrets).
-- **Logs y resultados:** Los resultados de cada job pueden consultarse en la pestaña “Actions” de GitHub. Los errores y advertencias se muestran con detalles para facilitar el soporte.
-
-### ¿Qué hacer si falla el pipeline?
-
-1. **Revisar la pestaña “Actions” en GitHub:**
-   - Haz clic en el run fallido para ver los logs y el paso exacto que falló.
-2. **Errores comunes:**
-   - **Credenciales faltantes:** Verifica los secrets en GitHub (`CLASPRC_JSON`, etc.).
-   - **Falta de .clasp.json:** Asegúrate de que el archivo esté en la raíz del repo y trackeado.
-   - **Errores de código:** Corrige el error reportado y haz un nuevo commit.
-3. **Despliegue manual:** Si el deploy automático falla pero el código es correcto, puedes hacer deploy manual con `clasp push` y `clasp deploy` desde tu máquina local.
-
-### Buenas prácticas de soporte
-
-- Mantén los secrets y archivos de configuración actualizados y seguros.
-- Documenta cualquier cambio relevante en el README.
-- Usa la hoja de logs o el dashboard para monitorear la salud del sistema.
-- Si agregas nuevos skills IA o checks, actualiza el workflow y la documentación.
-
----
-
-## Stack
-
-- **Runtime**: Google Apps Script
-- **Sheets**: Google Sheets (Transactions, Configurations, Dashboard, Goals, Pending Payments)
-- **IA**: Gemini 2.5 Flash-Lite
-- **Notificaciones**: Telegram Bot API
-- **Email**: Gmail API (etiqueta Bancolombia)
-- **Deploy local**: clasp + gas-run.js (Execution API)
+- [ ] #16 Carga histórica Gmail completa (mes a mes)

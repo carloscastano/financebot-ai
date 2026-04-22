@@ -18,6 +18,10 @@ function run_analizarFinanzas()         { analizarFinanzas(); }
 function run_recordarPagosPendientes()  { recordarPagosPendientes(); }
 function run_procesarEmails()           { procesarEmailsBancolombia(); }
 function run_cargarHistorico()          { cargarHistoricoEmails(); }
+function run_cargarHistoricoCLI(ini, fin) { return cargarHistoricoEmails(ini, fin); }
+function run_diagnosticarFecha(fecha)   { return diagnosticarEmailsFecha_(fecha); }
+function run_buscarPagoTC()             { return buscarEmailsPagoTC_(); }
+function run_buscarEnSheets(monto)      { return buscarTransaccionEnSheets_(monto); }
 function run_contarHistorico()          { return contarHistoricoPorMes_(); }
 function run_cargarMes()                { return cargarMesEspecifico_(); }
 function run_probarAsesor()             { analizarFinanzas(); }
@@ -30,6 +34,7 @@ function run_limpiarAnio(anio)          { return limpiarTransaccionesAnio_(anio)
 function run_limpiarRango(ini, fin)     { return limpiarTransaccionesRango_(ini, fin); }
 function run_quitarLabelAnio(anio)      { return quitarLabelAnio_(anio); }
 function run_quitarLabelRango(ini, fin) { return quitarLabelRango_(ini, fin); }
+function run_quitarLabelTodo()          { return quitarLabelTodo_(); }
 function run_limpiarTriggers()          {
   var borrados = 0;
   ScriptApp.getProjectTriggers().forEach(function(t) {
@@ -500,11 +505,40 @@ function esEmailTransaccional_(texto) {
 function llamarGemini_(textoEmail) {
   const prompt = construirPrompt_(textoEmail);
 
-  const transaccion = _llamarGeminiJson_(prompt, { temperature: 0.1, maxOutputTokens: 512 });
+  var transaccion;
+  try {
+    transaccion = _llamarGeminiJson_(prompt, { temperature: 0.1, maxOutputTokens: 512 });
+  } catch(e) {
+    // Si la cuota diaria está agotada, intenta un parseo mínimo con EmailParser.gs (regex).
+    // Esto permite capturar las notificaciones conocidas sin consumir cuota.
+    if (String(e.message || '').indexOf('GEMINI_QUOTA_DIARIA') !== -1) {
+      logWarn_('GEMINI_JSON', 'cuota agotada, intentando parseo local (EmailParser)');
+      var regexTxn = parsearEmailBancolombia_(textoEmail);
+      if (regexTxn && regexTxn.fecha && regexTxn.tipo) return regexTxn;
+    }
+    throw e;
+  }
 
   // Validar campos mínimos requeridos
   if (!transaccion.fecha || !transaccion.tipo || !transaccion.categoria) {
     throw new Error('Respuesta de Gemini incompleta: faltan campos obligatorios');
+  }
+
+  // Post-proceso: si Gemini devolvió "Otro", intenta afinar con el clasificador local
+  // (Cache se consulta/escribe a nivel comercio, no del email completo)
+  if (transaccion.comercio) {
+    if (String(transaccion.categoria).toLowerCase() === 'otro') {
+      var local = clasificarLocal_(transaccion.comercio);
+      if (local) {
+        transaccion.categoria    = local.categoria;
+        transaccion.subcategoria = transaccion.subcategoria || local.subcategoria;
+        transaccion.necesidad    = local.necesidad;
+        transaccion.confianza    = Math.min(transaccion.confianza || 0.9, local.confianza);
+        logInfo_('GEMINI_JSON', 'post-proceso local: ' + transaccion.comercio + ' -> ' + local.categoria);
+      }
+    }
+    // Guardar en cache (no cachea "Otro")
+    try { setCachedClasificacion_(transaccion.comercio, transaccion); } catch(e) { /* silencioso */ }
   }
 
   return transaccion;
@@ -564,16 +598,34 @@ SUBCATEGORÍAS:
 - Hogar: Ferretería, Muebles, Electrodomésticos
 
 DICCIONARIO COMERCIOS COLOMBIANOS:
-D1, ARA, ÉXITO, JUMBO, CARULLA → Alimentación/Supermercados
-RAPPI, IFOOD, DOMICILIOS → Alimentación/Domicilios
-SMART FIT, BODYTECH → Salud/Gimnasio
-HOMECENTER, EASY → Hogar/Ferretería
+D1, ARA, ÉXITO, JUMBO, CARULLA, MERCALDAS, MAKRO, OLIMPICA, JUSTO Y BUENO → Alimentación/Supermercados
+RAPPI, IFOOD, DOMICILIOS, MERCADO PAGO, MERCADOPAGO → Alimentación/Domicilios
+FRUTERIA, FRUVER, CARNICERIA, AVÍCOLA, SURTIPOLLOS → Alimentación/Tiendas
+FRANQUIHER MALL PLAZA, centro comercial genérico con descripción "MALL"/"PLAZA" → Alimentación/Restaurantes (salvo contexto contrario)
+SMART FIT, BODYTECH, GYM, GIMNASIO → Salud/Gimnasio
+HOMECENTER, EASY, FERRETERIA → Hogar/Ferretería
 TERPEL, PRIMAX, TEXACO → Transporte/Gasolina
-NETFLIX, SPOTIFY, DISNEY, HBO → Entretenimiento/Streaming
-CLARO, MOVISTAR, TIGO → Servicios/Telefonía
-AGUAS, ENEL, EPM, CODENSA, GAS NATURAL, CENTRAL HIDROEL, CHEC, EEPP → Vivienda/Servicios públicos
-AVÍCOLA, SURTIPOLLOS, MERCALDAS, SULTANA → Alimentación/Tiendas
-Pago TC, Pago Tarjeta, Tarjeta de Crédito → Financiero/Pago Tarjeta
+UBER, CABIFY, DIDI, INDRIVE, TAXI → Transporte/Apps
+NETFLIX, SPOTIFY, DISNEY, HBO, AMAZON PRIME → Entretenimiento/Streaming
+CLARO, MOVISTAR, TIGO, WOM, ETB → Servicios/Telefonía
+AGUAS, ENEL, EPM, CODENSA, GAS NATURAL, CENTRAL HIDROEL, CHEC, EEPP, EMTELSA, EFIGAS → Vivienda/Servicios públicos
+CONJUNTO CERRADO, ADMINISTRACION, ARRIENDO → Vivienda/Arriendo
+Transferencia Bancolombia, Transferencia, Nequi, Daviplata → Transferencia (sin subcategoría)
+Pago TC, Pago Tarjeta, Tarjeta de Crédito, Leasing → Financiero/Pago Tarjeta
+Bancolombia S.A. (como comercio, suele ser cuota de leasing/crédito) → Financiero/Pago Tarjeta
+MANIZALES, MANIZ_ (suele ser un retiro en cajero o comercio local sin marca) → Otro/Retiro efectivo si tipo_transaccion=retiro_cajero; si es compra sin marca → Otro
+
+EJEMPLOS REALES (few-shot):
+- "MERCALDAS PROVICENTR" → categoria=Alimentación, subcategoria=Supermercados, necesidad=necesario
+- "MERCADOPAGO COLOMBIA" → categoria=Alimentación, subcategoria=Domicilios, necesidad=prescindible (casi siempre Rappi/app de comida)
+- "CONJUNTO CERRADO PAI" → categoria=Vivienda, subcategoria=Arriendo, necesidad=necesario
+- "Transferencia Bancolombia" → categoria=Transferencia, subcategoria="", necesidad=n/a
+- "Bancolombia S.A." (como comercio, monto alto y recurrente) → categoria=Financiero, subcategoria=Pago Tarjeta, necesidad=necesario
+- "EMTELSA" → categoria=Vivienda, subcategoria=Servicios públicos, necesidad=necesario
+- "FRANQUIHER MALL PLAZ" → categoria=Alimentación, subcategoria=Restaurantes, necesidad=prescindible
+- "MANIZ_PZA5" con tipo_transaccion=retiro_cajero → categoria=Otro, subcategoria="Retiro efectivo", necesidad=n/a
+- "SMART FIT COLOMBIA" → categoria=Salud, subcategoria=Gimnasio, necesidad=necesario
+- "NETFLIX.COM" → categoria=Entretenimiento, subcategoria=Streaming, necesidad=prescindible
 
 Responde SOLO este JSON (sin nada más):
 {
@@ -654,7 +706,9 @@ function cargarHistoricoEmails(fechaInicio, fechaFin, soloContar, loteOverride) 
   const sheetTxn = ss.getSheetByName(SHEETS.TRANSACTIONS);
   const sheetErr = DRY ? null : ss.getSheetByName(SHEETS.ERRORS);
 
-  // Construir query con ventana de fechas
+  // Construir query con ventana de fechas.
+  // El filtro -label permite progreso: cada corrida avanza sobre hilos no procesados.
+  // Para re-procesar, usar run_quitarLabelTodo primero.
   let query = `${cfg.gmailQuery} after:${INICIO} -label:${CONFIG.GMAIL_LABEL}`;
   if (FIN) query += ` before:${FIN}`;
 
@@ -941,6 +995,28 @@ function limpiarTransaccionesAnio_(anio) {
   return msg;
 }
 
+// Quita el label FinanceBot-Procesado de TODOS los threads sin importar fecha.
+// Usar antes de run_cargarHistoricoCLI para forzar re-escaneo completo.
+// Uso: node gas-run.js run_quitarLabelTodo
+function quitarLabelTodo_() {
+  var label = GmailApp.getUserLabelByName(CONFIG.GMAIL_LABEL);
+  if (!label) return 'Label no encontrado: ' + CONFIG.GMAIL_LABEL;
+
+  var total = 0;
+  while (true) {
+    var threads = GmailApp.search('label:' + CONFIG.GMAIL_LABEL, 0, 100);
+    if (!threads.length) break;
+    threads.forEach(function(t) { t.removeLabel(label); });
+    total += threads.length;
+    if (threads.length < 100) break;
+    Utilities.sleep(1000);
+  }
+
+  var msg = 'Label removido de ' + total + ' threads (sin filtro de fecha)';
+  logInfo_('LIMPIEZA', msg);
+  return msg;
+}
+
 // Quita el label FinanceBot-Procesado de todos los threads del año indicado.
 // Permite recargar un año completo desde cero.
 // Uso: node gas-run.js run_quitarLabelAnio 2025
@@ -1009,6 +1085,109 @@ function procesarComandoHistorico_(texto) {
     '⚙️ Fecha inicio configurada: *' + desde + '*\n' +
     '_Cambia en Configurations → Historico Desde_'
   );
+}
+
+// ------------------------------------------------------------
+// DIAGNÓSTICO DE EMAILS POR FECHA
+// Uso: node gas-run.js run_diagnosticarFecha 2026/03/04
+// Busca TODOS los emails transaccionales de esa fecha (con o sin label)
+// y muestra qué capturó el parser por cada mensaje.
+// ------------------------------------------------------------
+// Busca TODOS los correos de pago TC de Bancolombia sin restricción de fecha ni label.
+// Muestra en qué thread viven y qué parsea de cada uno.
+function buscarTransaccionEnSheets_(monto) {
+  monto = Number(monto);
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEETS.TRANSACTIONS);
+  if (!sheet || sheet.getLastRow() < 2) return 'Hoja vacía';
+
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 18).getValues();
+  var resultados = [];
+  data.forEach(function(row, i) {
+    if (Number(row[5]) === monto) {  // col F = monto
+      resultados.push('Fila ' + (i+2) + ' | Fecha: ' + row[1] + ' | Tipo: ' + row[3] + ' | TipoTxn: ' + row[4] + ' | Monto: ' + row[5] + ' | Comercio: ' + row[7] + ' | Ref: ' + row[13] + ' | Fuente: ' + row[15]);
+    }
+  });
+  return resultados.length ? resultados.join('\n') : 'NO encontrado monto ' + monto + ' en Sheets';
+}
+
+function buscarEmailsPagoTC_() {
+  // Sin filtro de fecha ni label — busca directo al sender conocido de alertas
+  var query = 'from:alertasynotificaciones@bancolombia.com.co';
+  var threads = GmailApp.search(query, 0, 50);
+  var salida = ['QUERY: ' + query, 'HILOS encontrados: ' + threads.length, ''];
+
+  var pagoTCEncontrados = 0;
+
+  threads.forEach(function(thread, ti) {
+    var msgs = thread.getMessages();
+    var labels = thread.getLabels().map(function(l) { return l.getName(); }).join(', ') || 'sin label';
+    var hayPagoTC = false;
+
+    msgs.forEach(function(msg) {
+      var texto = extraerTextoEmail_(msg);
+      if (/pagaste.*tarjeta.*cr[eé]dito/i.test(texto) || /pagaste.*en\s+la\s+tarjeta/i.test(texto)) {
+        if (!hayPagoTC) {
+          salida.push('── Hilo ' + (ti+1) + ' | Labels: [' + labels + '] | Total msgs en hilo: ' + msgs.length);
+          hayPagoTC = true;
+        }
+        var txn = parsearEmailBancolombia_(texto);
+        pagoTCEncontrados++;
+        salida.push('   [PAGO TC] ' + msg.getDate());
+        salida.push('   Parser: ' + (txn
+          ? JSON.stringify({ tipo: txn.tipo, tipo_transaccion: txn.tipo_transaccion, monto: txn.monto, fecha: txn.fecha })
+          : 'NULL — sin match'));
+        salida.push('   Texto (300c): ' + texto.replace(/\s+/g,' ').substring(0, 300));
+        salida.push('');
+      }
+    });
+  });
+
+  salida.push('Total emails PAGO TC encontrados: ' + pagoTCEncontrados);
+  var resultado = salida.join('\n');
+  Logger.log(resultado);
+  return resultado;
+}
+
+function diagnosticarEmailsFecha_(fecha) {
+  if (!fecha) return 'Uso: run_diagnosticarFecha YYYY/MM/DD';
+  var cfg = leerConfiguracion_();
+
+  // Calcular día siguiente para el rango
+  var partes = String(fecha).split('/');
+  var d = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]) + 1);
+  var before = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+
+  // Buscar sin filtro de label para ver TODOS los emails de ese día
+  var query = cfg.gmailQuery + ' after:' + fecha + ' before:' + before;
+  var threads = GmailApp.search(query, 0, 50);
+
+  var salida = ['QUERY: ' + query, 'HILOS: ' + threads.length, ''];
+
+  threads.forEach(function(thread, ti) {
+    var labels = thread.getLabels().map(function(l) { return l.getName(); }).join(', ');
+    var msgs = thread.getMessages();
+    salida.push('── Hilo ' + (ti+1) + ' | Labels: [' + labels + '] | Mensajes: ' + msgs.length);
+
+    msgs.forEach(function(msg, mi) {
+      var texto = extraerTextoEmail_(msg);
+      var esTransac = esEmailTransaccional_(texto);
+      var txn = esTransac ? parsearEmailBancolombia_(texto) : null;
+      salida.push('   Msg ' + (mi+1) + ' | Asunto: ' + msg.getSubject());
+      salida.push('   Transaccional: ' + esTransac);
+      if (esTransac) {
+        salida.push('   Parser: ' + (txn
+          ? JSON.stringify({ tipo: txn.tipo, tipo_transaccion: txn.tipo_transaccion, monto: txn.monto, descripcion: txn.descripcion, fecha: txn.fecha })
+          : 'NULL — sin match de regex'));
+        salida.push('   Texto (600c): ' + texto.replace(/\s+/g,' ').substring(0, 600));
+      }
+      salida.push('');
+    });
+  });
+
+  var resultado = salida.join('\n');
+  Logger.log(resultado);
+  return resultado;
 }
 
 // ------------------------------------------------------------
