@@ -127,6 +127,98 @@ function getDashboardCompleto(anioFiltro, mesFiltro) {
 // ════════════════════════════════════════════════════════════
 // CONFIGURACIONES INTELIGENTES (agrupadas, sin filas vacías)
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// DOCUMENTACIÓN DE CONFIGURACIONES
+// ════════════════════════════════════════════════════════════
+function getConfigDocs() {
+  try {
+    return {
+      ok: true,
+      fields: {
+        'Presupuesto mensual': 'Total máximo a gastar en el mes (COP). Base para alertas y análisis.',
+        'Meta ahorro': 'Cantidad que quieres ahorrar mensualmente (COP).',
+        'Umbral alerta Telegram': 'Monto de gasto único que dispara alerta — para no gastar sin darte cuenta.',
+        'Alerta presupuesto %': 'Porcentaje (0.8 = 80%) al que se activan avisos por categoría.',
+        'Dias recordatorio pagos': 'Días antes del vencimiento para recordarte pagar (Pending Payments).',
+        'Tarjeta credito': 'Últimos dígitos o referencia de tu tarjeta de crédito principal.',
+        'Tarjeta debito': 'Últimos dígitos o referencia de tu tarjeta de débito principal.',
+        'Historico Desde': 'Fecha (YYYY/MM) desde la cual cargar historial de transacciones en Gmail.'
+      }
+    };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// ANÁLISIS HISTÓRICO DE PRESUPUESTOS POR CATEGORÍA
+// Calcula gasto promedio mensual para sugerir presupuestos
+// ════════════════════════════════════════════════════════════
+function analizarPresupuestos() {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh || sh.getLastRow() < 2) return { ok: true, categorias: [], promedio: 0 };
+
+    var data = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var headers = data[0];
+    var idxFecha = headers.findIndex(function(h) { return /fecha/i.test(h); });
+    var idxTipo = headers.findIndex(function(h) { return /tipo/i.test(h); });
+    var idxMonto = headers.findIndex(function(h) { return /monto/i.test(h); });
+    var idxCat = headers.findIndex(function(h) { return /categor/i.test(h); });
+
+    if (idxFecha < 0 || idxTipo < 0 || idxMonto < 0 || idxCat < 0) {
+      return { ok: false, error: 'No se encontraron todas las columnas necesarias' };
+    }
+
+    var ahora = new Date();
+    var mesesAtras = 3; // Analizar últimos 3 meses
+    var desde = new Date(ahora.getFullYear(), ahora.getMonth() - mesesAtras, 1);
+
+    var porMes = {}; // "2026-04" → { categorías: { "Alimentación": [100k, 110k, 105k], ... }, meses: 3 }
+    var totalPorCat = {}; // "Alimentación" → { suma: 315k, meses: 3, promedio: 105k }
+
+    for (var i = 1; i < data.length; i++) {
+      var fila = data[i];
+      var fecha = fila[idxFecha];
+      if (!fecha) continue;
+      var fd = fecha instanceof Date ? fecha : new Date(fecha);
+      if (isNaN(fd.getTime()) || fd < desde) continue;
+
+      var tipo = String(fila[idxTipo]).toLowerCase();
+      if (tipo !== 'egreso') continue;
+
+      var monto = Number(fila[idxMonto]) || 0;
+      var cat = String(fila[idxCat] || 'Otro').trim();
+      var mesKey = fd.getFullYear() + '-' + ('0' + (fd.getMonth() + 1)).slice(-2);
+
+      if (!porMes[mesKey]) porMes[mesKey] = {};
+      if (!porMes[mesKey][cat]) porMes[mesKey][cat] = 0;
+      porMes[mesKey][cat] += monto;
+
+      if (!totalPorCat[cat]) totalPorCat[cat] = { suma: 0, meses: 0 };
+      totalPorCat[cat].suma += monto;
+    }
+
+    // Contar meses únicos con datos
+    var mesesUnicos = Object.keys(porMes).length || 1;
+
+    var resultado = [];
+    for (var cat in totalPorCat) {
+      var promedio = Math.round(totalPorCat[cat].suma / mesesUnicos);
+      resultado.push({
+        categoria: cat,
+        totalGastado: totalPorCat[cat].suma,
+        mesesDatos: mesesUnicos,
+        promedio: promedio,
+        recomendacion: Math.round(promedio * 1.1) // Sugiere 10% más para colchón
+      });
+    }
+
+    resultado.sort(function(a, b) { return b.totalGastado - a.totalGastado; });
+
+    return { ok: true, categorias: resultado, mesesAnalisis: mesesUnicos };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
 function getConfiguracionesSmart() {
   try {
     var ss = _ssWeb_();
@@ -275,9 +367,11 @@ function eliminarFilaConfig(row) {
 }
 
 // ════════════════════════════════════════════════════════════
-// LECTOR GENÉRICO DE HOJAS (transacciones, errores, etc.)
+// LECTOR GENÉRICO DE HOJAS — RETORNA TAMBIÉN ÍNDICES DE COLUMNAS
+// fromTop=true  → lee desde fila 2 (hojas ya ordenadas desc como Transactions)
+// fromTop=false → lee últimas N filas + reversa (hojas append-only como Errors)
 // ════════════════════════════════════════════════════════════
-function getDatosHoja(nombreHoja, limit) {
+function getDatosHoja(nombreHoja, limit, fromTop) {
   try {
     limit = limit || 100;
     var ss = _ssWeb_();
@@ -286,18 +380,82 @@ function getDatosHoja(nombreHoja, limit) {
 
     var lastRow = sh.getLastRow();
     var lastCol = sh.getLastColumn();
-    if (lastRow < 1 || lastCol < 1) return { ok: true, headers: [], rows: [], total: 0 };
+    if (lastRow < 1 || lastCol < 1) return { ok: true, headers: [], filas: [], total: 0, columnMap: {} };
 
     var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(_toStr_);
-    var dataStart = Math.max(2, lastRow - limit + 1);
-    var dataRows = lastRow >= 2 ? sh.getRange(dataStart, 1, lastRow - dataStart + 1, lastCol).getValues() : [];
+    // Crear map: nombre_header → índice (para búsquedas case-insensitive)
+    var columnMap = {};
+    headers.forEach(function(h, idx) {
+      columnMap[h.toLowerCase()] = idx;
+    });
 
-    var filas = dataRows
+    var rawRows = [];
+
+    if (fromTop) {
+      // Hoja ya ordenada desc (más reciente arriba) → leer desde fila 2
+      var count = Math.min(lastRow - 1, limit);
+      rawRows = count > 0 ? sh.getRange(2, 1, count, lastCol).getValues() : [];
+    } else {
+      // Hoja append-only (más reciente abajo) → tomar últimas N + invertir
+      var dataStart = Math.max(2, lastRow - limit + 1);
+      rawRows = lastRow >= 2 ? sh.getRange(dataStart, 1, lastRow - dataStart + 1, lastCol).getValues() : [];
+      rawRows = rawRows.slice().reverse();
+    }
+
+    var filas = rawRows
       .filter(function(r) { return r.some(function(c) { return c !== '' && c !== null; }); })
-      .map(function(r) { return r.map(_toStr_); })
-      .reverse(); // más recientes primero
+      .map(function(r) { return r.map(_toStr_); });
 
-    return { ok: true, headers: headers, filas: filas, total: lastRow - 1 };
+    return { ok: true, headers: headers, filas: filas, total: lastRow - 1, columnMap: columnMap };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// PENDIENTES CON NÚMERO DE FILA (para edición)
+// ════════════════════════════════════════════════════════════
+function getPendingPayments() {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.PENDING_PAYMENTS);
+    if (!sh) return { ok: false, error: 'Hoja Pending Payments no encontrada' };
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    if (lastRow < 2) return { ok: true, headers: [], items: [] };
+
+    var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(_toStr_);
+    var data    = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    var items = [];
+    for (var i = 0; i < data.length; i++) {
+      if (!data[i].some(function(c) { return c !== '' && c !== null; })) continue;
+      var obj = { _row: i + 2 };
+      headers.forEach(function(h, j) { obj[h] = _toStr_(data[i][j]); });
+      items.push(obj);
+    }
+    // Más recientes al tope: invertir (último appendRow = más nuevo)
+    items.reverse();
+    return { ok: true, headers: headers, items: items };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// Cols reales: Servicio|Monto Aprox|Día Vencimiento|Frecuencia|Cuenta/Referencia|Recordar (días antes)|Estado|Notas|Último Pago
+function actualizarPagoPendiente(row, servicio, monto, diaVencimiento, frecuencia, cuentaRef, diasAntes, estado, notas) {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.PENDING_PAYMENTS);
+    var existing = sh.getRange(row, 1, 1, 9).getValues()[0];
+    sh.getRange(row, 1, 1, 9).setValues([[
+      servicio       !== undefined ? servicio       : existing[0],
+      monto          !== undefined ? Number(monto)  : existing[1],
+      diaVencimiento !== undefined ? diaVencimiento : existing[2],
+      frecuencia     !== undefined ? frecuencia     : existing[3],
+      cuentaRef      !== undefined ? cuentaRef      : existing[4],
+      diasAntes      !== undefined ? Number(diasAntes) : existing[5],
+      estado         !== undefined ? estado         : existing[6],
+      notas          !== undefined ? notas          : existing[7],
+      existing[8]                                    // Último Pago sin cambio
+    ]]);
+    return { ok: true };
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
@@ -326,12 +484,31 @@ function getMetas() {
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
+function actualizarMeta(row, nombre, objetivo, fechaLimite, ahorrado, estado) {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.GOALS);
+    if (!sh) return { ok: false, error: 'Hoja Goals no encontrada' };
+    // Cols: ID | Meta | Objetivo | Fecha Limite | Ahorrado | Estado | Creado | Último Abono | Etiqueta
+    var existing = sh.getRange(row, 1, 1, 9).getValues()[0];
+    sh.getRange(row, 2).setValue(nombre || existing[1]);        // Meta
+    sh.getRange(row, 3).setValue(Number(objetivo) || existing[2]); // Objetivo
+    sh.getRange(row, 4).setValue(fechaLimite || existing[3]);   // Fecha Limite
+    sh.getRange(row, 5).setValue(Number(ahorrado) || existing[4]); // Ahorrado
+    sh.getRange(row, 6).setValue(estado || existing[5]);        // Estado
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
 function agregarMeta(nombre, objetivo, fecha, descripcion) {
   try {
     var ss = _ssWeb_();
     var sh = ss.getSheetByName(SHEETS.GOALS);
     if (!sh) return { ok: false, error: 'Hoja Goals no encontrada' };
-    sh.appendRow([nombre, Number(objetivo) || 0, 0, fecha || '', descripcion || '', new Date()]);
+    // Cols: ID | Meta | Objetivo | Fecha Limite | Ahorrado | Estado | Creado | Último Abono | Etiqueta
+    var id = 'META-' + Date.now().toString(36).toUpperCase();
+    sh.appendRow([id, nombre, Number(objetivo) || 0, fecha || '', 0, 'activo',
+                  new Date().toISOString().substring(0, 10), '', descripcion || '']);
     return { ok: true };
   } catch(err) { return { ok: false, error: err.message }; }
 }
@@ -339,12 +516,135 @@ function agregarMeta(nombre, objetivo, fecha, descripcion) {
 // ════════════════════════════════════════════════════════════
 // PAGOS PENDIENTES
 // ════════════════════════════════════════════════════════════
-function agregarPagoPendiente(descripcion, monto, fechaVencimiento, categoria) {
+// Cols reales: Servicio|Monto Aprox|Día Vencimiento|Frecuencia|Cuenta/Referencia|Recordar (días antes)|Estado|Notas|Último Pago
+function agregarPagoPendiente(servicio, monto, diaVencimiento, frecuencia, cuentaRef, diasAntes, estado, notas) {
   try {
     var ss = _ssWeb_();
     var sh = ss.getSheetByName(SHEETS.PENDING_PAYMENTS);
     if (!sh) return { ok: false, error: 'Hoja Pending Payments no encontrada' };
-    sh.appendRow([descripcion, Number(monto) || 0, fechaVencimiento || '', categoria || '', 'pendiente', new Date()]);
+    sh.appendRow([
+      servicio       || '',
+      Number(monto)  || 0,
+      diaVencimiento || '',
+      frecuencia     || 'Mensual',
+      cuentaRef      || '',
+      Number(diasAntes) || 3,
+      estado         || 'Activo',
+      notas          || '',
+      ''              // Último Pago vacío al crear
+    ]);
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// FEATURE FLAGS
+// ════════════════════════════════════════════════════════════
+function getFeatures() {
+  try {
+    var features = FEATURES_CATALOGO_.map(function(f) {
+      return {
+        id:          f.id,
+        nombre:      f.nombre,
+        descripcion: f.descripcion,
+        activa:      isFeatureEnabled_(f.id)
+      };
+    });
+    return { ok: true, features: features };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function toggleFeature(featureId, activa) {
+  try {
+    setFeature_(featureId, activa);
+    return { ok: true, id: featureId, activa: activa };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// SETUP WIZARD — para usuarios no técnicos
+// ════════════════════════════════════════════════════════════
+function getSetupStatus() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var hasToken   = !!props.getProperty('TELEGRAM_BOT_TOKEN');
+    var hasChat    = !!props.getProperty('TELEGRAM_CHAT_ID');
+    var hasGemini  = !!props.getProperty('GEMINI_API_KEY');
+    var hasSheet   = !!props.getProperty('SPREADSHEET_ID');
+    var setupDone  = props.getProperty('SETUP_COMPLETE') === 'true';
+    var triggers   = ScriptApp.getProjectTriggers().length;
+    return {
+      ok: true,
+      setupComplete: setupDone && hasToken && hasChat && hasGemini,
+      steps: {
+        sheet:    hasSheet,
+        telegram: hasToken,
+        chat:     hasChat,
+        gemini:   hasGemini,
+        triggers: triggers > 0
+      }
+    };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function validarTokenTelegram(token) {
+  try {
+    token = String(token || '').trim();
+    if (!token) return { ok: false, error: 'Token vacío' };
+    var resp = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/getMe', { muteHttpExceptions: true });
+    var data = JSON.parse(resp.getContentText());
+    if (!data.ok) return { ok: false, error: data.description || 'Token inválido' };
+    PropertiesService.getScriptProperties().setProperty('TELEGRAM_BOT_TOKEN', token);
+    return { ok: true, botName: data.result.first_name, username: data.result.username };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function detectarChatIdTelegram() {
+  try {
+    var token = PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN');
+    if (!token) return { ok: false, error: 'Primero valida el token del bot' };
+    var resp = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/getUpdates', { muteHttpExceptions: true });
+    var data = JSON.parse(resp.getContentText());
+    if (!data.ok || !data.result || data.result.length === 0) {
+      return { ok: false, error: 'No hay mensajes. Abre Telegram, busca tu bot y envía /start.' };
+    }
+    var ultimo = data.result[data.result.length - 1];
+    var chat = ultimo.message && ultimo.message.chat;
+    if (!chat) return { ok: false, error: 'No se detectó chat. Envía /start al bot.' };
+    PropertiesService.getScriptProperties().setProperty('TELEGRAM_CHAT_ID', String(chat.id));
+    return { ok: true, chatId: String(chat.id), nombre: chat.first_name || chat.username || 'tu cuenta' };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function validarApiKeyGemini(apiKey) {
+  try {
+    apiKey = String(apiKey || '').trim();
+    if (!apiKey) return { ok: false, error: 'API key vacía' };
+    var url = (CONFIG.GEMINI_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent') + '?key=' + apiKey;
+    var resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ contents: [{ parts: [{ text: 'di hola en una palabra' }] }] }),
+      muteHttpExceptions: true
+    });
+    var code = resp.getResponseCode();
+    if (code !== 200) {
+      var err = JSON.parse(resp.getContentText());
+      return { ok: false, error: (err.error && err.error.message) || ('HTTP ' + code) };
+    }
+    PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function finalizarSetup() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (!props.getProperty('SPREADSHEET_ID')) {
+      props.setProperty('SPREADSHEET_ID', CONFIG.SPREADSHEET_ID || SpreadsheetApp.getActiveSpreadsheet().getId());
+    }
+    try { configurarTriggers(); } catch(e) { Logger.log('triggers: ' + e.message); }
+    props.setProperty('SETUP_COMPLETE', 'true');
     return { ok: true };
   } catch(err) { return { ok: false, error: err.message }; }
 }
