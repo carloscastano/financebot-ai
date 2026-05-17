@@ -906,7 +906,7 @@ const TX_VIS = [
   { key:'Fecha',           label:'Fecha' },
   { key:'Tipo',            label:'Tipo' },
   { key:'Monto',           label:'Monto' },
-  { key:'Comercio/Destino',label:'Comercio' },
+  { key:'Comercio',        label:'Comercio' },
   { key:'Categoria',       label:'Categoría' },
   { key:'Subcategoria',    label:'Subcat.' },
   { key:'Referencia',      label:'Ref.' }
@@ -1568,7 +1568,7 @@ function abrirEditTx(row){
   document.getElementById('editTxRow').value      = row;
   document.getElementById('editTxFecha').value    = item['Fecha'] || '';
   document.getElementById('editTxMonto').value    = String(item['Monto'] || '').replace(/[^0-9.,-]/g,'').replace(/\./g,'').replace(',','.');
-  document.getElementById('editTxComercio').value = item['Comercio/Destino'] || '';
+  document.getElementById('editTxComercio').value = item['Comercio'] || '';
   document.getElementById('editTxSubcat').value   = item['Subcategoria'] || '';
   document.getElementById('editTxRef').value      = item['Referencia'] || '';
   // Tipo
@@ -1610,7 +1610,7 @@ function guardarEditTx(){
 function confirmarEliminarTx(row){
   state.txRowDeleted = row;
   const item = txItems.find(i=> i._row === row);
-  const desc = item ? `${item['Fecha']} · ${item['Comercio/Destino']} · ${fmt(item['Monto'])}` : `Fila ${row}`;
+  const desc = item ? `${item['Fecha']} · ${item['Comercio']} · ${fmt(item['Monto'])}` : `Fila ${row}`;
   document.getElementById('confirmMsg').innerHTML = `¿Eliminar esta transacción?<br><span style="font-size:12px;color:var(--muted)">${escapeHtml(desc)}</span>`;
   document.getElementById('confirmBtn').textContent = '🗑️ Eliminar';
   document.getElementById('confirmBtn').style.background = 'var(--grad-red)';
