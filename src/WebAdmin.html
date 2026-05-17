@@ -834,7 +834,7 @@ function renderDashboard(d){
               <tr>
                 <td>${m.mes}</td>
                 <td class="neg">${fmt(m.egresos)}</td>
-                ${privIngresos ? '' : `<td class="pos">${fmt(m.ingresos)}</td>`}
+                ${privIngresos ? '' : '<td class="pos">' + fmt(m.ingresos) + '</td>'}
                 <td class="${m.flujo>=0?'pos':'neg'}">${fmt(m.flujo)}</td>
                 <td>${m.txns}</td>
               </tr>
