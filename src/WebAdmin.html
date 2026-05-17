@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FinanceBot IA — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a; --bg2:#111827; --card:#1a2030; --card2:#232a3d;
+  --border:#2a3245; --text:#f1f5f9; --muted:#94a3b8; --dim:#64748b;
+  --primary:#818cf8; --violet:#c084fc; --pink:#f472b6;
+  --green:#34d399; --red:#f87171; --orange:#fb923c; --yellow:#fbbf24; --blue:#60a5fa;
+  --grad:linear-gradient(135deg,#818cf8 0%,#c084fc 50%,#f472b6 100%);
+  --grad-green:linear-gradient(135deg,#34d399,#10b981);
+  --grad-red:linear-gradient(135deg,#f87171,#ef4444);
+  --grad-blue:linear-gradient(135deg,#60a5fa,#3b82f6);
+  --grad-violet:linear-gradient(135deg,#c084fc,#a855f7);
+  --shadow:0 4px 20px rgba(0,0,0,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+body{padding-bottom:80px}
+
+/* ─── HEADER ─── */
+header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff;box-shadow:0 4px 14px rgba(192,132,252,.4)}
+.logo-text{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.logo-text b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+.header-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{width:38px;height:38px;border-radius:10px;background:var(--card);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:16px}
+.icon-btn:hover{background:var(--card2);transform:translateY(-1px)}
+
+/* ─── LAYOUT ─── */
+.app{max-width:1280px;margin:0 auto;padding:0 16px}
+@media(min-width:1024px){
+  body{padding-bottom:0;display:flex}
+  .sidebar{width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);padding:24px 14px;position:sticky;top:0;display:flex;flex-direction:column;gap:6px}
+  .sidebar-logo{padding:6px 10px 24px;border-bottom:1px solid var(--border);margin-bottom:14px}
+  .sidebar-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:var(--muted);cursor:pointer;font-size:14px;font-weight:500;transition:all .2s}
+  .sidebar-item:hover{background:var(--card);color:var(--text)}
+  .sidebar-item.active{background:var(--card2);color:var(--text)}
+  .sidebar-item .ico{font-size:18px;width:22px;text-align:center}
+  .main{flex:1;min-width:0}
+  header{border-radius:0}
+  .mobile-nav,.mobile-header{display:none}
+}
+@media(max-width:1023px){
+  .sidebar{display:none}
+}
+
+/* ─── TABS ─── */
+.tab-content{display:none;padding:18px 0;animation:fadeIn .3s ease}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:0 2px}
+.section-title h2{font-size:20px;font-weight:700;letter-spacing:-.4px}
+.section-title .sub{color:var(--muted);font-size:12px;margin-top:2px}
+
+/* ─── KPI CARDS ─── */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+@media(min-width:768px){.kpis{grid-template-columns:repeat(4,1fr);gap:14px}}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
+.kpi.red::before{background:var(--grad-red)}
+.kpi.green::before{background:var(--grad-green)}
+.kpi.blue::before{background:var(--grad-blue)}
+.kpi.violet::before{background:var(--grad-violet)}
+.kpi-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
+.kpi-value{font-size:20px;font-weight:700;margin-top:6px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+@media(min-width:768px){.kpi-value{font-size:24px}}
+.kpi-sub{font-size:11px;color:var(--dim);margin-top:4px}
+
+/* ─── PERIOD FILTER ─── */
+.period-filter{display:flex;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:14px}
+.period-filter select{flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+
+/* ─── CARD ─── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:15px;font-weight:600}
+.card-title .count{display:inline-block;padding:2px 8px;background:var(--card2);border-radius:10px;font-size:11px;color:var(--muted);margin-left:8px;font-weight:500}
+
+/* ─── CHARTS ─── */
+.chart-wrap{position:relative;height:240px}
+.chart-wrap.tall{height:280px}
+
+/* ─── DISTRIBUCIÓN ─── */
+.distrib-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:768px){.distrib-grid{grid-template-columns:1fr 1fr}}
+.distrib-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto}
+.distrib-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px}
+.distrib-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.distrib-name{flex:1;font-size:13px;font-weight:500}
+.distrib-val{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.distrib-pct{font-size:11px;color:var(--muted);min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ─── ALERTAS ─── */
+.alerta{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(135deg,rgba(248,113,113,.1),rgba(251,146,60,.05));border:1px solid rgba(248,113,113,.3);border-radius:10px;margin-bottom:8px}
+.alerta-icon{font-size:18px}
+.alerta-content{flex:1;min-width:0}
+.alerta-title{font-size:13px;font-weight:600}
+.alerta-bar{height:6px;background:var(--bg2);border-radius:3px;margin-top:6px;overflow:hidden}
+.alerta-fill{height:100%;background:var(--grad-red);border-radius:3px;transition:width .6s}
+.alerta-text{font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+
+/* ─── TABLA ─── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:10px 8px;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.tbl th:first-child{border-radius:8px 0 0 0}
+.tbl th:last-child{border-radius:0 8px 0 0}
+.tbl td{padding:10px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(129,140,248,.04)}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;background:var(--bg2)}
+.pos{color:var(--green);font-weight:600}
+.neg{color:var(--red);font-weight:600}
+
+/* ─── CONFIG ─── */
+.cfg-section{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.cfg-section-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:var(--card2);transition:all .2s}
+.cfg-section-head:hover{background:var(--card2)}
+.cfg-section-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.cfg-section-title .badge{padding:2px 8px;background:var(--bg2);border-radius:10px;font-size:11px;color:var(--muted);font-weight:500}
+.cfg-section-actions{display:flex;gap:6px;align-items:center}
+.btn-add{padding:6px 12px;background:var(--grad);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .2s}
+.btn-add:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(192,132,252,.4)}
+.cfg-body{padding:6px 0;display:none}
+.cfg-section.open .cfg-body{display:block}
+.cfg-section.open .toggle{transform:rotate(180deg)}
+.toggle{transition:transform .3s;font-size:14px;color:var(--muted)}
+
+.cfg-row{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.cfg-row:last-child{border-bottom:none}
+@media(min-width:640px){.cfg-row{grid-template-columns:1fr 1fr auto;align-items:end}}
+.cfg-row.with-budget{grid-template-columns:1fr}
+@media(min-width:640px){.cfg-row.with-budget{grid-template-columns:1.3fr 1fr auto}}
+.cfg-field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.4px}
+.cfg-field input{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;transition:border-color .2s}
+.cfg-field input:focus{outline:none;border-color:var(--primary)}
+.cfg-actions{display:flex;gap:6px;justify-content:flex-end}
+.btn-save{padding:9px 14px;background:var(--green);color:#0a0e1a;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-save:hover{background:#10b981}
+.btn-del{width:36px;height:36px;background:transparent;color:var(--red);border:1px solid rgba(248,113,113,.3);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s}
+.btn-del:hover{background:rgba(248,113,113,.1)}
+
+/* ─── FORM ─── */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.form-row{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+@media(min-width:640px){.form-row.cols-2{grid-template-columns:1fr 1fr}}
+.form-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+.form-field input,.form-field textarea,.form-field select{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit}
+.form-field input:focus,.form-field textarea:focus,.form-field select:focus{outline:none;border-color:var(--primary)}
+.form-field textarea{resize:vertical;min-height:70px}
+.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.btn-primary{padding:11px 20px;background:var(--grad);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(192,132,252,.4)}
+.btn-ghost{padding:11px 20px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer}
+
+/* ─── EMPTY ─── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:42px;opacity:.4;margin-bottom:10px}
+.empty-text{font-size:14px}
+
+/* ─── LOADING ─── */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-card{padding:30px;text-align:center;color:var(--muted)}
+.loading-card .spinner{margin-bottom:8px}
+
+/* ─── MOBILE NAV ─── */
+.mobile-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,14,26,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:100;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mobile-nav-inner{display:flex;min-width:100%;padding:6px 4px}
+.mobile-nav-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;color:var(--muted);cursor:pointer;font-size:10px;font-weight:500;border-radius:8px;transition:all .2s;background:none;border:none;font-family:inherit}
+.mobile-nav-item .ico{font-size:18px}
+.mobile-nav-item.active{color:var(--primary)}
+.mobile-nav-item.active .ico{transform:scale(1.1)}
+
+/* ─── MODAL ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;max-width:420px;width:100%;animation:fadeIn .25s}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.modal p{color:var(--muted);font-size:14px;margin-bottom:16px;line-height:1.5}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* ─── TOAST ─── */
+.toast-wrap{position:fixed;bottom:90px;left:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+@media(min-width:1024px){.toast-wrap{bottom:24px;right:24px;left:auto;align-items:flex-end}}
+.toast{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;animation:slideIn .3s;max-width:380px;pointer-events:auto}
+.toast.ok{border-color:var(--green)}
+.toast.err{border-color:var(--red)}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ─── LIST ITEM ─── */
+.list-item{padding:12px 14px;background:var(--bg2);border-radius:10px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.list-item-content{flex:1;min-width:0}
+.list-item-title{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item-sub{font-size:12px;color:var(--muted)}
+.list-item-amt{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+/* ─── TOGGLE SWITCH ─── */
+.toggle-wrap{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.toggle-wrap:last-child{border-bottom:none}
+.toggle-info{flex:1;min-width:0}
+.toggle-info b{display:block;font-size:13px;font-weight:600;margin-bottom:2px}
+.toggle-info span{font-size:12px;color:var(--muted);line-height:1.4}
+.sw{position:relative;width:44px;height:24px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-track{position:absolute;inset:0;background:var(--border);border-radius:12px;cursor:pointer;transition:background .25s}
+.sw-track::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .25s}
+.sw input:checked + .sw-track{background:var(--green)}
+.sw input:checked + .sw-track::before{transform:translateX(20px)}
+.badge-ok{display:inline-block;padding:2px 8px;background:rgba(52,211,153,.15);color:var(--green);border-radius:8px;font-size:11px;font-weight:600}
+.badge-warn{display:inline-block;padding:2px 8px;background:rgba(251,146,60,.15);color:var(--orange);border-radius:8px;font-size:11px;font-weight:600}
+.badge-err{display:inline-block;padding:2px 8px;background:rgba(248,113,113,.15);color:var(--red);border-radius:8px;font-size:11px;font-weight:600}
+/* ─── WIZARD OVERLAY ─── */
+.wizard{position:fixed;inset:0;background:var(--bg);z-index:9999;display:none;overflow-y:auto;padding:20px}
+.wizard.open{display:block}
+.wizard-box{max-width:520px;margin:20px auto;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px}
+.wizard-logo{text-align:center;margin-bottom:20px}
+.wizard-logo .logo-mark{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#818cf8,#c084fc);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px}
+.wizard-title{font-size:22px;font-weight:700;text-align:center;margin:8px 0 4px}
+.wizard-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px}
+.wizard-stepper{display:flex;gap:6px;margin-bottom:24px}
+.wizard-stepper .dot{flex:1;height:4px;border-radius:2px;background:var(--border)}
+.wizard-stepper .dot.done{background:var(--green)}
+.wizard-stepper .dot.active{background:var(--primary)}
+.wizard-step{display:none}
+.wizard-step.active{display:block}
+.wizard-step h3{font-size:18px;margin-bottom:8px}
+.wizard-step p{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+.wizard-step ol{padding-left:20px;font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px}
+.wizard-step ol b{color:var(--text)}
+.wizard-step input[type=text],.wizard-step input[type=password]{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;margin-bottom:10px;box-sizing:border-box}
+.wizard-actions{display:flex;gap:10px;margin-top:18px}
+.wizard-actions button{flex:1;padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:var(--bg);color:var(--muted);border:1px solid var(--border) !important}
+.wizard-hint{padding:10px 12px;background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.2);border-radius:8px;font-size:12px;color:var(--muted);margin-top:8px}
+.wizard-success{padding:10px 12px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);border-radius:8px;font-size:13px;color:var(--green);margin-top:8px;display:none}
+.wizard-success.show{display:block}
+.wizard-error{padding:10px 12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:8px;font-size:13px;color:var(--red);margin-top:8px;display:none}
+.wizard-error.show{display:block}
+.wizard-link{color:var(--primary);text-decoration:none;font-weight:600}
+.wizard-link:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<!-- ─── SETUP WIZARD (overlay full-screen) ─── -->
+<div class="wizard" id="wizard">
+  <div class="wizard-box">
+    <div class="wizard-logo">
+      <div class="logo-mark">F</div>
+      <div class="wizard-title">Bienvenido a FinanceBot IA</div>
+      <div class="wizard-sub">Configuremos tu asistente financiero en 4 pasos</div>
+    </div>
+
+    <div class="wizard-stepper" id="wizardStepper">
+      <div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+
+    <!-- PASO 1: BIENVENIDA -->
+    <div class="wizard-step active" data-step="1">
+      <h3>👋 Hola</h3>
+      <p>FinanceBot IA es tu asistente personal para registrar gastos, alertas de presupuesto, recordatorios de pagos y consejos con IA.</p>
+      <p>Necesitarás <b>10 minutos</b> y conexión a internet. Te guiaré paso a paso.</p>
+      <div class="wizard-hint">💡 Vas a crear: 1) Un bot de Telegram (gratis), 2) Una clave de IA Gemini (gratis).</div>
+      <div class="wizard-actions">
+        <button class="btn-primary" onclick="wizardNext()">Empezar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 2: TELEGRAM TOKEN -->
+    <div class="wizard-step" data-step="2">
+      <h3>🤖 Crea tu bot de Telegram</h3>
+      <ol>
+        <li>Abre Telegram y busca <b>@BotFather</b></li>
+        <li>Envíale <b>/newbot</b></li>
+        <li>Elige un nombre (ej: <i>Mi FinanceBot</i>)</li>
+        <li>Elige un usuario que termine en <b>bot</b> (ej: <i>ana_finance_bot</i>)</li>
+        <li>Copia el <b>token</b> que te da y pégalo abajo</li>
+      </ol>
+      <input type="text" id="wizTgToken" placeholder="123456789:AAH..." autocomplete="off">
+      <div class="wizard-success" id="wizTgSuccess"></div>
+      <div class="wizard-error" id="wizTgError"></div>
+      <div class="wizard-actions">
+        <button class="btn-secondary" onclick="wizardPrev()">← Atrás</button>
+        <button class="btn-primary" onclick="wizardValidarToken()" id="wizTgBtn">Validar token</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: CHAT ID -->
+    <div class="wizard-step" data-step="3">
+      <h3>💬 Conecta tu chat</h3>
+      <p>Ahora tu bot necesita saber a quién enviarle mensajes (a ti).</p>
+      <ol>
+        <li>Abre tu bot en Telegram (búscalo por su usuario)</li>
+        <li>Envíale el comando <b>/start</b></li>
+        <li>Vuelve aquí y haz clic en <b>Detectar mi chat</b></li>
+      </ol>
+      <div class="wizard-success" id="wizChatSuccess"></div>
+      <div class="wizard-error" id="wizChatError"></div>
+      <div class="wizard-actions">
+        <button class="btn-secondary" onclick="wizardPrev()">← Atrás</button>
+        <button class="btn-primary" onclick="wizardDetectarChat()" id="wizChatBtn">Detectar mi chat</button>
+      </div>
+    </div>
+
+    <!-- PASO 4: GEMINI -->
+    <div class="wizard-step" data-step="4">
+      <h3>🧠 Activa la IA (Gemini)</h3>
+      <ol>
+        <li>Abre <a class="wizard-link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></li>
+        <li>Inicia sesión con tu Google</li>
+        <li>Haz clic en <b>Create API key</b> (es gratis)</li>
+        <li>Copia la clave y pégala abajo</li>
+      </ol>
+      <input type="password" id="wizGemKey" placeholder="AIza..." autocomplete="off">
+      <div class="wizard-success" id="wizGemSuccess"></div>
+      <div class="wizard-error" id="wizGemError"></div>
+      <div class="wizard-actions">
+        <button class="btn-secondary" onclick="wizardPrev()">← Atrás</button>
+        <button class="btn-primary" onclick="wizardValidarGemini()" id="wizGemBtn">Validar y finalizar</button>
+      </div>
+    </div>
+
+    <!-- PASO 5: ÉXITO -->
+    <div class="wizard-step" data-step="5">
+      <h3>🎉 ¡Listo!</h3>
+      <p>Todo configurado. Tu bot ya está activo y la IA responderá tus consultas.</p>
+      <p><b>Prueba ahora:</b> abre Telegram y envíale a tu bot un mensaje como:<br><i>"gasté 25000 en almuerzo"</i></p>
+      <div class="wizard-hint">📊 Vamos a abrir tu panel para que veas todo en acción.</div>
+      <div class="wizard-actions">
+        <button class="btn-primary" onclick="wizardCerrar()">Ir a mi panel →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SIDEBAR (DESKTOP) ─── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo">
+      <div class="logo-mark">F</div>
+      <div class="logo-text">FinanceBot <b>IA</b></div>
+    </div>
+  </div>
+  <div class="sidebar-item active" data-tab="dashboard"><span class="ico">📊</span> Dashboard</div>
+  <div class="sidebar-item" data-tab="transacciones"><span class="ico">💸</span> Transactions</div>
+  <div class="sidebar-item" data-tab="config"><span class="ico">⚙️</span> Settings</div>
+  <div class="sidebar-item" data-tab="metas"><span class="ico">🎯</span> Goals</div>
+  <div class="sidebar-item" data-tab="pendientes"><span class="ico">📋</span> Bills</div>
+  <div class="sidebar-item" data-tab="errores"><span class="ico">⚠️</span> Errors</div>
+</aside>
+
+<div class="main">
+  <!-- ─── HEADER MOBILE ─── -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">F</div>
+      <div class="logo-text">FinanceBot <b>IA</b></div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnPrivacy" onclick="toggleQuickPrivacy()" title="Toggle modo privado (temp.)">👁️</button>
+      <button class="icon-btn" onclick="openSheet()" title="Abrir Google Sheets">📑</button>
+      <button class="icon-btn" id="btnRefresh" onclick="recargarTab()" title="Recargar">↻</button>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <!-- ════════════ DASHBOARD ════════════ -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="section-title">
+        <div>
+          <h2>Dashboard</h2>
+          <div class="sub">Resumen ejecutivo de tu actividad financiera</div>
+        </div>
+      </div>
+
+      <div class="period-filter">
+        <select id="filterAnio"></select>
+        <select id="filterMes">
+          <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>
+          <option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>
+          <option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>
+          <option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+        </select>
+      </div>
+
+      <div id="dashContent">
+        <div class="loading-card"><div class="spinner"></div><div>Cargando dashboard…</div></div>
+      </div>
+    </section>
+
+    <!-- ════════════ TRANSACTIONS ════════════ -->
+    <section id="tab-transacciones" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>Transactions</h2>
+          <div class="sub">Últimas transacciones registradas · busca por comercio, categoría</div>
+        </div>
+      </div>
+      <div id="txContent" class="card">
+        <div class="loading-card"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ════════════ SETTINGS ════════════ -->
+    <section id="tab-config" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>Settings</h2>
+          <div class="sub">Parámetros generales, bancos, categorías, funcionalidades</div>
+        </div>
+      </div>
+      <div id="cfgContent">
+        <div class="loading-card"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Análisis de presupuestos -->
+      <div class="cfg-section" data-sec="analisis" style="margin-top:12px">
+        <div class="cfg-section-head" onclick="toggleSec('analisis')">
+          <div class="cfg-section-title">📊 Análisis de Presupuestos <span class="badge">histórico</span></div>
+          <div class="cfg-section-actions">
+            <button class="btn-add" onclick="event.stopPropagation();cargarAnalisisPresupuestos()">↻ Analizar</button>
+            <span class="toggle">▾</span>
+          </div>
+        </div>
+        <div class="cfg-body" id="analisisContent" style="padding:12px 0">
+          <div style="padding:12px 16px;font-size:12px;color:var(--muted)">Haz clic en "Analizar" para calcular el promedio de gasto por categoría en los últimos 3 meses.</div>
+        </div>
+      </div>
+
+      <!-- Funcionalidades: carga independiente, siempre visible -->
+      <div class="cfg-section open" data-sec="features" style="margin-top:12px">
+        <div class="cfg-section-head" onclick="toggleSec('features')">
+          <div class="cfg-section-title">🤖 Funcionalidades <span class="badge" id="featBadge">…</span></div>
+          <span class="toggle">▾</span>
+        </div>
+        <div class="cfg-body" id="featContent">
+          <div class="loading-card"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ GOALS ════════════ -->
+    <section id="tab-metas" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>Goals</h2>
+          <div class="sub">Objetivos de ahorro o inversión</div>
+        </div>
+        <button class="btn-add" onclick="openModalMeta()">+ Nueva Meta</button>
+      </div>
+      <div id="metasContent" class="card">
+        <div class="loading-card"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ════════════ BILLS ════════════ -->
+    <section id="tab-pendientes" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>Bills</h2>
+          <div class="sub">Compromisos por vencer · gestiona pagos recurrentes</div>
+        </div>
+        <button class="btn-add" onclick="openModalPendiente()">+ Nuevo</button>
+      </div>
+      <div id="pendientesContent" class="card">
+        <div class="loading-card"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ════════════ ERRORES ════════════ -->
+    <section id="tab-errores" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>Errores</h2>
+          <div class="sub">Últimos 50 registros del log</div>
+        </div>
+      </div>
+      <div id="erroresContent" class="card">
+        <div class="loading-card"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ─── MOBILE NAV ─── -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-item active" data-tab="dashboard"><span class="ico">📊</span><span>Inicio</span></button>
+    <button class="mobile-nav-item" data-tab="transacciones"><span class="ico">💸</span><span>Tx</span></button>
+    <button class="mobile-nav-item" data-tab="config"><span class="ico">⚙️</span><span>Settings</span></button>
+    <button class="mobile-nav-item" data-tab="metas"><span class="ico">🎯</span><span>Goals</span></button>
+    <button class="mobile-nav-item" data-tab="pendientes"><span class="ico">📋</span><span>Bills</span></button>
+    <button class="mobile-nav-item" data-tab="errores"><span class="ico">⚠️</span><span>Errors</span></button>
+  </div>
+</nav>
+
+<!-- ─── MODAL: NUEVA META ─── -->
+<div class="modal-bg" id="modalMeta">
+  <div class="modal">
+    <h3>Nueva Meta</h3>
+    <div class="form-field" style="margin-bottom:10px"><label>Nombre</label><input id="metaNombre" placeholder="Ej. Viaje Cartagena"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Objetivo (COP)</label><input id="metaObjetivo" type="number" placeholder="3000000"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Fecha límite (AAAA-MM-DD)</label><input id="metaFecha" placeholder="2026-12-31"></div>
+    <div class="form-field" style="margin-bottom:14px"><label>Descripción (opcional)</label><input id="metaDesc" placeholder="Notas..."></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalMeta')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarMeta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: EDITAR GOAL ─── -->
+<div class="modal-bg" id="modalEditGoal">
+  <div class="modal">
+    <h3>Editar Meta</h3>
+    <input type="hidden" id="editGoalRow">
+    <div class="form-field" style="margin-bottom:10px"><label>Nombre</label><input id="editGoalNombre"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Objetivo (COP)</label><input id="editGoalObjetivo" type="number"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Ahorrado (COP)</label><input id="editGoalAhorrado" type="number"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Fecha límite (AAAA-MM-DD)</label><input id="editGoalFecha" placeholder="2026-12-31"></div>
+    <div class="form-field" style="margin-bottom:14px">
+      <label>Estado</label>
+      <select id="editGoalEstado">
+        <option value="activo">Activo</option>
+        <option value="completado">Completado</option>
+        <option value="pausado">Pausado</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalEditGoal')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarEditGoal()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: NUEVO BILL ─── -->
+<div class="modal-bg" id="modalPendiente">
+  <div class="modal">
+    <h3>Nuevo Bill</h3>
+    <div class="form-field" style="margin-bottom:10px"><label>Servicio</label><input id="pendServicio" placeholder="Ej. ClaroMovil, Netflix, Administración"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Monto aprox. (COP)</label><input id="pendMonto" type="number" placeholder="68900"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Día de vencimiento (1–31)</label><input id="pendDia" type="number" min="1" max="31" placeholder="31"></div>
+    <div class="form-field" style="margin-bottom:10px">
+      <label>Frecuencia</label>
+      <select id="pendFrecuencia">
+        <option>Mensual</option><option>Bimestral</option><option>Trimestral</option><option>Anual</option><option>Único</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:10px"><label>Cuenta / Referencia (opcional)</label><input id="pendRef" placeholder="Ej. 5463008675"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Recordar (días antes)</label><input id="pendDias" type="number" value="3" min="1" max="30"></div>
+    <div class="form-field" style="margin-bottom:14px"><label>Notas (opcional)</label><input id="pendNotas" placeholder="Ej. Pago celular"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalPendiente')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarPendiente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: NUEVO BANCO ─── -->
+<div class="modal-bg" id="modalBanco">
+  <div class="modal">
+    <h3>Agregar Banco</h3>
+    <p>Ingresa el correo remitente del banco (ej. <code>alertasynotificaciones@notificacionesbancolombia.com</code>)</p>
+    <div class="form-field" style="margin-bottom:14px"><label>Correo del remitente</label><input id="bancoSender" placeholder="alertas@banco.com"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalBanco')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarBanco()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: NUEVA CATEGORÍA ─── -->
+<div class="modal-bg" id="modalCategoria">
+  <div class="modal">
+    <h3>Agregar Categoría</h3>
+    <div class="form-field" style="margin-bottom:10px"><label>Nombre</label><input id="catNombre" placeholder="Ej. Mascotas"></div>
+    <div class="form-field" style="margin-bottom:14px"><label>Presupuesto mensual (COP) — opcional</label><input id="catPresupuesto" type="number" placeholder="200000"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalCategoria')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarCategoria()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: EDITAR BILL ─── -->
+<div class="modal-bg" id="modalEditPendiente">
+  <div class="modal">
+    <h3>Editar Bill</h3>
+    <input type="hidden" id="editPendRow">
+    <div class="form-field" style="margin-bottom:10px"><label>Servicio</label><input id="editPendServicio"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Monto aprox. (COP)</label><input id="editPendMonto" type="number"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Día de vencimiento (1–31)</label><input id="editPendDia" type="number" min="1" max="31"></div>
+    <div class="form-field" style="margin-bottom:10px">
+      <label>Frecuencia</label>
+      <select id="editPendFrecuencia">
+        <option>Mensual</option><option>Bimestral</option><option>Trimestral</option><option>Anual</option><option>Único</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:10px"><label>Cuenta / Referencia</label><input id="editPendRef"></div>
+    <div class="form-field" style="margin-bottom:10px"><label>Recordar (días antes)</label><input id="editPendDias" type="number" min="1" max="30"></div>
+    <div class="form-field" style="margin-bottom:10px">
+      <label>Estado</label>
+      <select id="editPendEstado">
+        <option value="Activo">Activo</option><option value="Inactivo">Inactivo</option><option value="Pagado">Pagado</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:14px"><label>Notas</label><input id="editPendNotas"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalEditPendiente')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarEditPendiente()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: CONFIRMAR ELIMINAR ─── -->
+<div class="modal-bg" id="modalConfirm">
+  <div class="modal">
+    <h3>¿Eliminar?</h3>
+    <p id="confirmMsg">Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalConfirm')">Cancelar</button>
+      <button class="btn-primary" id="confirmBtn" style="background:var(--grad-red)">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: EDITAR TRANSACCIÓN ─── -->
+<div class="modal-bg" id="modalEditTx">
+  <div class="modal" style="max-width:440px">
+    <h3>✏️ Editar transacción</h3>
+    <input type="hidden" id="editTxRow">
+    <div class="form-group">
+      <label class="form-label">Fecha</label>
+      <input type="text" id="editTxFecha" class="form-input" placeholder="dd/MM/yyyy">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo</label>
+      <select id="editTxTipo" class="form-input">
+        <option value="egreso">egreso</option>
+        <option value="ingreso">ingreso</option>
+        <option value="informativo">informativo</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Monto (COP)</label>
+      <input type="number" id="editTxMonto" class="form-input" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Comercio / Destino</label>
+      <input type="text" id="editTxComercio" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoría</label>
+      <select id="editTxCat" class="form-input"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Subcategoría</label>
+      <input type="text" id="editTxSubcat" class="form-input" placeholder="Restaurantes, Gasolina…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Necesidad</label>
+      <select id="editTxNecesidad" class="form-input">
+        <option value="necesario">necesario</option>
+        <option value="prescindible">prescindible</option>
+        <option value="lujo">lujo</option>
+        <option value="n/a">n/a</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Referencia</label>
+      <input type="text" id="editTxRef" class="form-input" placeholder="Número de cuenta, código…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalEditTx')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarEditTx()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ════════════ CONSTANTES ════════════
+const SHEET_URL = '<?= spreadsheetUrl ?>';
+const FMT = new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});
+const fmt = n => FMT.format(Math.round(Number(n)||0));
+const COLORS = ['#818cf8','#c084fc','#f472b6','#34d399','#fbbf24','#60a5fa','#fb923c','#a78bfa','#22d3ee','#fb7185','#f59e0b','#10b981','#6366f1','#ec4899'];
+
+// ════════════ STATE ════════════
+const state = {
+  tab:'dashboard',
+  cfgData:null,
+  dashCharts:{},
+  quickPrivateMode: false,    // toggle temporal en header
+  privateFields: {}           // {ingresos: true, flujo: true, ...} desde Sheets
+};
+
+// ════════════ NAVEGACIÓN ════════════
+function setTab(name){
+  state.tab = name;
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active', el.id==='tab-'+name));
+  document.querySelectorAll('.mobile-nav-item, .sidebar-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===name));
+  cargarTab(name);
+}
+function recargarTab(){ cargarTab(state.tab, true); }
+function cargarTab(name, force){
+  if (name==='dashboard') loadDashboard();
+  else if (name==='transacciones') loadTransacciones(force);
+  else if (name==='config') { loadConfig(force); loadFeatures(); }
+  else if (name==='metas') loadMetas(force);
+  else if (name==='pendientes') loadPendientes(force);
+  else if (name==='errores') loadErrores(force);
+}
+document.querySelectorAll('.mobile-nav-item, .sidebar-item').forEach(el=>{
+  el.addEventListener('click', ()=> setTab(el.dataset.tab));
+});
+
+// ════════════ TOASTS ════════════
+function toast(msg, type='ok'){
+  const t = document.createElement('div');
+  t.className = 'toast '+type;
+  t.innerHTML = (type==='ok'?'✅ ':'❌ ') + msg;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(10px)'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+// ════════════ MODALES ════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m=> m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); }));
+function openSheet(){ window.open(SHEET_URL, '_blank'); }
+
+// ════════════ DASHBOARD ════════════
+function initFiltroAnio(){
+  const sel = document.getElementById('filterAnio');
+  const ahora = new Date().getFullYear();
+  for (let y=ahora; y>=ahora-4; y--){
+    const o = document.createElement('option'); o.value=y; o.text=y; sel.appendChild(o);
+  }
+  sel.value = ahora;
+  document.getElementById('filterMes').value = new Date().getMonth();
+  sel.addEventListener('change', loadDashboard);
+  document.getElementById('filterMes').addEventListener('change', loadDashboard);
+}
+
+function loadDashboard(){
+  const anio = document.getElementById('filterAnio').value;
+  const mes  = Number(document.getElementById('filterMes').value)+1;
+  const cont = document.getElementById('dashContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div><div>Cargando…</div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok) { cont.innerHTML = '<div class="card"><div class="empty">⚠️ '+(r?r.error:'Error')+'</div></div>'; return; }
+      renderDashboard(r);
+    })
+    .withFailureHandler(e=>{ cont.innerHTML = '<div class="card"><div class="empty">❌ '+e.message+'</div></div>'; })
+    .getDashboardCompleto(anio, mes);
+}
+
+function renderDashboard(d){
+  const k = d.kpis;
+  const privIngresos = state.quickPrivateMode || (state.privateFields && (state.privateFields['ingresos'] || state.privateFields['consolidado']));
+  const privFlujo = state.quickPrivateMode || (state.privateFields && state.privateFields['flujo']);
+  const privAhorro = state.quickPrivateMode || (state.privateFields && state.privateFields['ahorro']);
+  const html = `
+    <div class="kpis">
+      <div class="kpi red">
+        <div class="kpi-label">💸 Gastos del mes</div>
+        <div class="kpi-value">${fmt(k.gastos)}</div>
+        <div class="kpi-sub">${k.txnEsteMes} transacciones</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">💰 Ingresos</div>
+        <div class="kpi-value">${privIngresos ? '••••••' : fmt(k.ingresos)}</div>
+        <div class="kpi-sub">Mes en curso</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">📈 Flujo neto</div>
+        <div class="kpi-value">${privFlujo ? '••••••' : fmt(k.flujo)}</div>
+        <div class="kpi-sub">${privFlujo ? 'Oculto' : (k.flujo>=0?'Superávit':'Déficit')}</div>
+      </div>
+      <div class="kpi violet">
+        <div class="kpi-label">🎯 Tasa ahorro</div>
+        <div class="kpi-value">${privAhorro ? '••' : k.ratioAhorro}${privAhorro ? '' : '%'}</div>
+        <div class="kpi-sub">${privAhorro ? 'Oculto' : 'de tus ingresos'}</div>
+      </div>
+    </div>
+
+    ${d.alertas && d.alertas.length ? `
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚠️ Alertas de presupuesto <span class="count">${d.alertas.length}</span></div></div>
+      ${d.alertas.map(a=>`
+        <div class="alerta">
+          <div class="alerta-icon">${a.pct>=100?'🚨':'⚠️'}</div>
+          <div class="alerta-content">
+            <div class="alerta-title">${a.cat} — ${a.pct}%</div>
+            <div class="alerta-bar"><div class="alerta-fill" style="width:${Math.min(a.pct,100)}%"></div></div>
+            <div class="alerta-text">${fmt(a.gastado)} / ${fmt(a.presupuesto)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">📊 Distribución del gasto</div></div>
+      <div class="distrib-grid">
+        <div class="chart-wrap"><canvas id="chartPie"></canvas></div>
+        <div class="distrib-list" id="distribList"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">📅 Consolidado mensual <span class="count">últimos 12</span></div></div>
+      <div class="chart-wrap tall"><canvas id="chartBar"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">📋 Detalle por mes</div></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Mes</th><th>Egresos</th>${privIngresos ? '' : '<th>Ingresos</th>'}<th>Flujo</th><th># Tx</th></tr></thead>
+          <tbody>
+            ${d.consolidado.slice().reverse().map(m=>`
+              <tr>
+                <td>${m.mes}</td>
+                <td class="neg">${fmt(m.egresos)}</td>
+                ${privIngresos ? '' : `<td class="pos">${fmt(m.ingresos)}</td>`}
+                <td class="${m.flujo>=0?'pos':'neg'}">${fmt(m.flujo)}</td>
+                <td>${m.txns}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('dashContent').innerHTML = html;
+
+  // Pie
+  const distrib = d.distribucion || [];
+  const distribList = document.getElementById('distribList');
+  distribList.innerHTML = distrib.length ? distrib.slice(0,10).map((x,i)=>`
+    <div class="distrib-item">
+      <div class="distrib-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+      <div class="distrib-name">${x.cat}</div>
+      <div class="distrib-val">${fmt(x.monto)}</div>
+      <div class="distrib-pct">${x.pct}%</div>
+    </div>
+  `).join('') : '<div class="empty">Sin datos del periodo</div>';
+
+  setTimeout(()=>{
+    if (state.dashCharts.pie) state.dashCharts.pie.destroy();
+    if (state.dashCharts.bar) state.dashCharts.bar.destroy();
+    if (distrib.length){
+      const ctx = document.getElementById('chartPie');
+      state.dashCharts.pie = new Chart(ctx, {
+        type:'doughnut',
+        data:{ labels:distrib.slice(0,10).map(x=>x.cat), datasets:[{ data:distrib.slice(0,10).map(x=>x.monto), backgroundColor:COLORS.slice(0,10), borderWidth:2, borderColor:'#1a2030' }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.parsed) }}}}
+      });
+    }
+    const cons = d.consolidado || [];
+    if (cons.length){
+      const ctx2 = document.getElementById('chartBar');
+      const barDatasets = [
+        privIngresos ? null : { label:'Ingresos', data:cons.map(m=>m.ingresos), backgroundColor:'#34d399', borderRadius:6 },
+        { label:'Egresos',  data:cons.map(m=>m.egresos),  backgroundColor:'#f87171', borderRadius:6 }
+      ].filter(d=>d);
+      state.dashCharts.bar = new Chart(ctx2, {
+        type:'bar',
+        data:{ labels:cons.map(m=>m.mes), datasets: barDatasets },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top', labels:{ color:'#94a3b8', font:{size:11}, boxWidth:14 }}, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.parsed.y) }}}, scales:{ x:{ grid:{display:false}, ticks:{color:'#94a3b8',font:{size:10}}}, y:{ grid:{color:'#2a3245'}, ticks:{color:'#94a3b8',font:{size:10},callback:v=>fmt(v)}}}}
+      });
+    }
+  }, 50);
+}
+
+// ════════════ PRIVACIDAD ════════════
+function isFieldPrivate(fieldName){
+  // Retorna true si el campo está marcado como privado (permanente o temporal)
+  const isPermanent = state.privateFields && state.privateFields[fieldName];
+  return isPermanent || state.quickPrivateMode;
+}
+
+function toggleQuickPrivacy(){
+  state.quickPrivateMode = !state.quickPrivateMode;
+  const btn = document.getElementById('btnPrivacy');
+  btn.textContent = state.quickPrivateMode ? '🔒' : '👁️';
+  btn.style.opacity = state.quickPrivateMode ? '1' : '0.6';
+  loadDashboard();
+}
+
+// ════════════ TRANSACCIONES ════════════
+// Columnas visibles en la tabla (campo del objeto item)
+const TX_VIS = [
+  { key:'Fecha',           label:'Fecha' },
+  { key:'Tipo',            label:'Tipo' },
+  { key:'Monto',           label:'Monto' },
+  { key:'Comercio/Destino',label:'Comercio' },
+  { key:'Categoria',       label:'Categoría' },
+  { key:'Subcategoria',    label:'Subcat.' },
+  { key:'Referencia',      label:'Ref.' }
+];
+
+let txItems = [];     // cache global de items con _row
+let txCatOpts = '';   // HTML de <option> para el selector de categoría
+
+function loadTransacciones(force){
+  const cont = document.getElementById('txContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok){ cont.innerHTML='<div class="empty">❌ '+(r?r.error:'Error')+'</div>'; return; }
+      txItems = r.items || [];
+      // Construir opciones de categoría para el modal
+      const cats = r.categorias || [];
+      txCatOpts = cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      if (!txCatOpts) txCatOpts = '<option value="">Sin categorías</option>';
+      renderTxTable(txItems, r.total || 0);
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getTransacciones(200);
+}
+
+function renderTxTable(items, total){
+  const cont = document.getElementById('txContent');
+  if (!items.length){
+    cont.innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Sin transacciones</div></div>';
+    return;
+  }
+  const rows = items.map(item=>{
+    const tipo = (item['Tipo']||'').toLowerCase();
+    const color = tipo==='ingreso'?'var(--green)':tipo==='egreso'?'var(--red)':'var(--muted)';
+    const cells = TX_VIS.map(col=>{
+      const v = item[col.key] || '';
+      if (col.key==='Monto') return `<td style="color:${color};font-weight:600">${fmt(v)}</td>`;
+      if (col.key==='Tipo')  return `<td><span style="color:${color};font-size:12px;font-weight:600;text-transform:capitalize">${escapeHtml(v)}</span></td>`;
+      return `<td>${escapeHtml(v)}</td>`;
+    }).join('');
+    return `<tr>${cells}<td style="white-space:nowrap;text-align:right"><button class="btn-ghost" style="padding:4px 6px;font-size:11px" onclick='abrirEditTx(${item._row})' title="Editar">✏️</button><button class="btn-ghost" style="padding:4px 6px;font-size:11px;color:var(--red)" onclick='confirmarEliminarTx(${item._row})' title="Eliminar">🗑️</button></td></tr>`;
+  }).join('');
+  const heads = TX_VIS.map(c=>`<th>${c.label}</th>`).join('') + '<th style="text-align:right">Acciones</th>';
+  cont.innerHTML = `
+    <div style="padding:0 0 10px">
+      <input id="txSearch" placeholder="🔍 Buscar por comercio, categoría…" oninput="filtrarTx()"
+        style="width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit">
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>${heads}</tr></thead>
+        <tbody id="txBody">${rows}</tbody>
+      </table>
+    </div>
+    <div style="padding:8px 4px;font-size:12px;color:var(--muted)">${total} en total · mostrando ${items.length}</div>`;
+}
+
+// ════════════ FEATURES ════════════
+function loadFeatures(){
+  const cont = document.getElementById('featContent');
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok){ cont.innerHTML='<div class="empty">❌ '+(r?r.error:'Error')+'</div>'; return; }
+      const features = r.features || [];
+      const activas = features.filter(f=>f.activa).length;
+      document.getElementById('featBadge').textContent = activas + '/' + features.length + ' activas';
+      cont.innerHTML = features.map(f=>`
+        <div class="toggle-wrap">
+          <div class="toggle-info">
+            <b>${escapeHtml(f.nombre)}</b>
+            <span>${escapeHtml(f.descripcion)}</span>
+          </div>
+          <label class="sw" title="${f.activa?'Desactivar':'Activar'} ${escapeHtml(f.nombre)}">
+            <input type="checkbox" id="feat_${f.id}" ${f.activa?'checked':''} onchange="cambiarFeature('${f.id}', this.checked)">
+            <div class="sw-track"></div>
+          </label>
+        </div>
+      `).join('');
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getFeatures();
+}
+
+function cambiarFeature(id, activa){
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){
+        toast((activa?'✅ Activada: ':'⏸️ Desactivada: ') + id.replace(/_/g,' '));
+        // Actualizar badge
+        const checks = document.querySelectorAll('#featContent input[type=checkbox]');
+        const on = Array.from(checks).filter(c=>c.checked).length;
+        document.getElementById('featBadge').textContent = on+'/'+checks.length+' activas';
+      } else {
+        toast(r?r.error:'Error al cambiar','err');
+        document.getElementById('feat_'+id).checked = !activa; // revertir
+      }
+    })
+    .withFailureHandler(e=>{
+      toast(e.message,'err');
+      document.getElementById('feat_'+id).checked = !activa;
+    })
+    .toggleFeature(id, activa);
+}
+
+// ════════════ CONFIG ════════════
+function loadConfig(force){
+  const cont = document.getElementById('cfgContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div></div>';
+  // Cargar docs primero, luego config (docs son silenciosos si fallan)
+  google.script.run
+    .withSuccessHandler(d=>{ if(d && d.ok) state.cfgDocs = d.fields || {}; })
+    .getConfigDocs();
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok) { cont.innerHTML='<div class="empty">'+(r?r.error:'Error')+'</div>'; return; }
+      state.cfgData = r;
+      // Procesar campos privados desde general
+      state.privateFields = {};
+      (r.general || []).forEach(f=>{
+        if(f.clave.startsWith('Privacidad ')){
+          const field = f.clave.replace('Privacidad ','').toLowerCase();
+          state.privateFields[field] = /^(sí|si|on|true|1)$/i.test(String(f.valor).trim());
+        }
+      });
+      renderConfig();
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getConfiguracionesSmart();
+}
+
+function renderConfig(){
+  const r = state.cfgData;
+  const general = r.general || [];
+  const bancos = r.bancos || [];
+  const cats = r.categorias || [];
+
+  const docs = state.cfgDocs || {};
+
+  const cont = document.getElementById('cfgContent');
+  cont.innerHTML = `
+    <!-- GENERAL -->
+    <div class="cfg-section open" data-sec="general">
+      <div class="cfg-section-head" onclick="toggleSec('general')">
+        <div class="cfg-section-title">⚙️ General <span class="badge">${general.length}</span></div>
+        <span class="toggle">▾</span>
+      </div>
+      <div class="cfg-body">
+        ${general.map(g=>`
+          <div class="cfg-row">
+            <div class="cfg-field"><label>${g.clave}</label><input id="cfg_${g.row}" value="${escapeHtml(g.valor)}"></div>
+            <div class="cfg-field"><label>Descripción</label><div style="font-size:12px;color:var(--muted);padding:9px 0;line-height:1.4">${escapeHtml(docs[g.clave]||g.desc||'Sin documentación')}</div></div>
+            <div class="cfg-actions"><button class="btn-save" onclick="guardarCfg('${escapeAttr(g.clave)}', ${g.row})">Guardar</button></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- PRIVACIDAD -->
+    <div class="cfg-section open" data-sec="privacidad">
+      <div class="cfg-section-head" onclick="toggleSec('privacidad')">
+        <div class="cfg-section-title">🔒 Privacidad de datos <span class="badge">campos sensibles</span></div>
+        <span class="toggle">▾</span>
+      </div>
+      <div class="cfg-body">
+        <div class="toggle-wrap">
+          <div class="toggle-info">
+            <b>Ocultar Ingresos</b>
+            <span>Enmascara los montos de ingresos en dashboards</span>
+          </div>
+          <label class="sw">
+            <input type="checkbox" id="privIngresos" onchange="togglePrivacyField('Privacidad Ingresos',this.checked)">
+            <div class="sw-track"></div>
+          </label>
+        </div>
+        <div class="toggle-wrap">
+          <div class="toggle-info">
+            <b>Ocultar Flujo Neto</b>
+            <span>Oculta la diferencia entre ingresos y gastos</span>
+          </div>
+          <label class="sw">
+            <input type="checkbox" id="privFlujo" onchange="togglePrivacyField('Privacidad Flujo',this.checked)">
+            <div class="sw-track"></div>
+          </label>
+        </div>
+        <div class="toggle-wrap">
+          <div class="toggle-info">
+            <b>Ocultar Tasa de Ahorro</b>
+            <span>Oculta el porcentaje de ahorro respecto a ingresos</span>
+          </div>
+          <label class="sw">
+            <input type="checkbox" id="privAhorro" onchange="togglePrivacyField('Privacidad Ahorro',this.checked)">
+            <div class="sw-track"></div>
+          </label>
+        </div>
+        <div class="toggle-wrap">
+          <div class="toggle-info">
+            <b>Ocultar Ingresos en Consolidado</b>
+            <span>Oculta columna de ingresos en tabla de 12 meses</span>
+          </div>
+          <label class="sw">
+            <input type="checkbox" id="privConsolidado" onchange="togglePrivacyField('Privacidad Consolidado',this.checked)">
+            <div class="sw-track"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- BANCOS -->
+    <div class="cfg-section open" data-sec="bancos">
+      <div class="cfg-section-head" onclick="toggleSec('bancos')">
+        <div class="cfg-section-title">🏦 Bancos / Remitentes <span class="badge">${bancos.length}</span></div>
+        <div class="cfg-section-actions">
+          <button class="btn-add" onclick="event.stopPropagation();openModal('modalBanco')">+ Agregar</button>
+          <span class="toggle">▾</span>
+        </div>
+      </div>
+      <div class="cfg-body">
+        ${bancos.length ? bancos.map(b=>`
+          <div class="cfg-row">
+            <div class="cfg-field"><label>${b.clave}</label><input id="bnk_${b.row}" value="${escapeHtml(b.valor)}"></div>
+            <div class="cfg-field"><label>&nbsp;</label><div style="font-size:11px;color:var(--dim);padding:9px 0">${escapeHtml(b.desc||'Correo del remitente del banco')}</div></div>
+            <div class="cfg-actions">
+              <button class="btn-save" onclick="actualizarBanco(${b.row})">Guardar</button>
+              <button class="btn-del" onclick="confirmDel('${escapeAttr(b.clave)}', ${b.row})">🗑</button>
+            </div>
+          </div>
+        `).join('') : '<div class="empty" style="padding:20px">No hay bancos configurados</div>'}
+      </div>
+    </div>
+
+    <!-- CATEGORÍAS + PRESUPUESTO -->
+    <div class="cfg-section open" data-sec="categorias">
+      <div class="cfg-section-head" onclick="toggleSec('categorias')">
+        <div class="cfg-section-title">🏷️ Categorías y Presupuestos <span class="badge">${cats.length}</span></div>
+        <div class="cfg-section-actions">
+          <button class="btn-add" onclick="event.stopPropagation();openModal('modalCategoria')">+ Agregar</button>
+          <span class="toggle">▾</span>
+        </div>
+      </div>
+      <div class="cfg-body">
+        ${cats.length ? cats.map(c=>`
+          <div class="cfg-row with-budget">
+            <div class="cfg-field"><label>${c.clave}</label><input id="cat_n_${c.row}" value="${escapeHtml(c.valor)}"></div>
+            <div class="cfg-field"><label>Presupuesto mensual (COP)</label><input id="cat_p_${c.row}" type="number" value="${c.presupuesto||''}" placeholder="Sin definir"></div>
+            <div class="cfg-actions">
+              <button class="btn-save" onclick="actualizarCat(${c.row})">Guardar</button>
+              <button class="btn-del" onclick="confirmDel('${escapeAttr(c.clave)}', ${c.row})">🗑</button>
+            </div>
+          </div>
+        `).join('') : '<div class="empty" style="padding:20px">No hay categorías configuradas</div>'}
+      </div>
+    </div>
+  `;
+  // Restaurar checkboxes de privacidad
+  if(state.privateFields){
+    document.getElementById('privIngresos').checked = !!state.privateFields.ingresos;
+    document.getElementById('privFlujo').checked = !!state.privateFields.flujo;
+    document.getElementById('privAhorro').checked = !!state.privateFields.ahorro;
+    document.getElementById('privConsolidado').checked = !!state.privateFields.consolidado;
+  }
+}
+
+function toggleSec(sec){ document.querySelector(`.cfg-section[data-sec="${sec}"]`).classList.toggle('open'); }
+
+// ════════════ ANÁLISIS PRESUPUESTOS ════════════
+function cargarAnalisisPresupuestos(){
+  const cont = document.getElementById('analisisContent');
+  cont.innerHTML = '<div class="loading-card" style="padding:12px"><div class="spinner"></div><div>Analizando últimos 3 meses…</div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(!r || !r.ok){ cont.innerHTML='<div style="padding:12px 16px;color:var(--red)">❌ '+r?.error+'</div>'; return; }
+      const cats = r.categorias || [];
+      const meses = r.mesesAnalisis || 1;
+      if(!cats.length){ cont.innerHTML='<div style="padding:12px 16px;color:var(--muted)">Sin datos de transacciones en los últimos 3 meses</div>'; return; }
+
+      // Guardar en una variable global para aplicar después
+      window._analisisPresupuestos = cats;
+
+      cont.innerHTML = `
+        <div style="padding:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--muted)">📈 Análisis de ${meses} mes(es) · copia los valores o aplica todos</div>
+            <button class="btn-primary" onclick="aplicarPresupuestosAutomatico()" style="padding:6px 12px;font-size:11px">✅ Aplicar todos</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl" style="margin:0">
+              <thead>
+                <tr>
+                  <th style="text-align:left">Categoría</th>
+                  <th style="text-align:right">Gasto total</th>
+                  <th style="text-align:right">Promedio/mes</th>
+                  <th style="text-align:right">Recomendado (+10%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${cats.map(c=>`
+                  <tr style="cursor:pointer" onclick="copiarAlPortapapeles(${c.recomendacion})">
+                    <td style="font-weight:600">${escapeHtml(c.categoria)}</td>
+                    <td style="text-align:right;color:${c.totalGastado>0?'var(--red)':'var(--muted)'}">${fmt(c.totalGastado)}</td>
+                    <td style="text-align:right;font-weight:600">${fmt(c.promedio)}</td>
+                    <td style="text-align:right;background:rgba(129,140,248,.05);font-weight:700;font-family:monospace;padding:10px 12px!important">
+                      <span style="cursor:copy;user-select:all">${c.recomendacion.toLocaleString('es-CO')}</span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 16px;font-size:11px;color:var(--dim);border-top:1px solid var(--border)">
+            💡 Haz clic en cualquier fila para copiar, o usa "Aplicar todos" para actualizar automáticamente
+          </div>
+        </div>
+      `;
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div style="padding:12px 16px;color:var(--red)">❌ '+e.message+'</div>'; })
+    .analizarPresupuestos();
+}
+
+function aplicarPresupuestosAutomatico(){
+  if(!window._analisisPresupuestos || !window._analisisPresupuestos.length){
+    toast('No hay presupuestos para aplicar','err');
+    return;
+  }
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Aplicando…';
+  google.script.run
+    .withSuccessHandler(r=>{
+      btn.disabled = false;
+      btn.textContent = '✅ Aplicar todos';
+      if(r && r.ok){
+        toast(`✅ ${r.actualizado} categorías actualizadas`);
+        loadConfig(true); // Recargar Settings
+      } else toast((r&&r.error)||'Error al aplicar','err');
+    })
+    .withFailureHandler(e=>{ btn.disabled = false; btn.textContent = '✅ Aplicar todos'; toast(e.message,'err'); })
+    .aplicarPresupuestosAnalisis(window._analisisPresupuestos);
+}
+
+function copiarAlPortapapeles(valor){
+  const texto = String(valor);
+  navigator.clipboard.writeText(texto).then(()=>{
+    toast('Copiado: ' + texto);
+  }).catch(e=>{
+    toast('Error al copiar','err');
+  });
+}
+
+function guardarCfg(clave, row){
+  const val = document.getElementById('cfg_'+row).value;
+  google.script.run
+    .withSuccessHandler(r=> r&&r.ok ? toast('Guardado: '+clave) : toast(r?r.error:'Error','err'))
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .guardarConfiguracion(clave, val);
+}
+
+function togglePrivacyField(clave, checked){
+  // Guardar en Sheets y actualizar state
+  const val = checked ? 'Sí' : 'No';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(r&&r.ok){
+        const field = clave.replace('Privacidad ','').toLowerCase();
+        state.privateFields[field] = checked;
+        toast(checked ? 'Campo oculto ✅' : 'Campo visible ✅');
+        loadDashboard();
+      } else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .guardarConfiguracion(clave, val);
+}
+
+function actualizarBanco(row){
+  const sender = document.getElementById('bnk_'+row).value;
+  google.script.run
+    .withSuccessHandler(r=> r&&r.ok ? toast('Banco actualizado') : toast(r?r.error:'Error','err'))
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .actualizarBanco(row, sender);
+}
+function actualizarCat(row){
+  const nombre = document.getElementById('cat_n_'+row).value;
+  const presup = document.getElementById('cat_p_'+row).value;
+  google.script.run
+    .withSuccessHandler(r=> r&&r.ok ? toast('Categoría actualizada') : toast(r?r.error:'Error','err'))
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .actualizarCategoria(row, nombre, presup);
+}
+
+function confirmDel(label, row){
+  document.getElementById('confirmMsg').innerHTML = `Vas a eliminar <b>${escapeHtml(label)}</b>. Esta acción no se puede deshacer.`;
+  document.getElementById('confirmBtn').onclick = ()=>{
+    closeModal('modalConfirm');
+    google.script.run
+      .withSuccessHandler(r=>{ if(r&&r.ok){ toast('Eliminado'); loadConfig(true); } else toast(r?r.error:'Error','err'); })
+      .withFailureHandler(e=> toast(e.message,'err'))
+      .eliminarFilaConfig(row);
+  };
+  openModal('modalConfirm');
+}
+
+function guardarBanco(){
+  const sender = document.getElementById('bancoSender').value.trim();
+  if (!sender){ toast('Ingresa un correo','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){ toast('Banco agregado'); document.getElementById('bancoSender').value=''; closeModal('modalBanco'); loadConfig(true); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .agregarBanco(sender);
+}
+
+function guardarCategoria(){
+  const nombre = document.getElementById('catNombre').value.trim();
+  const presup = document.getElementById('catPresupuesto').value;
+  if (!nombre){ toast('Ingresa un nombre','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){ toast('Categoría agregada'); document.getElementById('catNombre').value=''; document.getElementById('catPresupuesto').value=''; closeModal('modalCategoria'); loadConfig(true); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .agregarCategoria(nombre, presup);
+}
+
+// ════════════ METAS ════════════
+// Goals cols: ID | Meta | Objetivo | Fecha Limite | Ahorrado | Estado | Creado | Último Abono | Etiqueta
+function loadMetas(force){
+  const cont = document.getElementById('metasContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok) { cont.innerHTML='<div class="empty">'+(r?r.error:'Error')+'</div>'; return; }
+      const metas = r.metas || [];
+      if (!metas.length){ cont.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aún no tienes metas definidas</div></div>'; return; }
+      cont.innerHTML = metas.map(m=>{
+        const obj = Number(m.Objetivo||0);
+        const act = Number(m.Ahorrado||0);
+        const pct = obj>0 ? Math.min(100, Math.round(act/obj*100)) : 0;
+        const nombre = m.Meta || m.Nombre || '';
+        const estado = (m.Estado||'activo').toLowerCase();
+        const etiqueta = m.Etiqueta || '';
+        const estadoBadge = estado==='completado' ? '<span class="badge-ok">✓ Completada</span>' : estado==='activo' ? '' : `<span class="badge-warn">${escapeHtml(estado)}</span>`;
+        return `
+          <div class="card" style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
+              <div style="flex:1">
+                <div style="font-size:15px;font-weight:600">${escapeHtml(nombre)} ${estadoBadge}</div>
+                ${etiqueta ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${escapeHtml(etiqueta)}</div>` : ''}
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                <div style="font-size:16px;font-weight:700">${fmt(act)}</div>
+                <div style="font-size:12px;color:var(--muted)">/ ${fmt(obj)}</div>
+                ${m['Fecha Limite'] ? `<div style="font-size:11px;color:var(--dim);margin-top:2px">📅 ${escapeHtml(m['Fecha Limite'])}</div>` : ''}
+              </div>
+            </div>
+            <div class="alerta-bar"><div class="alerta-fill" style="background:${pct>=100?'var(--grad-green)':'var(--grad)'};width:${pct}%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-top:8px">
+              <span>${pct}% · ${obj>act ? 'Faltan '+fmt(obj-act) : '¡Meta alcanzada!'}</span>
+              <button class="btn-save" style="font-size:11px;padding:4px 10px" onclick='abrirEditGoal(${m._row}, ${JSON.stringify(m)})'>✏️ Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getMetas();
+}
+
+function openModalMeta(){ openModal('modalMeta'); }
+
+function guardarMeta(){
+  const nombre = document.getElementById('metaNombre').value.trim();
+  const obj = document.getElementById('metaObjetivo').value;
+  const fecha = document.getElementById('metaFecha').value;
+  const desc = document.getElementById('metaDesc').value;
+  if (!nombre || !obj){ toast('Nombre y objetivo son requeridos','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){ toast('Meta creada'); closeModal('modalMeta'); ['metaNombre','metaObjetivo','metaFecha','metaDesc'].forEach(id=>document.getElementById(id).value=''); loadMetas(true); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .agregarMeta(nombre, obj, fecha, desc);
+}
+
+function abrirEditGoal(row, g){
+  document.getElementById('editGoalRow').value = row;
+  document.getElementById('editGoalNombre').value = g.Meta || g.Nombre || '';
+  document.getElementById('editGoalObjetivo').value = g.Objetivo || '';
+  document.getElementById('editGoalAhorrado').value = g.Ahorrado || '';
+  document.getElementById('editGoalFecha').value = g['Fecha Limite'] || '';
+  const est = document.getElementById('editGoalEstado');
+  for(let i=0; i<est.options.length; i++) if(est.options[i].value === (g.Estado||'').toLowerCase()) est.selectedIndex=i;
+  openModal('modalEditGoal');
+}
+
+function guardarEditGoal(){
+  const row = Number(document.getElementById('editGoalRow').value);
+  const nombre = document.getElementById('editGoalNombre').value.trim();
+  const obj = document.getElementById('editGoalObjetivo').value;
+  const ahorro = document.getElementById('editGoalAhorrado').value;
+  const fecha = document.getElementById('editGoalFecha').value.trim();
+  const estado = document.getElementById('editGoalEstado').value;
+  if (!row || !nombre){ toast('Fila y nombre requeridos','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){ toast('Meta actualizada'); closeModal('modalEditGoal'); loadMetas(true); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .actualizarMeta(row, nombre, obj, fecha, ahorro, estado);
+}
+
+// ════════════ BILLS ════════════
+function loadPendientes(force){
+  const cont = document.getElementById('pendientesContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok){ cont.innerHTML='<div class="empty">'+(r?r.error:'Error')+'</div>'; return; }
+      const items = r.items || [];
+      if (!items.length){ cont.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin bills configurados</div></div>'; return; }
+      cont.innerHTML = items.map(p => {
+        // Campos según estructura real del sheet
+        const servicio  = p.Servicio || '';
+        const monto     = p['Monto Aprox'] || '';
+        const dia       = p['Día Vencimiento'] || '';
+        const frecuencia= p.Frecuencia || '';
+        const ref       = p['Cuenta/Referencia'] || '';
+        const diasAntes = p['Recordar (días antes)'] || '';
+        const estado    = (p.Estado || 'Activo');
+        const notas     = p.Notas || '';
+        const ultimoPago= p['Último Pago'] || '';
+
+        const estadoL   = estado.toLowerCase();
+        const estadoCls = estadoL==='activo'?'badge-ok':estadoL==='inactivo'?'badge-warn':'badge-err';
+        return `
+          <div class="card" style="margin-bottom:10px">
+            <div style="display:flex;align-items:start;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+                  <span style="font-size:15px;font-weight:700">${escapeHtml(servicio)}</span>
+                  <span class="${estadoCls}">${escapeHtml(estado)}</span>
+                  ${frecuencia ? `<span style="font-size:11px;color:var(--dim);background:var(--bg2);padding:2px 7px;border-radius:6px">${escapeHtml(frecuencia)}</span>` : ''}
+                </div>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)">
+                  ${dia ? `<span>📅 Día <b style="color:var(--text)">${escapeHtml(dia)}</b></span>` : ''}
+                  ${ref ? `<span>📱 ${escapeHtml(ref)}</span>` : ''}
+                  ${diasAntes ? `<span>🔔 ${escapeHtml(diasAntes)} días antes</span>` : ''}
+                  ${ultimoPago ? `<span>✅ Último: ${escapeHtml(ultimoPago)}</span>` : ''}
+                </div>
+                ${notas ? `<div style="font-size:12px;color:var(--dim);margin-top:4px">${escapeHtml(notas)}</div>` : ''}
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:17px;font-weight:700;color:var(--red)">${monto ? fmt(monto) : '—'}</div>
+                <button class="btn-save" style="margin-top:8px;font-size:11px;padding:5px 10px"
+                  onclick='abrirEditPendiente(${p._row}, ${JSON.stringify(p)})'>✏️ Editar</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getPendingPayments();
+}
+
+function openModalPendiente(){ openModal('modalPendiente'); }
+
+function guardarPendiente(){
+  const servicio = document.getElementById('pendServicio').value.trim();
+  const monto    = document.getElementById('pendMonto').value;
+  const dia      = document.getElementById('pendDia').value.trim();
+  const frec     = document.getElementById('pendFrecuencia').value;
+  const ref      = document.getElementById('pendRef').value.trim();
+  const dias     = document.getElementById('pendDias').value;
+  const notas    = document.getElementById('pendNotas').value.trim();
+  if (!servicio){ toast('El nombre del servicio es requerido','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){
+        toast('Bill creado');
+        closeModal('modalPendiente');
+        ['pendServicio','pendMonto','pendDia','pendRef','pendNotas'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('pendDias').value='3';
+        loadPendientes(true);
+      } else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .agregarPagoPendiente(servicio, monto, dia, frec, ref, dias, 'Activo', notas);
+}
+
+// ════════════ ERRORES ════════════
+// Errors sheet: appendRow → fila 2=más antigua, última=más reciente
+// getDatosHoja sin fromTop toma últimas N + reversa → desc correcto
+function loadErrores(force){
+  const cont = document.getElementById('erroresContent');
+  cont.innerHTML = '<div class="loading-card"><div class="spinner"></div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!r || !r.ok){ cont.innerHTML='<div class="empty">'+(r?r.error:'Error')+'</div>'; return; }
+      const rows = r.filas || [];
+      if (!rows.length){ cont.innerHTML='<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">Sin errores recientes — todo bien</div></div>'; return; }
+      // Errors cols: ERR-ID | Mensaje | Asunto | EmailId | Timestamp (ISO)
+      cont.innerHTML = `
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr><th>Fecha</th><th>Mensaje</th><th>Asunto / Email</th></tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => {
+                const ts    = row[4] || row[3] || '';
+                const fecha = ts ? ts.replace('T',' ').substring(0,16) : '';
+                const msg   = row[1] || '';
+                const asunto = row[2] || '';
+                return `
+                  <tr>
+                    <td style="white-space:nowrap;font-size:11px;color:var(--muted)">${escapeHtml(fecha)}</td>
+                    <td style="word-break:break-word;max-width:260px"><span class="badge-err" style="margin-right:6px;font-size:10px">${escapeHtml(row[0]||'')}</span>${escapeHtml(msg)}</td>
+                    <td style="font-size:12px;color:var(--dim);word-break:break-word;max-width:160px">${escapeHtml(asunto)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:8px 4px;font-size:11px;color:var(--dim)">Últimos ${rows.length} errores · más reciente primero</div>
+      `;
+    })
+    .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
+    .getDatosHoja('Errors', 50);
+}
+
+// ════════════ BÚSQUEDA TRANSACCIONES ════════════
+function filtrarTx(){
+  const q = (document.getElementById('txSearch') && document.getElementById('txSearch').value || '').toLowerCase();
+  if (!txItems.length) return;
+  const filtered = q ? txItems.filter(item=> Object.values(item).some(v=> String(v).toLowerCase().includes(q))) : txItems;
+  const rows = filtered.map(item=>{
+    const tipo = (item['Tipo']||'').toLowerCase();
+    const color = tipo==='ingreso'?'var(--green)':tipo==='egreso'?'var(--red)':'var(--muted)';
+    const cells = TX_VIS.map(col=>{
+      const v = item[col.key]||'';
+      if(col.key==='Monto') return `<td style="color:${color};font-weight:600">${fmt(v)}</td>`;
+      if(col.key==='Tipo')  return `<td><span style="color:${color};font-size:12px;font-weight:600;text-transform:capitalize">${escapeHtml(v)}</span></td>`;
+      return `<td>${escapeHtml(v)}</td>`;
+    }).join('');
+    return `<tr>${cells}<td style="white-space:nowrap;text-align:right"><button class="btn-ghost" style="padding:4px 6px;font-size:11px" onclick='abrirEditTx(${item._row})' title="Editar">✏️</button><button class="btn-ghost" style="padding:4px 6px;font-size:11px;color:var(--red)" onclick='confirmarEliminarTx(${item._row})' title="Eliminar">🗑️</button></td></tr>`;
+  }).join('');
+  document.getElementById('txBody').innerHTML = rows;
+}
+
+// ════════════ EDITAR TRANSACCIÓN ════════════
+function abrirEditTx(row){
+  const item = txItems.find(i => i._row === row);
+  if (!item){ toast('Error: transacción no encontrada','err'); return; }
+  document.getElementById('editTxRow').value      = row;
+  document.getElementById('editTxFecha').value    = item['Fecha'] || '';
+  document.getElementById('editTxMonto').value    = String(item['Monto'] || '').replace(/[^0-9.,-]/g,'').replace(/\./g,'').replace(',','.');
+  document.getElementById('editTxComercio').value = item['Comercio/Destino'] || '';
+  document.getElementById('editTxSubcat').value   = item['Subcategoria'] || '';
+  document.getElementById('editTxRef').value      = item['Referencia'] || '';
+  // Tipo
+  const tipoSel = document.getElementById('editTxTipo');
+  const tipoVal = (item['Tipo']||'egreso').toLowerCase();
+  for(let i=0;i<tipoSel.options.length;i++) if(tipoSel.options[i].value===tipoVal){ tipoSel.selectedIndex=i; break; }
+  // Necesidad
+  const necSel = document.getElementById('editTxNecesidad');
+  const necVal = (item['Necesidad']||'necesario').toLowerCase();
+  for(let i=0;i<necSel.options.length;i++) if(necSel.options[i].value===necVal){ necSel.selectedIndex=i; break; }
+  // Categorías dinámicas
+  const catSel = document.getElementById('editTxCat');
+  catSel.innerHTML = txCatOpts;
+  const catVal = item['Categoria'] || '';
+  for(let i=0;i<catSel.options.length;i++) if(catSel.options[i].value===catVal){ catSel.selectedIndex=i; break; }
+  openModal('modalEditTx');
+}
+
+function guardarEditTx(){
+  const row      = Number(document.getElementById('editTxRow').value);
+  const fecha    = document.getElementById('editTxFecha').value.trim();
+  const tipo     = document.getElementById('editTxTipo').value;
+  const monto    = document.getElementById('editTxMonto').value;
+  const comercio = document.getElementById('editTxComercio').value.trim();
+  const cat      = document.getElementById('editTxCat').value;
+  const subcat   = document.getElementById('editTxSubcat').value.trim();
+  const nec      = document.getElementById('editTxNecesidad').value;
+  const ref      = document.getElementById('editTxRef').value.trim();
+  if (!row){ toast('Error: fila no identificada','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(r && r.ok){ toast('Transacción actualizada ✅'); closeModal('modalEditTx'); loadTransacciones(true); }
+      else toast((r&&r.error)||'Error al guardar','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .actualizarTransaccion(row, fecha, tipo, monto, comercio, cat, subcat, nec, ref);
+}
+
+function confirmarEliminarTx(row){
+  state.txRowDeleted = row;
+  const item = txItems.find(i=> i._row === row);
+  const desc = item ? `${item['Fecha']} · ${item['Comercio/Destino']} · ${fmt(item['Monto'])}` : `Fila ${row}`;
+  document.getElementById('confirmMsg').innerHTML = `¿Eliminar esta transacción?<br><span style="font-size:12px;color:var(--muted)">${escapeHtml(desc)}</span>`;
+  document.getElementById('confirmBtn').textContent = '🗑️ Eliminar';
+  document.getElementById('confirmBtn').style.background = 'var(--grad-red)';
+  document.getElementById('confirmBtn').onclick = () => { eliminarTx(row); closeModal('modalConfirm'); };
+  openModal('modalConfirm');
+}
+
+function eliminarTx(row){
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(r && r.ok){ toast('Transacción eliminada ✅'); loadTransacciones(true); }
+      else toast((r&&r.error)||'Error al eliminar','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .eliminarTransaccion(row);
+}
+
+// ════════════ EDITAR PENDIENTE ════════════
+function abrirEditPendiente(row, p){
+  document.getElementById('editPendRow').value       = row;
+  document.getElementById('editPendServicio').value  = p.Servicio || '';
+  document.getElementById('editPendMonto').value     = p['Monto Aprox'] || p.Valor || '';
+  document.getElementById('editPendDia').value       = p['Día Vencimiento'] || p.DiaVencimiento || '';
+  document.getElementById('editPendRef').value       = p['Cuenta/Referencia'] || p.Referencia || '';
+  document.getElementById('editPendDias').value      = p['Recordar (días antes)'] || p.DiasAnticipacion || '3';
+  document.getElementById('editPendNotas').value     = p.Notas || '';
+  const frec = document.getElementById('editPendFrecuencia');
+  const frecVal = p.Frecuencia || 'Mensual';
+  for(let i=0;i<frec.options.length;i++) if(frec.options[i].value===frecVal){ frec.selectedIndex=i; break; }
+  const est = document.getElementById('editPendEstado');
+  const estVal = p.Estado || 'Activo';
+  for(let i=0;i<est.options.length;i++) if(est.options[i].value===estVal){ est.selectedIndex=i; break; }
+  openModal('modalEditPendiente');
+}
+
+function guardarEditPendiente(){
+  const row      = Number(document.getElementById('editPendRow').value);
+  const servicio = document.getElementById('editPendServicio').value.trim();
+  const monto    = document.getElementById('editPendMonto').value;
+  const dia      = document.getElementById('editPendDia').value.trim();
+  const frec     = document.getElementById('editPendFrecuencia').value;
+  const ref      = document.getElementById('editPendRef').value.trim();
+  const dias     = document.getElementById('editPendDias').value;
+  const estado   = document.getElementById('editPendEstado').value;
+  const notas    = document.getElementById('editPendNotas').value.trim();
+  if (!row){ toast('Error: fila no identificada','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(r&&r.ok){ toast('Bill actualizado'); closeModal('modalEditPendiente'); loadPendientes(true); }
+      else toast(r?r.error:'Error al guardar','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .actualizarPagoPendiente(row, servicio, monto, dia, frec, ref, dias, estado, notas);
+}
+
+// ════════════ HELPERS ════════════
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return String(s||'').replace(/'/g,"\\'"); }
+
+// ════════════ SETUP WIZARD ════════════
+let wizardStep = 1;
+const WIZARD_TOTAL = 5;
+
+function wizardShow(){ document.getElementById('wizard').classList.add('open'); document.body.style.overflow='hidden'; }
+function wizardCerrar(){ document.getElementById('wizard').classList.remove('open'); document.body.style.overflow=''; initFiltroAnio(); loadDashboard(); }
+
+function wizardGoto(n){
+  wizardStep = n;
+  document.querySelectorAll('.wizard-step').forEach(el=> el.classList.toggle('active', Number(el.dataset.step)===n));
+  const dots = document.querySelectorAll('#wizardStepper .dot');
+  dots.forEach((d,i)=>{ d.classList.remove('active','done'); if(i+1<n) d.classList.add('done'); else if(i+1===n) d.classList.add('active'); });
+}
+function wizardNext(){ if (wizardStep<WIZARD_TOTAL) wizardGoto(wizardStep+1); }
+function wizardPrev(){ if (wizardStep>1) wizardGoto(wizardStep-1); }
+
+function wizSetMsg(idOk, idErr, okMsg, errMsg){
+  const ok=document.getElementById(idOk), er=document.getElementById(idErr);
+  if (okMsg){ ok.textContent='✅ '+okMsg; ok.classList.add('show'); er.classList.remove('show'); }
+  else if (errMsg){ er.textContent='❌ '+errMsg; er.classList.add('show'); ok.classList.remove('show'); }
+}
+
+function wizardValidarToken(){
+  const tok = document.getElementById('wizTgToken').value.trim();
+  if (!tok){ wizSetMsg('wizTgSuccess','wizTgError',null,'Pega el token primero'); return; }
+  const btn = document.getElementById('wizTgBtn'); btn.disabled=true; btn.textContent='Validando…';
+  google.script.run
+    .withSuccessHandler(r=>{
+      btn.disabled=false; btn.textContent='Validar token';
+      if (r && r.ok){ wizSetMsg('wizTgSuccess','wizTgError','Conectado a @'+r.username,null); setTimeout(wizardNext, 800); }
+      else wizSetMsg('wizTgSuccess','wizTgError',null, r?r.error:'Error');
+    })
+    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Validar token'; wizSetMsg('wizTgSuccess','wizTgError',null, e.message); })
+    .validarTokenTelegram(tok);
+}
+
+function wizardDetectarChat(){
+  const btn = document.getElementById('wizChatBtn'); btn.disabled=true; btn.textContent='Buscando…';
+  google.script.run
+    .withSuccessHandler(r=>{
+      btn.disabled=false; btn.textContent='Detectar mi chat';
+      if (r && r.ok){ wizSetMsg('wizChatSuccess','wizChatError','Detectado: '+r.nombre+' ('+r.chatId+')',null); setTimeout(wizardNext, 800); }
+      else wizSetMsg('wizChatSuccess','wizChatError',null, r?r.error:'Error');
+    })
+    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Detectar mi chat'; wizSetMsg('wizChatSuccess','wizChatError',null, e.message); })
+    .detectarChatIdTelegram();
+}
+
+function wizardValidarGemini(){
+  const key = document.getElementById('wizGemKey').value.trim();
+  if (!key){ wizSetMsg('wizGemSuccess','wizGemError',null,'Pega la API key primero'); return; }
+  const btn = document.getElementById('wizGemBtn'); btn.disabled=true; btn.textContent='Validando…';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (!(r && r.ok)){ btn.disabled=false; btn.textContent='Validar y finalizar'; wizSetMsg('wizGemSuccess','wizGemError',null, r?r.error:'Error'); return; }
+      btn.textContent='Activando triggers…';
+      google.script.run
+        .withSuccessHandler(r2=>{
+          btn.disabled=false; btn.textContent='Validar y finalizar';
+          if (r2 && r2.ok){ wizSetMsg('wizGemSuccess','wizGemError','¡Todo listo!',null); setTimeout(wizardNext, 600); }
+          else wizSetMsg('wizGemSuccess','wizGemError',null, r2?r2.error:'Error finalizando');
+        })
+        .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Validar y finalizar'; wizSetMsg('wizGemSuccess','wizGemError',null, e.message); })
+        .finalizarSetup();
+    })
+    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Validar y finalizar'; wizSetMsg('wizGemSuccess','wizGemError',null, e.message); })
+    .validarApiKeyGemini(key);
+}
+
+// ════════════ INIT ════════════
+google.script.run
+  .withSuccessHandler(r=>{
+    if (r && r.ok && r.setupComplete){ initFiltroAnio(); loadDashboard(); }
+    else {
+      const s = (r && r.steps) || {};
+      let start = 2;
+      if (s.telegram && !s.chat) start = 3;
+      else if (s.telegram && s.chat && !s.gemini) start = 4;
+      else if (s.telegram && s.chat && s.gemini) start = 5;
+      wizardGoto(start);
+      wizardShow();
+    }
+  })
+  .withFailureHandler(e=>{ initFiltroAnio(); loadDashboard(); })
+  .getSetupStatus();
+</script>
+</body>
+</html>
