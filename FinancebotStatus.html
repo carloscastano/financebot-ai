@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinanceBot IA — Estado del Proyecto v2.77</title>
+  <title>FinanceBot IA — Estado del Proyecto v2.79</title>
   <style>
     :root{
       --bg:#0a0e1a; --bg2:#111827; --card:#1a2030; --card2:#232a3d;
@@ -142,10 +142,10 @@
       <h1>📊 FinanceBot IA</h1>
       <p class="subtitle">Estado completo del proyecto · Vista técnica y producto</p>
       <div class="badges">
-        <span class="header-badge">v2.77</span>
+        <span class="header-badge">v2.79</span>
         <span class="header-badge">Deploy estable</span>
         <span class="header-badge">Apps Script + Gemini 2.0</span>
-        <span class="header-badge">Actualizado: 2026-05-17</span>
+        <span class="header-badge">Actualizado: 2026-05-18</span>
       </div>
     </div>
 
@@ -181,8 +181,8 @@
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Deploy actual</div>
-            <div class="kpi-value">@77</div>
-            <div class="kpi-sub">17/05/2026 22:18</div>
+            <div class="kpi-value">@79</div>
+            <div class="kpi-sub">18/05/2026 · features+triggers fusionados</div>
           </div>
           <div class="kpi-card violet">
             <div class="kpi-label">Modelo IA</div>
@@ -196,13 +196,13 @@
           </div>
           <div class="kpi-card orange">
             <div class="kpi-label">Features activas</div>
-            <div class="kpi-value">15+</div>
-            <div class="kpi-sub">5 en backlog</div>
+            <div class="kpi-value">22+</div>
+            <div class="kpi-sub">+7 vs @77</div>
           </div>
-          <div class="kpi-card red">
-            <div class="kpi-label">Bugs abiertos</div>
-            <div class="kpi-value">0</div>
-            <div class="kpi-sub">Últimos 3 cerrados @77</div>
+          <div class="kpi-card green">
+            <div class="kpi-label">Backlog cerrado</div>
+            <div class="kpi-value">7 / 10</div>
+            <div class="kpi-sub">Quedan docs + PWA + tech debt</div>
           </div>
         </div>
 
@@ -399,16 +399,18 @@
         <h2 class="section-title">⏳ Backlog técnico (no-IA)</h2>
         <p class="section-sub">Mejoras de plataforma y UX pendientes</p>
         <table>
-          <thead><tr><th>Tarea</th><th>Prioridad</th><th>ETA</th><th>Impacto</th></tr></thead>
+          <thead><tr><th>Tarea</th><th>Prioridad</th><th>ETA</th><th>Estado</th></tr></thead>
           <tbody>
-            <tr><td>Activar triggers (reporte semanal + revisión presupuestos)</td><td><span class="badge p-alta">ALTA</span></td><td>5 min</td><td>Sin esto, no llegan alertas proactivas</td></tr>
-            <tr><td>Botón "Nueva transacción" desde web</td><td><span class="badge p-alta">ALTA</span></td><td>30 min</td><td>Cierra el loop sin Telegram</td></tr>
-            <tr><td>Filtrar por cuenta (*8352 / *8191)</td><td><span class="badge p-media">MEDIA</span></td><td>20 min</td><td>Multi-tarjeta</td></tr>
-            <tr><td>Dashboard: filtrar transacciones por categoría al hacer clic en pie</td><td><span class="badge p-media">MEDIA</span></td><td>40 min</td><td>UX más fluida</td></tr>
-            <tr><td>Export CSV transacciones</td><td><span class="badge p-baja">BAJA</span></td><td>20 min</td><td>Para Excel externo</td></tr>
-            <tr><td>Modo claro/oscuro toggle</td><td><span class="badge p-baja">BAJA</span></td><td>1h</td><td>Cosmético</td></tr>
-            <tr><td>Documentación usuario final (FAQ + Loom)</td><td><span class="badge p-media">MEDIA</span></td><td>1-2h</td><td>Antes de compartir con Ana</td></tr>
-            <tr><td>PWA: instalable en iPhone</td><td><span class="badge p-baja">BAJA</span></td><td>2h</td><td>Mejor experiencia móvil</td></tr>
+            <tr><td>Activar triggers (reporte semanal + revisión presupuestos)</td><td><span class="badge p-alta">ALTA</span></td><td>5 min</td><td><span class="badge b-ok">✅ @78-79</span></td></tr>
+            <tr><td>Botón "Nueva transacción" desde web</td><td><span class="badge p-alta">ALTA</span></td><td>30 min</td><td><span class="badge b-ok">✅ @78</span></td></tr>
+            <tr><td>Filtrar por cuenta (*8352 / *8191)</td><td><span class="badge p-media">MEDIA</span></td><td>20 min</td><td><span class="badge b-ok">✅ @78</span></td></tr>
+            <tr><td>Dashboard: pie chart clickable filtra por categoría</td><td><span class="badge p-media">MEDIA</span></td><td>40 min</td><td><span class="badge b-ok">✅ @78</span></td></tr>
+            <tr><td>Export CSV transacciones</td><td><span class="badge p-baja">BAJA</span></td><td>20 min</td><td><span class="badge b-ok">✅ @78</span></td></tr>
+            <tr><td>Modo claro/oscuro toggle</td><td><span class="badge p-baja">BAJA</span></td><td>1h</td><td><span class="badge b-ok">✅ @78</span></td></tr>
+            <tr><td>Fusión Features + Triggers (un solo toggle)</td><td><span class="badge p-media">MEDIA</span></td><td>30 min</td><td><span class="badge b-ok">✅ @79</span></td></tr>
+            <tr><td>Documentación usuario final (FAQ + Loom)</td><td><span class="badge p-media">MEDIA</span></td><td>1-2h</td><td><span class="badge b-pend">⏳ Pendiente</span></td></tr>
+            <tr><td>PWA: instalable en iPhone</td><td><span class="badge p-baja">BAJA</span></td><td>2h</td><td><span class="badge b-pend">⏳ Pendiente</span></td></tr>
+            <tr><td>Magic numbers de columnas → constantes</td><td><span class="badge p-baja">BAJA</span></td><td>2h</td><td><span class="badge b-pend">⏳ Tech debt</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -555,7 +557,32 @@
         <p class="section-sub">Cambios destacados de las últimas iteraciones</p>
 
         <div class="card-block">
-          <h3>🚀 @77 — 2026-05-17 (Hoy)</h3>
+          <h3>🔗 @79 — 2026-05-18 (Hoy)</h3>
+          <p>Fusión de Features + Triggers en un solo toggle</p>
+          <ul style="padding-left:20px;font-size:13px;color:var(--text)">
+            <li>toggleFeature() ahora crea/elimina el trigger asociado automáticamente</li>
+            <li>Mapa FEATURE_TRIGGER_MAP_ en WebApp.gs</li>
+            <li>Sección "Automatizaciones (triggers)" eliminada del UI</li>
+            <li>Cada feature muestra tag: ⏱ programada / ⚠ trigger faltante / inline</li>
+            <li>Botón 🔧 Reparar reinstala triggers según features activas</li>
+          </ul>
+        </div>
+
+        <div class="card-block">
+          <h3>🚀 @78 — 2026-05-17</h3>
+          <p>6 mejoras de plataforma del backlog técnico</p>
+          <ul style="padding-left:20px;font-size:13px;color:var(--text)">
+            <li>Botón "+ Nueva" + modal para crear transacciones desde web</li>
+            <li>Sección "Automatizaciones" con activación de 7 triggers en 1 clic</li>
+            <li>Filtro por cuenta (*8352/*8191) en Transactions</li>
+            <li>Pie chart del Dashboard clickable → salta a Transactions con categoría pre-filtrada</li>
+            <li>Export CSV de todas las transacciones con descarga local</li>
+            <li>Toggle 🌙/☀️ tema claro/oscuro persistente en localStorage</li>
+          </ul>
+        </div>
+
+        <div class="card-block">
+          <h3>🔧 @77 — 2026-05-17</h3>
           <p>Fix completo de privacidad + columna Comercio</p>
           <ul style="padding-left:20px;font-size:13px;color:var(--text)">
             <li>Tabla "Detalle por mes" ahora oculta Ingresos Y Flujo según privacy flags</li>
@@ -591,8 +618,11 @@
           <li class="checked">Editar/eliminar transacciones</li>
           <li class="checked">Análisis de presupuestos con auto-aplicar</li>
           <li class="checked">Privacidad coherente en toda la UI (@77)</li>
-          <li>Activar triggers de notificaciones proactivas</li>
-          <li>Botón "Nueva transacción" desde web (sin necesidad de Telegram)</li>
+          <li class="checked">Crear transacciones desde web sin Telegram (@78)</li>
+          <li class="checked">Triggers activables desde panel (@78)</li>
+          <li class="checked">Filtro por cuenta / Export CSV / Pie clickable (@78)</li>
+          <li class="checked">Tema claro/oscuro persistente (@78)</li>
+          <li class="checked">Fusión Features + Triggers en un toggle (@79)</li>
           <li>Documentación para usuarios no técnicos (FAQ)</li>
           <li>Video tutorial (Loom 3-5 min)</li>
           <li>Implementar Fase 1 del roadmap IA (chat conversacional)</li>
@@ -603,8 +633,8 @@
     </div>
 
     <div class="footer">
-      <p><b>FinanceBot IA</b> · Estado @77 · Proyecto personal de Carlos Castaño</p>
-      <p>Última actualización: 2026-05-17 · Próximo review: 2026-05-24</p>
+      <p><b>FinanceBot IA</b> · Estado @79 · Proyecto personal de Carlos Castaño</p>
+      <p>Última actualización: 2026-05-18 · Próximo review: 2026-05-25</p>
       <p style="margin-top:8px;font-size:11px">Generado con Claude (Opus 4.7)</p>
     </div>
   </div>
