@@ -19,6 +19,30 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// ─── Constantes de columnas (hoja Transactions) ──────
+// Índices 0-based usados con getValues(). Si cambias la estructura
+// de columnas en Sheets, actualiza SOLO este objeto.
+var TX_COL = {
+  ID:           0,
+  FECHA:        1,
+  HORA:         2,
+  TIPO:         3,
+  ORIGEN:       4,
+  MONTO:        5,
+  MONEDA:       6,
+  COMERCIO:     7,
+  // 8: reservada
+  CATEGORIA:    9,
+  SUBCATEGORIA: 10,
+  NECESIDAD:    11,
+  // 12: reservada
+  REFERENCIA:   13,
+  CUENTA:       14,
+  FUENTE:       15,
+  TIMESTAMP:    16,
+  TIPO_ENTRADA: 17
+};
+
 // ─── Util ────────────────────────────────────────────
 function _ssWeb_()  { return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID); }
 function _toStr_(v) {
@@ -48,14 +72,14 @@ function getDashboardCompleto(anioFiltro, mesFiltro) {
     var monthlyData = {};
 
     for (var j = 1; j < txns.length; j++) {
-      var f = txns[j][1];
+      var f = txns[j][TX_COL.FECHA];
       if (!f) continue;
       var fd = f instanceof Date ? f : new Date(f);
       if (isNaN(fd.getTime())) continue;
 
-      var tipo  = String(txns[j][3] || '');
-      var monto = Number(txns[j][5]) || 0;
-      var cat   = String(txns[j][9] || 'Otro');
+      var tipo  = String(txns[j][TX_COL.TIPO]  || '');
+      var monto = Number(txns[j][TX_COL.MONTO]) || 0;
+      var cat   = String(txns[j][TX_COL.CATEGORIA] || 'Otro');
 
       var mesKey = fd.getFullYear() + '-' + ('0' + (fd.getMonth() + 1)).slice(-2);
       if (!monthlyData[mesKey]) monthlyData[mesKey] = { ingresos: 0, egresos: 0, txnCount: 0, anio: fd.getFullYear(), mes: fd.getMonth() };
@@ -800,11 +824,11 @@ function getTransacciones(limit) {
       });
       // Alias robustos por posición (columna H = idx 7 es Comercio; columna J = idx 9 Categoria; etc.)
       // Esto asegura que el frontend encuentre la columna aunque el header tenga otro nombre
-      if (data[i].length > 7)  obj['Comercio']     = _toStr_(data[i][7]);
-      if (data[i].length > 9)  obj['Categoria']    = _toStr_(data[i][9]);
-      if (data[i].length > 10) obj['Subcategoria'] = _toStr_(data[i][10]);
-      if (data[i].length > 11) obj['Necesidad']    = _toStr_(data[i][11]);
-      if (data[i].length > 13) obj['Referencia']   = _toStr_(data[i][13]);
+      if (data[i].length > TX_COL.COMERCIO)     obj['Comercio']     = _toStr_(data[i][TX_COL.COMERCIO]);
+      if (data[i].length > TX_COL.CATEGORIA)    obj['Categoria']    = _toStr_(data[i][TX_COL.CATEGORIA]);
+      if (data[i].length > TX_COL.SUBCATEGORIA) obj['Subcategoria'] = _toStr_(data[i][TX_COL.SUBCATEGORIA]);
+      if (data[i].length > TX_COL.NECESIDAD)    obj['Necesidad']    = _toStr_(data[i][TX_COL.NECESIDAD]);
+      if (data[i].length > TX_COL.REFERENCIA)   obj['Referencia']   = _toStr_(data[i][TX_COL.REFERENCIA]);
       items.push(obj);
     }
 
@@ -821,14 +845,14 @@ function actualizarTransaccion(row, fecha, tipo, monto, comercio, categoria, sub
     if (!sh) return { ok: false, error: 'Hoja Transactions no encontrada' };
     var existing = sh.getRange(row, 1, 1, 18).getValues()[0];
     var updates = existing.slice(); // copia
-    if (fecha      !== undefined && fecha      !== '') updates[1]  = fecha;
-    if (tipo       !== undefined && tipo       !== '') updates[3]  = tipo;
-    if (monto      !== undefined && monto      !== '') updates[5]  = Number(monto);
-    if (comercio   !== undefined && comercio   !== '') updates[7]  = comercio;
-    if (categoria  !== undefined && categoria  !== '') updates[9]  = categoria;
-    if (subcategoria !== undefined)                    updates[10] = subcategoria;
-    if (necesidad  !== undefined && necesidad  !== '') updates[11] = necesidad;
-    if (referencia !== undefined)                      updates[13] = referencia;
+    if (fecha      !== undefined && fecha      !== '') updates[TX_COL.FECHA]        = fecha;
+    if (tipo       !== undefined && tipo       !== '') updates[TX_COL.TIPO]         = tipo;
+    if (monto      !== undefined && monto      !== '') updates[TX_COL.MONTO]        = Number(monto);
+    if (comercio   !== undefined && comercio   !== '') updates[TX_COL.COMERCIO]     = comercio;
+    if (categoria  !== undefined && categoria  !== '') updates[TX_COL.CATEGORIA]    = categoria;
+    if (subcategoria !== undefined)                    updates[TX_COL.SUBCATEGORIA] = subcategoria;
+    if (necesidad  !== undefined && necesidad  !== '') updates[TX_COL.NECESIDAD]    = necesidad;
+    if (referencia !== undefined)                      updates[TX_COL.REFERENCIA]   = referencia;
     sh.getRange(row, 1, 1, 18).setValues([updates]);
     return { ok: true };
   } catch(err) { return { ok: false, error: err.message }; }
@@ -902,7 +926,7 @@ function getCuentasDistintas() {
     var data = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
     var set = {};
     for (var i = 0; i < data.length; i++) {
-      var val = idxCuenta >= 0 ? data[i][idxCuenta] : data[i][13];
+      var val = idxCuenta >= 0 ? data[i][idxCuenta] : data[i][TX_COL.REFERENCIA];
       var s = String(val || '').trim();
       // Capturar patrones tipo *8352, **8191, 4444
       var m = s.match(/\*+\s*(\d{3,5})/);
@@ -936,24 +960,24 @@ function agregarTransaccionWeb(fecha, tipo, monto, comercio, categoria, subcateg
 
     var id = 'TX-WEB-' + Utilities.formatDate(nowIso, 'America/Bogota', 'yyyyMMddHHmmss');
     var row = new Array(18).fill('');
-    row[0] = id;
-    row[1] = fechaParse;
-    row[2] = '';                            // Hora
-    row[3] = tipo || 'egreso';
-    row[4] = '';                            // Origen
-    row[5] = Number(monto) || 0;
-    row[6] = 'COP';
-    row[7] = comercio || '';
-    row[8] = '';
-    row[9] = categoria || 'Otro';
-    row[10] = subcategoria || '';
-    row[11] = necesidad || 'necesario';
-    row[12] = '';
-    row[13] = referencia || '';
-    row[14] = cuenta || '';
-    row[15] = 'web';
-    row[16] = Utilities.formatDate(nowIso, 'America/Bogota', 'yyyy-MM-dd HH:mm:ss');
-    row[17] = 'manual';
+    row[TX_COL.ID]           = id;
+    row[TX_COL.FECHA]        = fechaParse;
+    row[TX_COL.HORA]         = '';
+    row[TX_COL.TIPO]         = tipo || 'egreso';
+    row[TX_COL.ORIGEN]       = '';
+    row[TX_COL.MONTO]        = Number(monto) || 0;
+    row[TX_COL.MONEDA]       = 'COP';
+    row[TX_COL.COMERCIO]     = comercio || '';
+    row[8]                   = '';   // reservada
+    row[TX_COL.CATEGORIA]    = categoria || 'Otro';
+    row[TX_COL.SUBCATEGORIA] = subcategoria || '';
+    row[TX_COL.NECESIDAD]    = necesidad || 'necesario';
+    row[12]                  = '';   // reservada
+    row[TX_COL.REFERENCIA]   = referencia || '';
+    row[TX_COL.CUENTA]       = cuenta || '';
+    row[TX_COL.FUENTE]       = 'web';
+    row[TX_COL.TIMESTAMP]    = Utilities.formatDate(nowIso, 'America/Bogota', 'yyyy-MM-dd HH:mm:ss');
+    row[TX_COL.TIPO_ENTRADA] = 'manual';
     sh.appendRow(row);
     return { ok: true, row: sh.getLastRow(), id: id };
   } catch(err) { return { ok: false, error: err.message }; }
