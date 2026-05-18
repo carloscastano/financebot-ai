@@ -18,6 +18,11 @@
   --grad-violet:linear-gradient(135deg,#c084fc,#a855f7);
   --shadow:0 4px 20px rgba(0,0,0,.35);
 }
+html[data-theme="light"]{
+  --bg:#f5f7fa; --bg2:#ffffff; --card:#ffffff; --card2:#f1f5f9;
+  --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --dim:#94a3b8;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
 body{padding-bottom:80px}
@@ -365,6 +370,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
     </div>
     <div class="header-actions">
       <button class="icon-btn" id="btnPrivacy" onclick="toggleQuickPrivacy()" title="Toggle modo privado (temp.)">👁️</button>
+      <button class="icon-btn" id="btnTheme" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
       <button class="icon-btn" onclick="openSheet()" title="Abrir Google Sheets">📑</button>
       <button class="icon-btn" id="btnRefresh" onclick="recargarTab()" title="Recargar">↻</button>
     </div>
@@ -403,6 +409,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
           <h2>Transactions</h2>
           <div class="sub">Últimas transacciones registradas · busca por comercio, categoría</div>
         </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-add" onclick="openModalNuevaTx()">+ Nueva</button>
+          <button class="btn-add" style="background:var(--card2);color:var(--text)" onclick="exportarCSV()">⬇ CSV</button>
+        </div>
       </div>
       <div id="txContent" class="card">
         <div class="loading-card"><div class="spinner"></div></div>
@@ -432,6 +442,20 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
         </div>
         <div class="cfg-body" id="analisisContent" style="padding:12px 0">
           <div style="padding:12px 16px;font-size:12px;color:var(--muted)">Haz clic en "Analizar" para calcular el promedio de gasto por categoría en los últimos 3 meses.</div>
+        </div>
+      </div>
+
+      <!-- Triggers / Automatizaciones -->
+      <div class="cfg-section open" data-sec="triggers" style="margin-top:12px">
+        <div class="cfg-section-head" onclick="toggleSec('triggers')">
+          <div class="cfg-section-title">🔔 Automatizaciones (triggers) <span class="badge" id="trigBadge">…</span></div>
+          <div class="cfg-section-actions">
+            <button class="btn-add" onclick="event.stopPropagation();activarTriggers()">▶ Activar todos</button>
+            <span class="toggle">▾</span>
+          </div>
+        </div>
+        <div class="cfg-body" id="trigContent" style="padding:8px 0">
+          <div class="loading-card"><div class="spinner"></div></div>
         </div>
       </div>
 
@@ -633,6 +657,36 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
   </div>
 </div>
 
+<!-- ─── MODAL: NUEVA TRANSACCIÓN ─── -->
+<div class="modal-bg" id="modalNuevaTx">
+  <div class="modal" style="max-width:440px">
+    <h3>➕ Nueva transacción</h3>
+    <div class="form-field" style="margin-bottom:8px"><label>Fecha (dd/mm/aaaa)</label><input id="nuevoTxFecha" placeholder="hoy si vacío"></div>
+    <div class="form-field" style="margin-bottom:8px">
+      <label>Tipo</label>
+      <select id="nuevoTxTipo">
+        <option value="egreso">egreso</option><option value="ingreso">ingreso</option><option value="informativo">informativo</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:8px"><label>Monto (COP)</label><input id="nuevoTxMonto" type="number" placeholder="0"></div>
+    <div class="form-field" style="margin-bottom:8px"><label>Comercio / Destino</label><input id="nuevoTxComercio" placeholder="Restaurante, Uber..."></div>
+    <div class="form-field" style="margin-bottom:8px"><label>Categoría</label><select id="nuevoTxCat"></select></div>
+    <div class="form-field" style="margin-bottom:8px"><label>Subcategoría</label><input id="nuevoTxSubcat"></div>
+    <div class="form-field" style="margin-bottom:8px">
+      <label>Necesidad</label>
+      <select id="nuevoTxNec">
+        <option value="necesario">necesario</option><option value="prescindible">prescindible</option><option value="lujo">lujo</option><option value="n/a">n/a</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:8px"><label>Cuenta (opc, ej *8352)</label><input id="nuevoTxCuenta" placeholder="*8352"></div>
+    <div class="form-field" style="margin-bottom:14px"><label>Referencia</label><input id="nuevoTxRef"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('modalNuevaTx')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarNuevaTx()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── MODAL: EDITAR TRANSACCIÓN ─── -->
 <div class="modal-bg" id="modalEditTx">
   <div class="modal" style="max-width:440px">
@@ -715,7 +769,7 @@ function recargarTab(){ cargarTab(state.tab, true); }
 function cargarTab(name, force){
   if (name==='dashboard') loadDashboard();
   else if (name==='transacciones') loadTransacciones(force);
-  else if (name==='config') { loadConfig(force); loadFeatures(); }
+  else if (name==='config') { loadConfig(force); loadFeatures(); loadTriggers(); }
   else if (name==='metas') loadMetas(force);
   else if (name==='pendientes') loadPendientes(force);
   else if (name==='errores') loadErrores(force);
@@ -863,11 +917,15 @@ function renderDashboard(d){
     if (state.dashCharts.bar) state.dashCharts.bar.destroy();
     if (distrib.length){
       const ctx = document.getElementById('chartPie');
+      const pieLabels = distrib.slice(0,10).map(x=>x.cat);
       state.dashCharts.pie = new Chart(ctx, {
         type:'doughnut',
-        data:{ labels:distrib.slice(0,10).map(x=>x.cat), datasets:[{ data:distrib.slice(0,10).map(x=>x.monto), backgroundColor:COLORS.slice(0,10), borderWidth:2, borderColor:'#1a2030' }]},
-        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.parsed) }}}}
+        data:{ labels:pieLabels, datasets:[{ data:distrib.slice(0,10).map(x=>x.monto), backgroundColor:COLORS.slice(0,10), borderWidth:2, borderColor:'#1a2030' }]},
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+          onClick:(evt,els)=>{ if(els && els.length){ const cat = pieLabels[els[0].index]; if(cat){ state.txPreCat = cat; setTab('transacciones'); }}},
+          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.parsed) }}}}
       });
+      ctx.style.cursor='pointer';
     }
     const cons = d.consolidado || [];
     if (cons.length){
@@ -926,7 +984,21 @@ function loadTransacciones(force){
       const cats = r.categorias || [];
       txCatOpts = cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
       if (!txCatOpts) txCatOpts = '<option value="">Sin categorías</option>';
+      // Cuentas únicas dentro del set actual
+      const cuentaSet = {};
+      txItems.forEach(it=>{
+        const v = String(it['Cuenta']||it['cuenta']||'').match(/\*+\s*(\d{3,5})/);
+        if (v) cuentaSet['*'+v[1]] = (cuentaSet['*'+v[1]]||0)+1;
+      });
+      state.txCuentas = Object.keys(cuentaSet).sort();
       renderTxTable(txItems, r.total || 0);
+      // Si veníamos con filtro pre-set por categoría desde pie chart, aplicar
+      if (state.txPreCat){
+        setTimeout(()=>{
+          const s = document.getElementById('txSearch'); if (s){ s.value = state.txPreCat; filtrarTx(); }
+          state.txPreCat = null;
+        }, 50);
+      }
     })
     .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
     .getTransacciones(200);
@@ -950,10 +1022,15 @@ function renderTxTable(items, total){
     return `<tr>${cells}<td style="white-space:nowrap;text-align:right"><button class="btn-ghost" style="padding:4px 6px;font-size:11px" onclick='abrirEditTx(${item._row})' title="Editar">✏️</button><button class="btn-ghost" style="padding:4px 6px;font-size:11px;color:var(--red)" onclick='confirmarEliminarTx(${item._row})' title="Eliminar">🗑️</button></td></tr>`;
   }).join('');
   const heads = TX_VIS.map(c=>`<th>${c.label}</th>`).join('') + '<th style="text-align:right">Acciones</th>';
+  const cuentaOpts = (state.txCuentas||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
   cont.innerHTML = `
-    <div style="padding:0 0 10px">
+    <div style="display:flex;gap:8px;padding:0 0 10px;flex-wrap:wrap">
       <input id="txSearch" placeholder="🔍 Buscar por comercio, categoría…" oninput="filtrarTx()"
-        style="width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit">
+        style="flex:1;min-width:200px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit">
+      <select id="txCuentaFiltro" onchange="filtrarTx()" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit">
+        <option value="">Todas las cuentas</option>
+        ${cuentaOpts}
+      </select>
     </div>
     <div class="tbl-wrap">
       <table class="tbl">
@@ -961,7 +1038,7 @@ function renderTxTable(items, total){
         <tbody id="txBody">${rows}</tbody>
       </table>
     </div>
-    <div style="padding:8px 4px;font-size:12px;color:var(--muted)">${total} en total · mostrando ${items.length}</div>`;
+    <div style="padding:8px 4px;font-size:12px;color:var(--muted)" id="txFooter">${total} en total · mostrando ${items.length}</div>`;
 }
 
 // ════════════ FEATURES ════════════
@@ -1546,8 +1623,15 @@ function loadErrores(force){
 // ════════════ BÚSQUEDA TRANSACCIONES ════════════
 function filtrarTx(){
   const q = (document.getElementById('txSearch') && document.getElementById('txSearch').value || '').toLowerCase();
+  const cuenta = (document.getElementById('txCuentaFiltro') && document.getElementById('txCuentaFiltro').value || '');
   if (!txItems.length) return;
-  const filtered = q ? txItems.filter(item=> Object.values(item).some(v=> String(v).toLowerCase().includes(q))) : txItems;
+  let filtered = txItems;
+  if (q) filtered = filtered.filter(item=> Object.values(item).some(v=> String(v).toLowerCase().includes(q)));
+  if (cuenta) filtered = filtered.filter(item=>{
+    const v = String(item['Cuenta']||item['cuenta']||item['Referencia']||'');
+    return v.indexOf(cuenta.replace(/^\*+/,'')) !== -1 || v.indexOf(cuenta) !== -1;
+  });
+  const ftr = document.getElementById('txFooter'); if (ftr) ftr.textContent = filtered.length + ' resultados';
   const rows = filtered.map(item=>{
     const tipo = (item['Tipo']||'').toLowerCase();
     const color = tipo==='ingreso'?'var(--green)':tipo==='egreso'?'var(--red)':'var(--muted)';
@@ -1738,6 +1822,95 @@ function wizardValidarGemini(){
     })
     .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Validar y finalizar'; wizSetMsg('wizGemSuccess','wizGemError',null, e.message); })
     .validarApiKeyGemini(key);
+}
+
+// ════════════ TEMA (claro / oscuro) ════════════
+function applyTheme(theme){
+  document.documentElement.dataset.theme = theme;
+  const btn = document.getElementById('btnTheme');
+  if (btn) btn.textContent = theme==='light' ? '☀️' : '🌙';
+  try { localStorage.setItem('fb_theme', theme); } catch(e){}
+}
+function toggleTheme(){
+  const cur = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  applyTheme(cur);
+}
+(function initTheme(){
+  let saved='dark'; try{ saved = localStorage.getItem('fb_theme') || 'dark'; }catch(e){}
+  applyTheme(saved);
+})();
+
+// ════════════ TRIGGERS ════════════
+function loadTriggers(){
+  const c = document.getElementById('trigContent'); if (!c) return;
+  c.innerHTML = '<div class="loading-card" style="padding:12px"><div class="spinner"></div></div>';
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(!r || !r.ok){ c.innerHTML='<div style="padding:12px;color:var(--red)">❌ '+(r?r.error:'Error')+'</div>'; return; }
+      document.getElementById('trigBadge').textContent = r.count + ' activos';
+      if (!r.count){ c.innerHTML='<div style="padding:12px;color:var(--muted)">No hay triggers. Pulsa "Activar todos" para configurar emails, Telegram, reportes y alertas.</div>'; return; }
+      c.innerHTML = r.items.map(t=>`<div style="padding:8px 16px;font-size:12px;display:flex;justify-content:space-between"><span style="font-family:monospace;color:var(--primary)">${escapeHtml(t.handler)}</span><span style="color:var(--muted)">${escapeHtml(t.source)}</span></div>`).join('');
+    })
+    .withFailureHandler(e=>{ c.innerHTML='<div style="padding:12px;color:var(--red)">❌ '+e.message+'</div>'; })
+    .getTriggersEstado();
+}
+function activarTriggers(){
+  if(!confirm('¿Activar/restablecer los 7 triggers automáticos?')) return;
+  toast('Activando triggers…');
+  google.script.run
+    .withSuccessHandler(r=>{ if(r&&r.ok){ toast('✅ '+r.mensaje); loadTriggers(); } else toast(r?r.error:'Error','err'); })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .activarTodosLosTriggers();
+}
+
+// ════════════ NUEVA TRANSACCIÓN ════════════
+function openModalNuevaTx(){
+  document.getElementById('nuevoTxCat').innerHTML = txCatOpts || '<option value="">Sin categorías</option>';
+  ['nuevoTxFecha','nuevoTxMonto','nuevoTxComercio','nuevoTxSubcat','nuevoTxCuenta','nuevoTxRef'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('nuevoTxTipo').value='egreso';
+  document.getElementById('nuevoTxNec').value='necesario';
+  openModal('modalNuevaTx');
+}
+function guardarNuevaTx(){
+  const monto = document.getElementById('nuevoTxMonto').value;
+  if (!monto || Number(monto)<=0){ toast('Monto requerido','err'); return; }
+  const args = [
+    document.getElementById('nuevoTxFecha').value.trim(),
+    document.getElementById('nuevoTxTipo').value,
+    monto,
+    document.getElementById('nuevoTxComercio').value.trim(),
+    document.getElementById('nuevoTxCat').value,
+    document.getElementById('nuevoTxSubcat').value.trim(),
+    document.getElementById('nuevoTxNec').value,
+    document.getElementById('nuevoTxRef').value.trim(),
+    document.getElementById('nuevoTxCuenta').value.trim()
+  ];
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(r&&r.ok){ toast('Transacción creada ✅'); closeModal('modalNuevaTx'); loadTransacciones(true); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .agregarTransaccionWeb.apply(null, args);
+}
+
+// ════════════ EXPORT CSV ════════════
+function exportarCSV(){
+  toast('Generando CSV…');
+  google.script.run
+    .withSuccessHandler(r=>{
+      if(!r || !r.ok){ toast(r?r.error:'Error','err'); return; }
+      const blob = new Blob([r.csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,10);
+      a.href = url; a.download = 'transacciones_'+ts+'.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('✅ Descargado ('+r.total+' filas)');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .exportarTransaccionesCSV();
 }
 
 // ════════════ INIT ════════════

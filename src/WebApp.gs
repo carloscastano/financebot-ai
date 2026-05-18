@@ -771,3 +771,122 @@ function getCategoriasLista() {
     return { ok: true, categorias: cfg.categorias || [] };
   } catch(err) { return { ok: false, error: err.message }; }
 }
+
+// ════════════════════════════════════════════════════════════
+// TRIGGERS — estado y activación desde el panel web
+// ════════════════════════════════════════════════════════════
+function getTriggersEstado() {
+  try {
+    var ts = ScriptApp.getProjectTriggers();
+    var items = ts.map(function(t) {
+      return { handler: t.getHandlerFunction(), source: String(t.getTriggerSource()) };
+    });
+    return { ok: true, count: ts.length, items: items };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function activarTodosLosTriggers() {
+  try {
+    var msg = run_reanudarTriggers();
+    return { ok: true, mensaje: msg };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// CUENTAS DISTINTAS (para filtro de Transactions)
+// ════════════════════════════════════════════════════════════
+function getCuentasDistintas() {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh || sh.getLastRow() < 2) return { ok: true, cuentas: [] };
+    // Columna O (índice 14) — Cuenta; si no existe, intenta deducir de Referencia (idx 13)
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(_toStr_);
+    var idxCuenta = -1;
+    headers.forEach(function(h, i) {
+      var hl = String(h).toLowerCase();
+      if (hl.indexOf('cuenta') !== -1 || hl.indexOf('tarjeta') !== -1) idxCuenta = i;
+    });
+    var data = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var set = {};
+    for (var i = 0; i < data.length; i++) {
+      var val = idxCuenta >= 0 ? data[i][idxCuenta] : data[i][13];
+      var s = String(val || '').trim();
+      // Capturar patrones tipo *8352, **8191, 4444
+      var m = s.match(/\*+\s*(\d{3,5})/);
+      var key = m ? '*' + m[1] : (s && /^\d{3,5}$/.test(s) ? '*' + s : '');
+      if (key) set[key] = (set[key] || 0) + 1;
+    }
+    var cuentas = Object.keys(set).map(function(k) { return { cuenta: k, count: set[k] }; })
+      .sort(function(a, b) { return b.count - a.count; });
+    return { ok: true, cuentas: cuentas };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// AGREGAR TRANSACCIÓN MANUAL desde el panel web
+// ════════════════════════════════════════════════════════════
+function agregarTransaccionWeb(fecha, tipo, monto, comercio, categoria, subcategoria, necesidad, referencia, cuenta) {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh) return { ok: false, error: 'Hoja Transactions no encontrada' };
+    var nowIso = new Date();
+    var fechaParse;
+    if (fecha) {
+      // Soporta dd/MM/yyyy o yyyy-MM-dd
+      var m1 = String(fecha).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      var m2 = String(fecha).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (m1) fechaParse = new Date(Number(m1[3]), Number(m1[2]) - 1, Number(m1[1]));
+      else if (m2) fechaParse = new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3]));
+      else fechaParse = nowIso;
+    } else fechaParse = nowIso;
+
+    var id = 'TX-WEB-' + Utilities.formatDate(nowIso, 'America/Bogota', 'yyyyMMddHHmmss');
+    var row = new Array(18).fill('');
+    row[0] = id;
+    row[1] = fechaParse;
+    row[2] = '';                            // Hora
+    row[3] = tipo || 'egreso';
+    row[4] = '';                            // Origen
+    row[5] = Number(monto) || 0;
+    row[6] = 'COP';
+    row[7] = comercio || '';
+    row[8] = '';
+    row[9] = categoria || 'Otro';
+    row[10] = subcategoria || '';
+    row[11] = necesidad || 'necesario';
+    row[12] = '';
+    row[13] = referencia || '';
+    row[14] = cuenta || '';
+    row[15] = 'web';
+    row[16] = Utilities.formatDate(nowIso, 'America/Bogota', 'yyyy-MM-dd HH:mm:ss');
+    row[17] = 'manual';
+    sh.appendRow(row);
+    return { ok: true, row: sh.getLastRow(), id: id };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// EXPORT CSV — devuelve string CSV de todas las transacciones
+// ════════════════════════════════════════════════════════════
+function exportarTransaccionesCSV() {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh || sh.getLastRow() < 2) return { ok: true, csv: '' };
+    var data = sh.getDataRange().getValues();
+    var rows = data.map(function(r) {
+      return r.map(function(c) {
+        var s = (c instanceof Date) ? Utilities.formatDate(c, 'America/Bogota', 'yyyy-MM-dd') : String(c == null ? '' : c);
+        if (s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1) {
+          s = '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      }).join(',');
+    });
+    return { ok: true, csv: rows.join('\n'), total: data.length - 1 };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
