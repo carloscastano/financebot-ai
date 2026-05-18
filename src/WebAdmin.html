@@ -445,25 +445,14 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
         </div>
       </div>
 
-      <!-- Triggers / Automatizaciones -->
-      <div class="cfg-section open" data-sec="triggers" style="margin-top:12px">
-        <div class="cfg-section-head" onclick="toggleSec('triggers')">
-          <div class="cfg-section-title">🔔 Automatizaciones (triggers) <span class="badge" id="trigBadge">…</span></div>
-          <div class="cfg-section-actions">
-            <button class="btn-add" onclick="event.stopPropagation();activarTriggers()">▶ Activar todos</button>
-            <span class="toggle">▾</span>
-          </div>
-        </div>
-        <div class="cfg-body" id="trigContent" style="padding:8px 0">
-          <div class="loading-card"><div class="spinner"></div></div>
-        </div>
-      </div>
-
       <!-- Funcionalidades: carga independiente, siempre visible -->
       <div class="cfg-section open" data-sec="features" style="margin-top:12px">
         <div class="cfg-section-head" onclick="toggleSec('features')">
           <div class="cfg-section-title">🤖 Funcionalidades <span class="badge" id="featBadge">…</span></div>
-          <span class="toggle">▾</span>
+          <div class="cfg-section-actions">
+            <button class="btn-add" style="background:var(--card2);color:var(--text)" onclick="event.stopPropagation();repararTriggers()" title="Reinstala todos los triggers según las features activas">🔧 Reparar</button>
+            <span class="toggle">▾</span>
+          </div>
         </div>
         <div class="cfg-body" id="featContent">
           <div class="loading-card"><div class="spinner"></div></div>
@@ -769,7 +758,7 @@ function recargarTab(){ cargarTab(state.tab, true); }
 function cargarTab(name, force){
   if (name==='dashboard') loadDashboard();
   else if (name==='transacciones') loadTransacciones(force);
-  else if (name==='config') { loadConfig(force); loadFeatures(); loadTriggers(); }
+  else if (name==='config') { loadConfig(force); loadFeatures(); }
   else if (name==='metas') loadMetas(force);
   else if (name==='pendientes') loadPendientes(force);
   else if (name==='errores') loadErrores(force);
@@ -1050,10 +1039,19 @@ function loadFeatures(){
       const features = r.features || [];
       const activas = features.filter(f=>f.activa).length;
       document.getElementById('featBadge').textContent = activas + '/' + features.length + ' activas';
-      cont.innerHTML = features.map(f=>`
+      cont.innerHTML = features.map(f=>{
+        let autoTag = '';
+        if (f.tieneTrigger){
+          autoTag = f.activa && f.triggerOk
+            ? ' <span class="badge-ok" style="margin-left:6px">⏱ programada</span>'
+            : (!f.activa ? '' : ' <span class="badge-warn" style="margin-left:6px">⚠ trigger faltante</span>');
+        } else {
+          autoTag = ' <span class="badge-ok" style="margin-left:6px;background:rgba(96,165,250,.15);color:var(--blue)">inline</span>';
+        }
+        return `
         <div class="toggle-wrap">
           <div class="toggle-info">
-            <b>${escapeHtml(f.nombre)}</b>
+            <b>${escapeHtml(f.nombre)}${autoTag}</b>
             <span>${escapeHtml(f.descripcion)}</span>
           </div>
           <label class="sw" title="${f.activa?'Desactivar':'Activar'} ${escapeHtml(f.nombre)}">
@@ -1061,7 +1059,7 @@ function loadFeatures(){
             <div class="sw-track"></div>
           </label>
         </div>
-      `).join('');
+      `;}).join('');
     })
     .withFailureHandler(e=>{ cont.innerHTML='<div class="empty">❌ '+e.message+'</div>'; })
     .getFeatures();
@@ -1071,14 +1069,13 @@ function cambiarFeature(id, activa){
   google.script.run
     .withSuccessHandler(r=>{
       if (r&&r.ok){
-        toast((activa?'✅ Activada: ':'⏸️ Desactivada: ') + id.replace(/_/g,' '));
-        // Actualizar badge
-        const checks = document.querySelectorAll('#featContent input[type=checkbox]');
-        const on = Array.from(checks).filter(c=>c.checked).length;
-        document.getElementById('featBadge').textContent = on+'/'+checks.length+' activas';
+        const accion = activa?'✅ Activada':'⏸️ Desactivada';
+        const extra = r.trigInfo ? ' · ' + r.trigInfo : '';
+        toast(accion + ': ' + id.replace(/_/g,' ') + extra);
+        loadFeatures(); // refresca tags ⏱/⚠
       } else {
         toast(r?r.error:'Error al cambiar','err');
-        document.getElementById('feat_'+id).checked = !activa; // revertir
+        document.getElementById('feat_'+id).checked = !activa;
       }
     })
     .withFailureHandler(e=>{
@@ -1840,25 +1837,12 @@ function toggleTheme(){
   applyTheme(saved);
 })();
 
-// ════════════ TRIGGERS ════════════
-function loadTriggers(){
-  const c = document.getElementById('trigContent'); if (!c) return;
-  c.innerHTML = '<div class="loading-card" style="padding:12px"><div class="spinner"></div></div>';
+// ════════════ TRIGGERS — reparación manual ════════════
+function repararTriggers(){
+  if(!confirm('¿Reinstalar todos los triggers según las funcionalidades activas?')) return;
+  toast('Reparando triggers…');
   google.script.run
-    .withSuccessHandler(r=>{
-      if(!r || !r.ok){ c.innerHTML='<div style="padding:12px;color:var(--red)">❌ '+(r?r.error:'Error')+'</div>'; return; }
-      document.getElementById('trigBadge').textContent = r.count + ' activos';
-      if (!r.count){ c.innerHTML='<div style="padding:12px;color:var(--muted)">No hay triggers. Pulsa "Activar todos" para configurar emails, Telegram, reportes y alertas.</div>'; return; }
-      c.innerHTML = r.items.map(t=>`<div style="padding:8px 16px;font-size:12px;display:flex;justify-content:space-between"><span style="font-family:monospace;color:var(--primary)">${escapeHtml(t.handler)}</span><span style="color:var(--muted)">${escapeHtml(t.source)}</span></div>`).join('');
-    })
-    .withFailureHandler(e=>{ c.innerHTML='<div style="padding:12px;color:var(--red)">❌ '+e.message+'</div>'; })
-    .getTriggersEstado();
-}
-function activarTriggers(){
-  if(!confirm('¿Activar/restablecer los 7 triggers automáticos?')) return;
-  toast('Activando triggers…');
-  google.script.run
-    .withSuccessHandler(r=>{ if(r&&r.ok){ toast('✅ '+r.mensaje); loadTriggers(); } else toast(r?r.error:'Error','err'); })
+    .withSuccessHandler(r=>{ if(r&&r.ok){ toast('✅ '+r.mensaje); loadFeatures(); } else toast(r?r.error:'Error','err'); })
     .withFailureHandler(e=> toast(e.message,'err'))
     .activarTodosLosTriggers();
 }

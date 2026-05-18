@@ -582,14 +582,52 @@ function agregarPagoPendiente(servicio, monto, diaVencimiento, frecuencia, cuent
 // ════════════════════════════════════════════════════════════
 // FEATURE FLAGS
 // ════════════════════════════════════════════════════════════
+// Mapa feature → trigger (si null, no requiere trigger — es inline)
+var FEATURE_TRIGGER_MAP_ = {
+  reporte_semanal:     { handler: 'run_reporteSemanal',            schedule: 'weeklyMon7' },
+  reporte_mensual:     { handler: 'analizarFinanzas',              schedule: 'daily7'     },
+  revision_dia25:      { handler: 'run_verificarPresupuestoMensual', schedule: 'daily8'   },
+  recordatorio_pagos:  { handler: 'recordarPagosPendientes',       schedule: 'daily9'     },
+  recordatorio_metas:  { handler: 'recordarMetasSinAbono',         schedule: 'daily9'     },
+  alerta_presupuesto:  null, // inline en cada tx
+  alerta_gasto_alto:   null,
+  chat_financiero:     null
+};
+
+function _crearTriggerPara_(handler, schedule) {
+  var b = ScriptApp.newTrigger(handler).timeBased();
+  if (schedule === 'weeklyMon7') return b.onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(7).create();
+  if (schedule === 'daily7')     return b.atHour(7).everyDays(1).create();
+  if (schedule === 'daily8')     return b.atHour(8).everyDays(1).create();
+  if (schedule === 'daily9')     return b.atHour(9).everyDays(1).create();
+  if (schedule === 'every5m')    return b.everyMinutes(5).create();
+  if (schedule === 'every1m')    return b.everyMinutes(1).create();
+  return null;
+}
+
+function _eliminarTriggersHandler_(handler) {
+  var n = 0;
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === handler) { ScriptApp.deleteTrigger(t); n++; }
+  });
+  return n;
+}
+
+function _triggerExiste_(handler) {
+  return ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === handler; });
+}
+
 function getFeatures() {
   try {
     var features = FEATURES_CATALOGO_.map(function(f) {
+      var map = FEATURE_TRIGGER_MAP_[f.id];
       return {
-        id:          f.id,
-        nombre:      f.nombre,
-        descripcion: f.descripcion,
-        activa:      isFeatureEnabled_(f.id)
+        id:           f.id,
+        nombre:       f.nombre,
+        descripcion:  f.descripcion,
+        activa:       isFeatureEnabled_(f.id),
+        tieneTrigger: !!map,
+        triggerOk:    map ? _triggerExiste_(map.handler) : true
       };
     });
     return { ok: true, features: features };
@@ -599,7 +637,44 @@ function getFeatures() {
 function toggleFeature(featureId, activa) {
   try {
     setFeature_(featureId, activa);
-    return { ok: true, id: featureId, activa: activa };
+    // Sincronizar trigger asociado
+    var map = FEATURE_TRIGGER_MAP_[featureId];
+    var trigInfo = '';
+    if (map) {
+      _eliminarTriggersHandler_(map.handler); // siempre limpia antes
+      if (activa) {
+        _crearTriggerPara_(map.handler, map.schedule);
+        trigInfo = 'trigger creado: ' + map.handler;
+      } else {
+        trigInfo = 'trigger eliminado: ' + map.handler;
+      }
+    }
+    return { ok: true, id: featureId, activa: activa, trigInfo: trigInfo };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// Sincroniza TODOS los triggers con el estado actual de los features
+// (útil después de un reset, o como reparador)
+function sincronizarTriggersConFeatures() {
+  try {
+    // Triggers base que siempre van (ingesta de datos)
+    var baseFijos = {
+      'procesarEmailsBancolombia': 'every5m',
+      'procesarMensajesTelegram':  'every1m'
+    };
+    // Limpia todo y reconstruye
+    ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
+    var creados = [];
+    Object.keys(baseFijos).forEach(function(h) {
+      _crearTriggerPara_(h, baseFijos[h]); creados.push(h);
+    });
+    FEATURES_CATALOGO_.forEach(function(f) {
+      var map = FEATURE_TRIGGER_MAP_[f.id];
+      if (map && isFeatureEnabled_(f.id)) {
+        _crearTriggerPara_(map.handler, map.schedule); creados.push(map.handler);
+      }
+    });
+    return { ok: true, creados: creados, count: creados.length };
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
@@ -787,8 +862,9 @@ function getTriggersEstado() {
 
 function activarTodosLosTriggers() {
   try {
-    var msg = run_reanudarTriggers();
-    return { ok: true, mensaje: msg };
+    var r = sincronizarTriggersConFeatures();
+    if (!r.ok) return r;
+    return { ok: true, mensaje: r.count + ' triggers sincronizados con features activas' };
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
