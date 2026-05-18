@@ -3,6 +3,13 @@
 // ============================================================
 
 function doGet(e) {
+  var page = (e && e.parameter && e.parameter.page) ? String(e.parameter.page).toLowerCase() : '';
+  if (page === 'ayuda') {
+    return HtmlService.createHtmlOutputFromFile('AYUDA')
+      .setTitle('FinanceBot IA — Ayuda')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   var tmpl = HtmlService.createTemplateFromFile('WebAdmin');
   tmpl.spreadsheetId  = CONFIG.SPREADSHEET_ID;
   tmpl.spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID;

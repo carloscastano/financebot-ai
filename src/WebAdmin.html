@@ -564,7 +564,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
           <h2>❓ Ayuda</h2>
           <div class="sub">Guías visuales, atajos de Telegram y solución de problemas</div>
         </div>
-        <button class="btn-add" style="background:var(--card2);color:var(--text)" onclick="window.open('AYUDA.html','_blank')" title="Versión imprimible">↗ Abrir versión completa</button>
+        <button class="btn-add" style="background:var(--card2);color:var(--text)" onclick="abrirAyudaCompleta()" title="Versión imprimible">↗ Abrir versión completa</button>
       </div>
       <input type="text" class="help-search" id="helpSearch" placeholder="🔍 Busca: privacidad, telegram, presupuesto..." oninput="filtrarAyuda()">
       <div id="ayudaContent"></div>
@@ -2118,6 +2118,10 @@ const AYUDA_SECCIONES = [
   }
 ];
 
+function abrirAyudaCompleta(){
+  const url = window.location.href.split('?')[0] + '?page=ayuda';
+  window.open(url, '_blank');
+}
 function loadAyuda(){
   const cont = document.getElementById('ayudaContent');
   if (cont.dataset.loaded === '1') return; // ya renderizado
