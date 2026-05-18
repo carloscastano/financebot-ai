@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinanceBot IA — Estado del Proyecto v2.80</title>
+  <title>FinanceBot IA — Estado del Proyecto v2.83</title>
   <style>
     :root{
       --bg:#0a0e1a; --bg2:#111827; --card:#1a2030; --card2:#232a3d;
@@ -142,7 +142,7 @@
       <h1>📊 FinanceBot IA</h1>
       <p class="subtitle">Estado completo del proyecto · Vista técnica y producto</p>
       <div class="badges">
-        <span class="header-badge">v2.80</span>
+        <span class="header-badge">v2.83</span>
         <span class="header-badge">Deploy estable</span>
         <span class="header-badge">Apps Script + Gemini 2.0</span>
         <span class="header-badge">Actualizado: 2026-05-18</span>
@@ -181,8 +181,8 @@
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Deploy actual</div>
-            <div class="kpi-value">@80</div>
-            <div class="kpi-sub">18/05/2026 · pestaña Ayuda + AYUDA.html</div>
+            <div class="kpi-value">@83</div>
+            <div class="kpi-sub">18/05/2026 · PWA instalable + fix ruta AYUDA</div>
           </div>
           <div class="kpi-card violet">
             <div class="kpi-label">Modelo IA</div>
@@ -201,8 +201,8 @@
           </div>
           <div class="kpi-card green">
             <div class="kpi-label">Backlog cerrado</div>
-            <div class="kpi-value">8 / 10</div>
-            <div class="kpi-sub">Quedan PWA + tech debt</div>
+            <div class="kpi-value">9 / 10</div>
+            <div class="kpi-sub">Solo queda tech debt</div>
           </div>
         </div>
 
@@ -409,7 +409,7 @@
             <tr><td>Modo claro/oscuro toggle</td><td><span class="badge p-baja">BAJA</span></td><td>1h</td><td><span class="badge b-ok">✅ @78</span></td></tr>
             <tr><td>Fusión Features + Triggers (un solo toggle)</td><td><span class="badge p-media">MEDIA</span></td><td>30 min</td><td><span class="badge b-ok">✅ @79</span></td></tr>
             <tr><td>Documentación usuario final (FAQ visual)</td><td><span class="badge p-media">MEDIA</span></td><td>1-2h</td><td><span class="badge b-ok">✅ @80</span></td></tr>
-            <tr><td>PWA: instalable en iPhone</td><td><span class="badge p-baja">BAJA</span></td><td>2h</td><td><span class="badge b-pend">⏳ Pendiente</span></td></tr>
+            <tr><td>PWA: instalable en iPhone/Android</td><td><span class="badge p-baja">BAJA</span></td><td>10 min</td><td><span class="badge b-ok">✅ @83</span></td></tr>
             <tr><td>Magic numbers de columnas → constantes</td><td><span class="badge p-baja">BAJA</span></td><td>2h</td><td><span class="badge b-pend">⏳ Tech debt</span></td></tr>
           </tbody>
         </table>
@@ -557,7 +557,18 @@
         <p class="section-sub">Cambios destacados de las últimas iteraciones</p>
 
         <div class="card-block">
-          <h3>📚 @80 — 2026-05-18 (Hoy)</h3>
+          <h3>📱 @83 — 2026-05-18 (Hoy)</h3>
+          <p>PWA instalable + fix ruta AYUDA standalone</p>
+          <ul style="padding-left:20px;font-size:13px;color:var(--text)">
+            <li>Meta tags Apple para "Agregar a pantalla de inicio" en iPhone</li>
+            <li>Manifest data-URI para "Instalar app" en Android/Chrome</li>
+            <li>Icono SVG inline con la F del degradado morado</li>
+            <li>@81-82: fix doGet(?page=ayuda) y getWebAppUrl backend</li>
+          </ul>
+        </div>
+
+        <div class="card-block">
+          <h3>📚 @80 — 2026-05-18</h3>
           <p>Pestaña Ayuda integrada + AYUDA.html standalone</p>
           <ul style="padding-left:20px;font-size:13px;color:var(--text)">
             <li>Nueva pestaña ❓ Ayuda en sidebar y mobile nav</li>
@@ -644,7 +655,7 @@
     </div>
 
     <div class="footer">
-      <p><b>FinanceBot IA</b> · Estado @80 · Proyecto personal de Carlos Castaño</p>
+      <p><b>FinanceBot IA</b> · Estado @83 · Proyecto personal de Carlos Castaño</p>
       <p>Última actualización: 2026-05-18 · Próximo review: 2026-05-25</p>
       <p style="margin-top:8px;font-size:11px">Generado con Claude (Opus 4.7)</p>
     </div>
