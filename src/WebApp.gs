@@ -854,6 +854,13 @@ function getCategoriasLista() {
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
+// URL pública del web app (la del /exec) — para abrir ?page=ayuda en nueva pestaña
+function getWebAppUrl() {
+  try {
+    return { ok: true, url: ScriptApp.getService().getUrl() };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
 // ════════════════════════════════════════════════════════════
 // TRIGGERS — estado y activación desde el panel web
 // ════════════════════════════════════════════════════════════

@@ -2119,8 +2119,15 @@ const AYUDA_SECCIONES = [
 ];
 
 function abrirAyudaCompleta(){
-  const url = window.location.href.split('?')[0] + '?page=ayuda';
-  window.open(url, '_blank');
+  toast('Abriendo…');
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r && r.ok && r.url){
+        window.open(r.url + '?page=ayuda', '_blank');
+      } else toast(r?r.error:'No se pudo obtener URL','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .getWebAppUrl();
 }
 function loadAyuda(){
   const cont = document.getElementById('ayudaContent');
