@@ -250,6 +250,74 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
 .wizard-error.show{display:block}
 .wizard-link{color:var(--primary);text-decoration:none;font-weight:600}
 .wizard-link:hover{text-decoration:underline}
+
+/* ─── AYUDA ─── */
+.help-search{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;margin-bottom:16px}
+.help-search:focus{outline:none;border-color:var(--primary)}
+.help-acc{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:all .2s}
+.help-acc-head{padding:16px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:var(--card2)}
+.help-acc-head:hover{background:var(--card)}
+.help-acc-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px}
+.help-acc-title .ico{font-size:20px}
+.help-acc .chev{color:var(--muted);font-size:13px;transition:transform .25s}
+.help-acc.open .chev{transform:rotate(180deg)}
+.help-acc-body{display:none;padding:18px;border-top:1px solid var(--border);font-size:14px;line-height:1.6;color:var(--text)}
+.help-acc.open .help-acc-body{display:block;animation:fadeIn .25s}
+.help-acc-body h4{font-size:14px;margin:14px 0 8px;color:var(--primary)}
+.help-acc-body p{color:var(--muted);margin-bottom:10px;font-size:13px}
+.help-acc-body ol,.help-acc-body ul{margin:8px 0 12px 22px;color:var(--text);font-size:13px}
+.help-acc-body ol li,.help-acc-body ul li{margin-bottom:4px}
+.help-acc-body code{background:var(--bg2);padding:2px 7px;border-radius:5px;font-size:12px;color:var(--primary);font-family:'SF Mono',Consolas,monospace}
+.help-acc-body kbd{background:var(--card2);border:1px solid var(--border);border-bottom-width:2px;padding:2px 7px;border-radius:5px;font-size:11px;font-family:'SF Mono',Consolas,monospace;color:var(--text)}
+.help-acc-body strong{color:var(--text)}
+
+/* Browser mockup */
+.browser{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:14px 0;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.browser-bar{background:var(--card2);padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.browser-dots{display:flex;gap:5px}
+.browser-dots span{width:10px;height:10px;border-radius:50%;background:#fb7185}
+.browser-dots span:nth-child(2){background:#fbbf24}
+.browser-dots span:nth-child(3){background:#34d399}
+.browser-url{flex:1;background:var(--bg);padding:4px 10px;border-radius:6px;font-size:11px;color:var(--muted);font-family:monospace}
+.browser-body{padding:14px;background:var(--bg);min-height:80px;font-size:12px}
+
+/* Mock UI helpers */
+.mock-header{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--card);border-radius:8px;margin-bottom:10px;border:1px solid var(--border)}
+.mock-logo{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px}
+.mock-logo-mark{width:22px;height:22px;border-radius:6px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px}
+.mock-btns{display:flex;gap:5px}
+.mock-btn{width:26px;height:26px;border-radius:6px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid var(--border)}
+.mock-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}
+.mock-kpi{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:10px}
+.mock-kpi .lbl{color:var(--muted);font-size:9px;text-transform:uppercase}
+.mock-kpi .val{font-weight:700;margin-top:3px}
+.mock-row{display:flex;justify-content:space-between;padding:5px 8px;background:var(--card);border-radius:5px;margin-bottom:3px;font-size:11px;border:1px solid var(--border)}
+
+/* Annotations: numbered circles + arrows */
+.annotation{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--grad);color:#fff;border-radius:50%;font-weight:800;font-size:11px;margin-right:6px;vertical-align:middle;box-shadow:0 2px 6px rgba(192,132,252,.5)}
+.callout-list{list-style:none;padding-left:0;margin-top:10px}
+.callout-list li{display:flex;gap:10px;padding:8px;background:var(--card2);border-radius:8px;margin-bottom:6px;font-size:12px}
+.callout-list .annotation{flex-shrink:0;margin-top:1px}
+
+/* Diagram (flow) */
+.flow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:14px;background:var(--card2);border-radius:10px;margin:10px 0}
+.flow-node{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px;min-width:100px}
+.flow-node .ico{font-size:22px;display:block;margin-bottom:4px}
+.flow-node b{display:block;color:var(--primary);font-size:12px}
+.flow-arrow{color:var(--violet);font-size:20px;font-weight:700}
+
+/* Cheat sheet */
+.cheat-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
+@media(min-width:640px){.cheat-grid{grid-template-columns:1fr 1fr}}
+.cheat-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.cheat-item code{display:inline-block;background:var(--bg);color:var(--green);padding:3px 8px;border-radius:5px;font-size:12px;font-family:monospace;margin-bottom:4px}
+.cheat-item .desc{font-size:12px;color:var(--muted)}
+
+/* Tip box */
+.tip{background:linear-gradient(135deg,rgba(129,140,248,.08),rgba(192,132,252,.04));border:1px solid rgba(129,140,248,.3);border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;color:var(--text);display:flex;gap:10px}
+.tip .ico{font-size:18px}
+.tip.warn{background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,146,60,.04));border-color:rgba(251,191,36,.3)}
+.tip.danger{background:linear-gradient(135deg,rgba(248,113,113,.08),rgba(239,68,68,.04));border-color:rgba(248,113,113,.3)}
 </style>
 </head>
 <body>
@@ -359,6 +427,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
   <div class="sidebar-item" data-tab="metas"><span class="ico">🎯</span> Goals</div>
   <div class="sidebar-item" data-tab="pendientes"><span class="ico">📋</span> Bills</div>
   <div class="sidebar-item" data-tab="errores"><span class="ico">⚠️</span> Errors</div>
+  <div class="sidebar-item" data-tab="ayuda"><span class="ico">❓</span> Ayuda</div>
 </aside>
 
 <div class="main">
@@ -488,6 +557,19 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
       </div>
     </section>
 
+    <!-- ════════════ AYUDA ════════════ -->
+    <section id="tab-ayuda" class="tab-content">
+      <div class="section-title">
+        <div>
+          <h2>❓ Ayuda</h2>
+          <div class="sub">Guías visuales, atajos de Telegram y solución de problemas</div>
+        </div>
+        <button class="btn-add" style="background:var(--card2);color:var(--text)" onclick="window.open('AYUDA.html','_blank')" title="Versión imprimible">↗ Abrir versión completa</button>
+      </div>
+      <input type="text" class="help-search" id="helpSearch" placeholder="🔍 Busca: privacidad, telegram, presupuesto..." oninput="filtrarAyuda()">
+      <div id="ayudaContent"></div>
+    </section>
+
     <!-- ════════════ ERRORES ════════════ -->
     <section id="tab-errores" class="tab-content">
       <div class="section-title">
@@ -513,6 +595,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
     <button class="mobile-nav-item" data-tab="metas"><span class="ico">🎯</span><span>Goals</span></button>
     <button class="mobile-nav-item" data-tab="pendientes"><span class="ico">📋</span><span>Bills</span></button>
     <button class="mobile-nav-item" data-tab="errores"><span class="ico">⚠️</span><span>Errors</span></button>
+    <button class="mobile-nav-item" data-tab="ayuda"><span class="ico">❓</span><span>Ayuda</span></button>
   </div>
 </nav>
 
@@ -762,6 +845,7 @@ function cargarTab(name, force){
   else if (name==='metas') loadMetas(force);
   else if (name==='pendientes') loadPendientes(force);
   else if (name==='errores') loadErrores(force);
+  else if (name==='ayuda') loadAyuda();
 }
 document.querySelectorAll('.mobile-nav-item, .sidebar-item').forEach(el=>{
   el.addEventListener('click', ()=> setTab(el.dataset.tab));
@@ -1819,6 +1903,243 @@ function wizardValidarGemini(){
     })
     .withFailureHandler(e=>{ btn.disabled=false; btn.textContent='Validar y finalizar'; wizSetMsg('wizGemSuccess','wizGemError',null, e.message); })
     .validarApiKeyGemini(key);
+}
+
+// ════════════ AYUDA ════════════
+const AYUDA_SECCIONES = [
+  {
+    id:'inicio', icono:'🚀', titulo:'Empieza aquí',
+    html: `
+      <p>FinanceBot IA tiene <b>3 superficies</b>: el bot de Telegram (para registrar gastos rápido), este panel web (para ver el panorama y configurar), y el correo de tu banco (que se procesa solo).</p>
+      <div class="flow">
+        <div class="flow-node"><span class="ico">📱</span><b>Telegram</b>Registro rápido</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><span class="ico">📊</span><b>Sheets</b>Almacenamiento</div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-node"><span class="ico">🌐</span><b>Panel web</b>Análisis</div>
+      </div>
+      <h4>1. Verifica que esté configurado</h4>
+      <ol><li>Telegram bot creado (token guardado)</li><li>Chat ID detectado</li><li>API Key de Gemini válida</li></ol>
+      <p>Si falta algo, el wizard de setup se abre solo al entrar al panel.</p>
+      <h4>2. Registra tu primera transacción</h4>
+      <p>Manda un mensaje al bot tipo: <code>gasté 25000 en almuerzo</code>. La IA lo clasifica y lo guarda. O usa el botón <kbd>+ Nueva</kbd> en la pestaña Transactions del panel.</p>
+      <div class="tip"><span class="ico">💡</span><div>La IA aprende a clasificar por tu historial. Cuanto más uses, mejor categoriza.</div></div>
+    `
+  },
+  {
+    id:'transacciones', icono:'💸', titulo:'Cómo registrar gastos',
+    html: `
+      <p>Hay <b>3 caminos</b> para que una transacción llegue a tus Sheets:</p>
+      <h4>Camino A — Telegram (lo más rápido)</h4>
+      <div class="browser">
+        <div class="browser-bar"><div class="browser-dots"><span></span><span></span><span></span></div><div class="browser-url">Telegram · @tuFinanceBot</div></div>
+        <div class="browser-body">
+          <div class="mock-row" style="background:rgba(129,140,248,.1)">📤 gasté 18000 en Uber al trabajo</div>
+          <div class="mock-row" style="background:var(--card2)">🤖 ✅ Registrado: <b>Uber</b> $18.000 · Transporte</div>
+        </div>
+      </div>
+      <ul><li>Escribe en lenguaje natural: <code>compré café por 8500</code></li><li>Incluye comercio si lo sabes: <code>30000 Rappi domicilio</code></li><li>Para ingresos: <code>me pagaron 2.500.000 sueldo</code></li></ul>
+
+      <h4>Camino B — Email del banco (automático)</h4>
+      <p>Cada 5 minutos, el bot lee tus correos de Bancolombia (o el banco que configures) y crea las transacciones <b>sin que hagas nada</b>.</p>
+      <div class="flow">
+        <div class="flow-node"><span class="ico">📧</span><b>Gmail</b>Alerta banco</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><span class="ico">🔍</span><b>Parser</b>Extrae datos</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><span class="ico">🏷️</span><b>IA</b>Categoriza</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><span class="ico">📊</span><b>Sheet</b>Guardado</div>
+      </div>
+
+      <h4>Camino C — Web (manual con detalle)</h4>
+      <p>Pestaña <b>Transactions</b> → botón <kbd>+ Nueva</kbd>. Útil cuando pagas en efectivo o quieres especificar cuenta, subcategoría, etc.</p>
+      <div class="browser">
+        <div class="browser-bar"><div class="browser-dots"><span></span><span></span><span></span></div><div class="browser-url">FinanceBot · Transactions</div></div>
+        <div class="browser-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Transactions</b><span style="background:var(--grad);color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700">+ Nueva</span></div>
+          <div class="mock-row">17/05/2026 · Egreso · $25.000 · Almuerzo · Alimentación</div>
+          <div class="mock-row">17/05/2026 · Egreso · $8.500 · Café · Alimentación</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    id:'metas', icono:'🎯', titulo:'Metas, presupuestos y suscripciones',
+    html: `
+      <h4>🎯 Metas de ahorro</h4>
+      <p>Una meta es un objetivo de plata con fecha. Ej: <code>Viaje Cartagena 3.000.000 antes del 31/12</code>.</p>
+      <ol>
+        <li>Pestaña <b>Goals</b> → <kbd>+ Nueva Meta</kbd></li>
+        <li>Cada vez que ahorres, edita la meta y aumenta el "Ahorrado"</li>
+        <li>El bot te muestra el % de avance</li>
+      </ol>
+
+      <h4>💰 Presupuestos por categoría</h4>
+      <p>Defines cuánto puedes gastar en cada categoría al mes. El bot te avisa cuando llegues al 80% y al 100%.</p>
+      <ol>
+        <li>Settings → <b>Categorías y Presupuestos</b></li>
+        <li>Edita el monto del presupuesto mensual</li>
+        <li>Alternativa: <b>Análisis de Presupuestos</b> calcula tu promedio de últimos 3 meses y sugiere valores</li>
+      </ol>
+      <div class="tip"><span class="ico">⭐</span><div>Usa "Aplicar todos" en Análisis para configurar presupuestos realistas en 1 clic.</div></div>
+
+      <h4>🔁 Suscripciones</h4>
+      <p>El bot detecta cargos recurrentes (Netflix, Spotify, etc.) y te muestra cuánto te cuesta el mes en suscripciones. Comando: <code>/suscripciones</code>.</p>
+
+      <h4>📋 Bills (pagos pendientes)</h4>
+      <p>Pestaña <b>Bills</b> para registrar facturas que pagas mes a mes (arriendo, servicios, tarjeta). El bot te recuerda X días antes del vencimiento.</p>
+    `
+  },
+  {
+    id:'notif', icono:'🔔', titulo:'Notificaciones y automatización',
+    html: `
+      <p>Cada funcionalidad puede estar <b>activa o inactiva</b>. Cuando la activas, se programa un trigger automático.</p>
+      <div class="browser">
+        <div class="browser-bar"><div class="browser-dots"><span></span><span></span><span></span></div><div class="browser-url">Settings · Funcionalidades</div></div>
+        <div class="browser-body">
+          <div class="mock-row" style="justify-content:flex-start;gap:10px"><span class="annotation">1</span><b>Reporte Mensual</b> <span class="badge-ok" style="background:rgba(52,211,153,.15);color:var(--green);padding:2px 7px;border-radius:5px;font-size:10px">⏱ programada</span></div>
+          <div class="mock-row" style="justify-content:flex-start;gap:10px"><span class="annotation">2</span>Alerta Presupuesto <span class="badge-ok" style="background:rgba(96,165,250,.15);color:var(--blue);padding:2px 7px;border-radius:5px;font-size:10px">inline</span></div>
+        </div>
+      </div>
+      <ul class="callout-list">
+        <li><span class="annotation">1</span><div><b>⏱ programada</b> = la función corre en horario fijo (ej. lunes 7am). El toggle ON crea el trigger; OFF lo elimina.</div></li>
+        <li><span class="annotation">2</span><div><b>inline</b> = no necesita trigger, se ejecuta en el momento (ej. la alerta de presupuesto salta al registrar la transacción que supera el límite).</div></li>
+      </ul>
+
+      <h4>Qué te llega y cuándo</h4>
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <tr style="background:var(--card2)"><th style="text-align:left;padding:6px">Notificación</th><th style="text-align:left;padding:6px">Frecuencia</th></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Confirmación de cada tx</td><td style="padding:6px;border-top:1px solid var(--border)">Inmediato</td></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Alerta presupuesto 80% / 100%</td><td style="padding:6px;border-top:1px solid var(--border)">Inmediato</td></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Recordatorio de pagos pendientes</td><td style="padding:6px;border-top:1px solid var(--border)">Diario 9am</td></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Reporte semanal</td><td style="padding:6px;border-top:1px solid var(--border)">Lunes 7am</td></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Reporte mensual IA</td><td style="padding:6px;border-top:1px solid var(--border)">Diario 7am (calcula si toca)</td></tr>
+        <tr><td style="padding:6px;border-top:1px solid var(--border)">Revisión presupuestos</td><td style="padding:6px;border-top:1px solid var(--border)">Día 25 del mes</td></tr>
+      </table>
+      <div class="tip warn"><span class="ico">⚠️</span><div>Si una feature marca <b>⚠ trigger faltante</b>, pulsa el botón <b>🔧 Reparar</b> en Settings → Funcionalidades.</div></div>
+    `
+  },
+  {
+    id:'privacidad', icono:'🔒', titulo:'Privacidad de datos',
+    html: `
+      <p>Tienes <b>2 niveles</b> de privacidad:</p>
+      <h4>Nivel 1 — Toggle rápido 👁️ (temporal)</h4>
+      <p>Botón en el header del panel. Esconde Ingresos, Flujo y Tasa de Ahorro en el dashboard hasta que recargues. Útil cuando alguien está mirando tu pantalla.</p>
+      <div class="browser">
+        <div class="browser-bar"><div class="browser-dots"><span></span><span></span><span></span></div><div class="browser-url">FinanceBot · header</div></div>
+        <div class="browser-body">
+          <div class="mock-header">
+            <div class="mock-logo"><div class="mock-logo-mark">F</div>FinanceBot</div>
+            <div class="mock-btns"><span class="mock-btn" style="background:var(--grad);color:#fff;border:none">🔒</span><span class="mock-btn">🌙</span><span class="mock-btn">📑</span><span class="mock-btn">↻</span></div>
+          </div>
+          <div class="mock-kpi-grid">
+            <div class="mock-kpi"><div class="lbl">Gastos</div><div class="val">$11.535.890</div></div>
+            <div class="mock-kpi"><div class="lbl">Ingresos</div><div class="val" style="color:var(--muted)">••••••</div></div>
+            <div class="mock-kpi"><div class="lbl">Flujo</div><div class="val" style="color:var(--muted)">••••••</div></div>
+            <div class="mock-kpi"><div class="lbl">Ahorro</div><div class="val" style="color:var(--muted)">••%</div></div>
+          </div>
+        </div>
+      </div>
+      <h4>Nivel 2 — Configuración permanente</h4>
+      <p>Settings → <b>Privacidad de datos</b>. Toggles que se quedan ON aunque cierres el navegador. 4 campos disponibles:</p>
+      <ul>
+        <li><b>Ocultar Ingresos</b> — esconde la columna y los KPIs de ingreso</li>
+        <li><b>Ocultar Flujo Neto</b> — esconde la diferencia ingresos-gastos</li>
+        <li><b>Ocultar Tasa de Ahorro</b> — esconde el %</li>
+        <li><b>Ocultar Ingresos en Consolidado</b> — esconde la barra verde del gráfico anual</li>
+      </ul>
+      <div class="tip"><span class="ico">🛡️</span><div>Estas opciones NO encriptan los datos en Sheets. Solo enmascaran en la UI. Si comparten tu Sheet, verán todo.</div></div>
+    `
+  },
+  {
+    id:'telegram', icono:'🤖', titulo:'Cheat sheet de Telegram',
+    html: `
+      <p>Lista completa de comandos. También puedes escribir en lenguaje natural sin comando.</p>
+      <div class="cheat-grid">
+        <div class="cheat-item"><code>/start</code><div class="desc">Mensaje de bienvenida y lista de comandos</div></div>
+        <div class="cheat-item"><code>/help</code><div class="desc">Listado completo de comandos disponibles</div></div>
+        <div class="cheat-item"><code>texto libre</code><div class="desc">"gasté 25000 en almuerzo" → registra tx</div></div>
+        <div class="cheat-item"><code>/metas</code><div class="desc">Progreso de tus metas de ahorro</div></div>
+        <div class="cheat-item"><code>/meta &lt;nombre&gt; &lt;monto&gt;</code><div class="desc">Aportar a una meta específica</div></div>
+        <div class="cheat-item"><code>/presupuesto</code><div class="desc">Estado actual del presupuesto por categoría</div></div>
+        <div class="cheat-item"><code>/suscripciones</code><div class="desc">Lista cargos recurrentes detectados</div></div>
+        <div class="cheat-item"><code>/reporte</code><div class="desc">Análisis financiero mensual con IA</div></div>
+        <div class="cheat-item"><code>/config</code><div class="desc">Ver / activar / desactivar funcionalidades</div></div>
+      </div>
+      <h4>Atajos útiles</h4>
+      <ul>
+        <li>Para corregir una tx mal registrada → ve a Transactions en el panel y edítala</li>
+        <li>Si la IA categorizó mal → edita la tx y la próxima vez aprenderá</li>
+        <li>Para pausar el bot temporalmente → desactiva la feature correspondiente en Settings</li>
+      </ul>
+    `
+  },
+  {
+    id:'problemas', icono:'🐛', titulo:'Problemas comunes',
+    html: `
+      <div class="card-block" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+        <h4 style="margin-top:0">El bot no responde a mis mensajes</h4>
+        <ol>
+          <li>Verifica que el trigger <code>procesarMensajesTelegram</code> esté activo (Settings → Reparar)</li>
+          <li>Revisa Errors en el panel — busca menciones a "Telegram"</li>
+          <li>Si dice "401 Unauthorized", el token del bot expiró: reconfigura en wizard</li>
+        </ol>
+      </div>
+      <div class="card-block" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+        <h4 style="margin-top:0">No me llegan transacciones desde el correo</h4>
+        <ol>
+          <li>Settings → Bancos/Remitentes: confirma que el email del banco está agregado</li>
+          <li>Verifica que <code>procesarEmailsBancolombia</code> es trigger activo</li>
+          <li>Mira la pestaña Errors para ver si está fallando el parser</li>
+        </ol>
+      </div>
+      <div class="card-block" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+        <h4 style="margin-top:0">"Cuota Gemini agotada"</h4>
+        <p style="margin-bottom:8px">Llegaste al límite gratuito diario (~1500 requests/día). Espera al día siguiente o:</p>
+        <ul>
+          <li>Desactiva temporalmente las features con ⏱ programada que más usan IA</li>
+          <li>El registro de tx seguirá funcionando con el clasificador local (sin IA)</li>
+        </ul>
+      </div>
+      <div class="card-block" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+        <h4 style="margin-top:0">No veo cambios después de actualizar</h4>
+        <ol>
+          <li>Pulsa <kbd>Ctrl + F5</kbd> (o <kbd>Cmd + Shift + R</kbd>)</li>
+          <li>Si persiste: abre en pestaña privada/incógnito</li>
+          <li>Verifica que el deploy nuevo esté hecho (no la URL anterior)</li>
+        </ol>
+      </div>
+      <div class="card-block" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <h4 style="margin-top:0">Una transacción salió duplicada</h4>
+        <p>Pasa cuando el banco envía 2 emails (notificación + confirmación). Edítala o elimínala desde Transactions con el botón 🗑️.</p>
+      </div>
+    `
+  }
+];
+
+function loadAyuda(){
+  const cont = document.getElementById('ayudaContent');
+  if (cont.dataset.loaded === '1') return; // ya renderizado
+  cont.innerHTML = AYUDA_SECCIONES.map((s,i)=>`
+    <div class="help-acc${i===0?' open':''}" data-help-id="${s.id}">
+      <div class="help-acc-head" onclick="toggleAyudaAcc(this)">
+        <div class="help-acc-title"><span class="ico">${s.icono}</span><span>${s.titulo}</span></div>
+        <span class="chev">▾</span>
+      </div>
+      <div class="help-acc-body">${s.html}</div>
+    </div>
+  `).join('');
+  cont.dataset.loaded = '1';
+}
+function toggleAyudaAcc(el){ el.parentElement.classList.toggle('open'); }
+function filtrarAyuda(){
+  const q = (document.getElementById('helpSearch').value || '').toLowerCase().trim();
+  document.querySelectorAll('#ayudaContent .help-acc').forEach(el=>{
+    const text = el.textContent.toLowerCase();
+    el.style.display = (!q || text.indexOf(q)>=0) ? '' : 'none';
+    if (q && text.indexOf(q)>=0) el.classList.add('open');
+  });
 }
 
 // ════════════ TEMA (claro / oscuro) ════════════
