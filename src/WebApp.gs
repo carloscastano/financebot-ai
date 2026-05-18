@@ -170,11 +170,11 @@ function analizarPresupuestos() {
     }
 
     var ahora = new Date();
-    var mesesAtras = 3; // Analizar últimos 3 meses
+    var mesesAtras = 3;
     var desde = new Date(ahora.getFullYear(), ahora.getMonth() - mesesAtras, 1);
 
-    var porMes = {}; // "2026-04" → { categorías: { "Alimentación": [100k, 110k, 105k], ... }, meses: 3 }
-    var totalPorCat = {}; // "Alimentación" → { suma: 315k, meses: 3, promedio: 105k }
+    var porMes = {};
+    var totalPorCat = {};
 
     for (var i = 1; i < data.length; i++) {
       var fila = data[i];
@@ -198,8 +198,9 @@ function analizarPresupuestos() {
       totalPorCat[cat].suma += monto;
     }
 
-    // Contar meses únicos con datos
     var mesesUnicos = Object.keys(porMes).length || 1;
+    var cfg = leerConfiguracion_();
+    var categoriasConfiguradas = (cfg.categorias || []).map(function(c) { return c; });
 
     var resultado = [];
     for (var cat in totalPorCat) {
@@ -209,13 +210,54 @@ function analizarPresupuestos() {
         totalGastado: totalPorCat[cat].suma,
         mesesDatos: mesesUnicos,
         promedio: promedio,
-        recomendacion: Math.round(promedio * 1.1) // Sugiere 10% más para colchón
+        recomendacion: Math.round(promedio * 1.1)
       });
     }
+
+    // Agregar categorías configuradas sin gasto en últimos 3 meses
+    categoriasConfiguradas.forEach(function(c) {
+      if (!resultado.find(function(r) { return r.categoria === c; })) {
+        resultado.push({
+          categoria: c,
+          totalGastado: 0,
+          mesesDatos: 0,
+          promedio: 0,
+          recomendacion: 0
+        });
+      }
+    });
 
     resultado.sort(function(a, b) { return b.totalGastado - a.totalGastado; });
 
     return { ok: true, categorias: resultado, mesesAnalisis: mesesUnicos };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function aplicarPresupuestosAnalisis(presupuestos) {
+  try {
+    // presupuestos es un array: [{ categoria: "Alimentación", recomendacion: 500000 }, ...]
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.CONFIGURATIONS);
+    if (!sh) return { ok: false, error: 'Hoja Configurations no encontrada' };
+
+    var data = sh.getRange(1, 1, sh.getLastRow(), 3).getValues();
+    var actualizado = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var clave = String(data[i][0] || '').trim();
+      if (!clave) continue;
+      var m = clave.match(/^Categor[íi]a\s+(\d+)$/i);
+      if (!m) continue;
+
+      var catName = String(data[i][1] || '').trim();
+      var presup = presupuestos.find(function(p) { return p.categoria === catName; });
+      if (presup && presup.recomendacion > 0) {
+        sh.getRange(i + 1, 3).setValue(Number(presup.recomendacion));
+        actualizado++;
+      }
+    }
+
+    return { ok: true, actualizado: actualizado };
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
@@ -645,6 +687,77 @@ function finalizarSetup() {
     }
     try { configurarTriggers(); } catch(e) { Logger.log('triggers: ' + e.message); }
     props.setProperty('SETUP_COMPLETE', 'true');
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// TRANSACCIONES — lectura con row numbers + edición
+// ════════════════════════════════════════════════════════════
+function getTransacciones(limit) {
+  try {
+    limit = limit || 100;
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh) return { ok: false, error: 'Hoja Transactions no encontrada' };
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    if (lastRow < 2) return { ok: true, headers: [], items: [], total: 0 };
+
+    var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(_toStr_);
+    var count   = Math.min(lastRow - 1, limit);
+    var data    = sh.getRange(2, 1, count, lastCol).getValues();
+
+    var items = [];
+    for (var i = 0; i < data.length; i++) {
+      if (!data[i].some(function(c) { return c !== '' && c !== null; })) continue;
+      var obj = { _row: i + 2 };
+      headers.forEach(function(h, j) {
+        var val = j < data[i].length ? data[i][j] : '';
+        obj[h] = _toStr_(val);
+      });
+      // Alias robustos por posición (columna H = idx 7 es Comercio; columna J = idx 9 Categoria; etc.)
+      // Esto asegura que el frontend encuentre la columna aunque el header tenga otro nombre
+      if (data[i].length > 7)  obj['Comercio']     = _toStr_(data[i][7]);
+      if (data[i].length > 9)  obj['Categoria']    = _toStr_(data[i][9]);
+      if (data[i].length > 10) obj['Subcategoria'] = _toStr_(data[i][10]);
+      if (data[i].length > 11) obj['Necesidad']    = _toStr_(data[i][11]);
+      if (data[i].length > 13) obj['Referencia']   = _toStr_(data[i][13]);
+      items.push(obj);
+    }
+
+    var cfg = leerConfiguracion_();
+    return { ok: true, headers: headers, items: items, total: lastRow - 1, categorias: cfg.categorias || [] };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+// Cols editables: Fecha(2) Tipo(4) Monto(6) Comercio/Destino(8) Categoria(10) Subcategoria(11) Necesidad(12) Referencia(14)
+function actualizarTransaccion(row, fecha, tipo, monto, comercio, categoria, subcategoria, necesidad, referencia) {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh) return { ok: false, error: 'Hoja Transactions no encontrada' };
+    var existing = sh.getRange(row, 1, 1, 18).getValues()[0];
+    var updates = existing.slice(); // copia
+    if (fecha      !== undefined && fecha      !== '') updates[1]  = fecha;
+    if (tipo       !== undefined && tipo       !== '') updates[3]  = tipo;
+    if (monto      !== undefined && monto      !== '') updates[5]  = Number(monto);
+    if (comercio   !== undefined && comercio   !== '') updates[7]  = comercio;
+    if (categoria  !== undefined && categoria  !== '') updates[9]  = categoria;
+    if (subcategoria !== undefined)                    updates[10] = subcategoria;
+    if (necesidad  !== undefined && necesidad  !== '') updates[11] = necesidad;
+    if (referencia !== undefined)                      updates[13] = referencia;
+    sh.getRange(row, 1, 1, 18).setValues([updates]);
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
+function eliminarTransaccion(row) {
+  try {
+    var ss = _ssWeb_();
+    var sh = ss.getSheetByName(SHEETS.TRANSACTIONS);
+    if (!sh) return { ok: false, error: 'Hoja Transactions no encontrada' };
+    sh.deleteRow(row);
     return { ok: true };
   } catch(err) { return { ok: false, error: err.message }; }
 }

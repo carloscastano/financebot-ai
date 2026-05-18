@@ -828,14 +828,14 @@ function renderDashboard(d){
       <div class="card-header"><div class="card-title">📋 Detalle por mes</div></div>
       <div class="tbl-wrap">
         <table class="tbl">
-          <thead><tr><th>Mes</th><th>Egresos</th>${privIngresos ? '' : '<th>Ingresos</th>'}<th>Flujo</th><th># Tx</th></tr></thead>
+          <thead><tr><th>Mes</th><th>Egresos</th>${privIngresos ? '' : '<th>Ingresos</th>'}${privFlujo ? '' : '<th>Flujo</th>'}<th># Tx</th></tr></thead>
           <tbody>
             ${d.consolidado.slice().reverse().map(m=>`
               <tr>
                 <td>${m.mes}</td>
                 <td class="neg">${fmt(m.egresos)}</td>
                 ${privIngresos ? '' : '<td class="pos">' + fmt(m.ingresos) + '</td>'}
-                <td class="${m.flujo>=0?'pos':'neg'}">${fmt(m.flujo)}</td>
+                ${privFlujo ? '' : '<td class="' + (m.flujo>=0?'pos':'neg') + '">' + fmt(m.flujo) + '</td>'}
                 <td>${m.txns}</td>
               </tr>
             `).join('')}
@@ -1039,7 +1039,8 @@ function loadConfig(force){
 
 function renderConfig(){
   const r = state.cfgData;
-  const general = r.general || [];
+  // Filtrar campos Privacidad * — se manejan via toggles en la sección de Privacidad
+  const general = (r.general || []).filter(g => !/^Privacidad\s/i.test(g.clave));
   const bancos = r.bancos || [];
   const cats = r.categorias || [];
 
