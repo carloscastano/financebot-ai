@@ -529,6 +529,27 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
         </div>
       </div>
 
+      <!-- Groq A/B test -->
+      <div class="cfg-section" data-sec="groq" style="margin-top:12px">
+        <div class="cfg-section-head" onclick="toggleSec('groq')">
+          <div class="cfg-section-title">🦙 IA Groq (A/B test) <span class="badge" id="groqBadge">…</span></div>
+          <span class="toggle">▾</span>
+        </div>
+        <div class="cfg-body" id="groqContent" style="padding:14px 16px">
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">
+            Conecta una API key gratis de Groq (Llama 3.3 70B) para comparar contra Gemini.<br>
+            Crea la key en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--primary)">console.groq.com/keys</a> (gratis, sin tarjeta).<br>
+            Luego en Telegram usa: <code style="background:var(--bg2);padding:2px 6px;border-radius:4px">/comparar tu pregunta</code> o <code style="background:var(--bg2);padding:2px 6px;border-radius:4px">/chat2 tu pregunta</code>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="groqKeyInput" type="password" placeholder="gsk_..." style="flex:1;min-width:220px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:monospace">
+            <button class="btn-save" onclick="guardarGroq()">Guardar</button>
+            <button class="btn-del" onclick="quitarGroq()" title="Eliminar key">🗑</button>
+          </div>
+          <div id="groqPreview" style="margin-top:8px;font-size:11px;color:var(--muted)"></div>
+        </div>
+      </div>
+
       <!-- Funcionalidades: carga independiente, siempre visible -->
       <div class="cfg-section" data-sec="features" style="margin-top:12px">
         <div class="cfg-section-head" onclick="toggleSec('features')">
@@ -860,7 +881,7 @@ function recargarTab(){ cargarTab(state.tab, true); }
 function cargarTab(name, force){
   if (name==='dashboard') loadDashboard();
   else if (name==='transacciones') loadTransacciones(force);
-  else if (name==='config') { loadConfig(force); loadFeatures(); }
+  else if (name==='config') { loadConfig(force); loadFeatures(); loadGroqStatus(); }
   else if (name==='metas') loadMetas(force);
   else if (name==='pendientes') loadPendientes(force);
   else if (name==='errores') loadErrores(force);
@@ -2212,6 +2233,41 @@ function toggleTheme(){
   let saved='dark'; try{ saved = localStorage.getItem('fb_theme') || 'dark'; }catch(e){}
   applyTheme(saved);
 })();
+
+// ════════════ GROQ A/B test ════════════
+function loadGroqStatus(){
+  google.script.run
+    .withSuccessHandler(r=>{
+      const badge = document.getElementById('groqBadge');
+      const prev = document.getElementById('groqPreview');
+      if (!r || !r.ok){ if(badge) badge.textContent='error'; return; }
+      if (r.configurada){
+        if(badge){ badge.textContent='configurada'; badge.style.background='rgba(52,211,153,.15)'; badge.style.color='var(--green)'; }
+        if(prev) prev.innerHTML='✅ Key activa: <code>' + r.preview + '</code>';
+      } else {
+        if(badge){ badge.textContent='sin key'; badge.style.background='rgba(251,191,36,.15)'; badge.style.color='var(--yellow)'; }
+        if(prev) prev.innerHTML='⚠️ Sin API key. Crea una gratis en console.groq.com/keys';
+      }
+    })
+    .getGroqStatus();
+}
+function guardarGroq(){
+  const k = document.getElementById('groqKeyInput').value.trim();
+  if (!k){ toast('Pega la key primero','err'); return; }
+  google.script.run
+    .withSuccessHandler(r=>{
+      if (r&&r.ok){ toast('✅ Groq conectado'); document.getElementById('groqKeyInput').value=''; loadGroqStatus(); }
+      else toast(r?r.error:'Error','err');
+    })
+    .withFailureHandler(e=> toast(e.message,'err'))
+    .guardarGroqApiKey(k);
+}
+function quitarGroq(){
+  if(!confirm('¿Eliminar la API key de Groq?')) return;
+  google.script.run
+    .withSuccessHandler(r=>{ if(r&&r.ok){ toast('Key eliminada'); loadGroqStatus(); } })
+    .quitarGroqApiKey();
+}
 
 // ════════════ TRIGGERS — reparación manual ════════════
 function repararTriggers(){

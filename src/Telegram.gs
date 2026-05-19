@@ -123,6 +123,25 @@ function procesarMensajesTelegram() {
       return;
     }
 
+    if (msg.text && msg.text.startsWith('/comparar ')) {
+      var preguntaCmp = msg.text.substring('/comparar '.length).trim();
+      if (!preguntaCmp) { enviarMensajeTelegram_('Uso: /comparar tu pregunta aquí'); return; }
+      try {
+        enviarMensajeTelegram_('🧪 Comparando Gemini vs Groq, espera unos segundos...');
+        var cmp = compararRespuestas_(preguntaCmp);
+        enviarMensajeTelegram_(cmp.gemini);
+        enviarMensajeTelegram_(cmp.groq);
+      } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
+      return;
+    }
+
+    if (msg.text && msg.text.startsWith('/chat2 ')) {
+      var pregunta2 = msg.text.substring('/chat2 '.length).trim();
+      if (!pregunta2) { enviarMensajeTelegram_('Uso: /chat2 tu pregunta aquí'); return; }
+      try { enviarMensajeTelegram_(responderChatGroq_(pregunta2)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
+      return;
+    }
+
     if (msg.text === '/historico' || (msg.text && msg.text.startsWith('/historico '))) {
       try { enviarMensajeTelegram_(procesarComandoHistorico_(msg.text)); } catch(e) { enviarMensajeTelegram_('❌ ' + mdEscape_(_safeErrMsg_(e))); }
       return;

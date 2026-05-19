@@ -878,6 +878,31 @@ function getCategoriasLista() {
   } catch(err) { return { ok: false, error: err.message }; }
 }
 
+// ════════════════════════════════════════════════════════════
+// GROQ API KEY — guardar/leer estado para el A/B test
+// ════════════════════════════════════════════════════════════
+function getGroqStatus() {
+  try {
+    var key = PropertiesService.getScriptProperties().getProperty('GROQ_API_KEY');
+    return { ok: true, configurada: !!key, preview: key ? (key.substring(0, 7) + '…' + key.substring(key.length - 4)) : '' };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+function guardarGroqApiKey(key) {
+  try {
+    var k = String(key || '').trim();
+    if (!k) return { ok: false, error: 'Pega una API key válida' };
+    if (k.indexOf('gsk_') !== 0) return { ok: false, error: 'Las keys de Groq empiezan con gsk_' };
+    PropertiesService.getScriptProperties().setProperty('GROQ_API_KEY', k);
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+function quitarGroqApiKey() {
+  try {
+    PropertiesService.getScriptProperties().deleteProperty('GROQ_API_KEY');
+    return { ok: true };
+  } catch(err) { return { ok: false, error: err.message }; }
+}
+
 // URL pública del web app (la del /exec) — para abrir ?page=ayuda en nueva pestaña
 function getWebAppUrl() {
   try {

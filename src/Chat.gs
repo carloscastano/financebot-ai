@@ -208,6 +208,37 @@ function responderChat_(pregunta) {
   return '🤖 ' + limpio;
 }
 
+// ------------------------------------------------------------
+// CHAT GROQ — misma pregunta+contexto, otro motor (Llama 3.1 70B)
+// ------------------------------------------------------------
+function responderChatGroq_(pregunta) {
+  if (!isFeatureEnabled_('chat_financiero')) {
+    return '⏸️ El chat financiero está desactivado.';
+  }
+  var contexto = _contextoFinanciero_();
+  var prompt = construirPromptChatFinanciero_(pregunta, contexto);
+  var r = _llamarGroqTexto_(prompt, { temperature: 0.65, maxOutputTokens: 400 });
+  if (!r || !r.ok) return '❌ Groq: ' + (r && r.error ? r.error : 'sin respuesta');
+  var limpio = String(r.texto).replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  return '🦙 ' + limpio;
+}
+
+// ------------------------------------------------------------
+// COMPARADOR — manda misma pregunta a ambos motores
+// ------------------------------------------------------------
+function compararRespuestas_(pregunta) {
+  var contexto = _contextoFinanciero_();
+  var prompt = construirPromptChatFinanciero_(pregunta, contexto);
+
+  var t1 = _llamarGeminiTexto_(prompt, { temperature: 0.65, maxOutputTokens: 400 });
+  var rGem = t1 === null ? '❌ Gemini sin respuesta' : '🤖 GEMINI 2.0\n' + String(t1).replace(/\*\*/g, '').replace(/\*/g, '').trim();
+
+  var r2 = _llamarGroqTexto_(prompt, { temperature: 0.65, maxOutputTokens: 400 });
+  var rGr = (!r2 || !r2.ok) ? '❌ Groq: ' + (r2 && r2.error ? r2.error : 'sin respuesta') : '🦙 GROQ Llama 3.3 70B\n' + String(r2.texto).replace(/\*\*/g, '').replace(/\*/g, '').trim();
+
+  return { gemini: rGem, groq: rGr };
+}
+
 function run_testChat() {
   var res = responderChat_('¿cuánto he gastado en alimentación este mes y cómo voy con ese presupuesto?');
   enviarMensajeTelegram_(res);

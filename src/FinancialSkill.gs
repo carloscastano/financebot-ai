@@ -230,6 +230,42 @@ function _llamarGeminiJson_(prompt, opts) {
 // HELPER GEMINI — respuestas de texto (chat, análisis, insights)
 // Retorna el texto limpio o null si falla/rate-limit.
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// GROQ — alternativa gratis (Llama 3.1 70B). Requiere GROQ_API_KEY en Script Properties.
+// Crear key gratis en https://console.groq.com/keys
+// ------------------------------------------------------------
+function _llamarGroqTexto_(prompt, opts) {
+  opts = opts || {};
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GROQ_API_KEY');
+  if (!apiKey) return { ok: false, error: 'No hay GROQ_API_KEY configurada. Pegala en Settings → IA Groq.' };
+  var payload = {
+    model:       opts.model || 'llama-3.3-70b-versatile',
+    messages:    [{ role: 'user', content: prompt }],
+    temperature: opts.temperature !== undefined ? opts.temperature : 0.6,
+    max_tokens:  opts.maxOutputTokens !== undefined ? opts.maxOutputTokens : 400
+  };
+  try {
+    var resp = UrlFetchApp.fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + apiKey },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    var code = resp.getResponseCode();
+    if (code !== 200) {
+      logWarn_('GROQ', 'HTTP ' + code + ': ' + resp.getContentText().slice(0, 200));
+      return { ok: false, error: 'Groq HTTP ' + code };
+    }
+    var json = JSON.parse(resp.getContentText());
+    var texto = json.choices && json.choices[0] && json.choices[0].message ? json.choices[0].message.content : '';
+    return { ok: true, texto: String(texto || '').trim() };
+  } catch(e) {
+    logError_('GROQ', 'excepcion en llamada', e);
+    return { ok: false, error: e.message };
+  }
+}
+
 function _llamarGeminiTexto_(prompt, opts) {
   opts = opts || {};
   var payload = {
