@@ -15,47 +15,67 @@ function _esPreguntaFinanciera_(texto) {
   if (!texto) return false;
   var t = texto.toLowerCase().trim();
 
-  // Señales claras de pregunta
+  // 1) Signo de pregunta -> es pregunta
   if (t.indexOf('?') >= 0) return true;
 
-  // Palabras interrogativas / conversacionales al inicio
+  // 2) Inicios conversacionales / interrogativos
   var inicios = [
     'cuánto','cuanto','cómo','como','cuál','cual','qué','que ',
-    'dime','muéstrame','muestrame','resumen','analiza','análisis',
-    'explícame','explicame','puedo','tengo','estoy','quiero saber',
+    'dime','muéstrame','muestrame','resumen','analiza','análisis','analisis',
+    'explícame','explicame','puedo','quiero saber','quiero ver',
     'qué tal','que tal','cómo voy','como voy','cómo estoy','como estoy',
-    'cuánto llevo','cuanto llevo','cuánto gasté','cuanto gaste',
-    'cuánto me','cuanto me','cuánto he','cuanto he','en qué','en que',
-    'cuándo','cuando','por qué','por que','hay algo','se puede',
-    'recomiéndame','recomiendame','ayúdame','ayudame','dame un',
+    'en qué','en que','cuándo','cuando','por qué','por que','hay algo','se puede',
+    'recomiéndame','recomiendame','ayúdame','ayudame','dame un','dame una',
     'dónde','donde','cuántas','cuantas','cuántos','cuantos',
-    'saldo','balance','situación','situacion','estado','informe',
-    'reporte','resum','análisis','analisis','consejo','consejos',
-    'suger','tip ','tips','meta ','metas','presupuesto','suscripciones'
+    'saldo','balance','situación','situacion','estado actual','informe',
+    'reporte','consejo','consejos','suger','tip ','tips',
+    // conversacionales sin signo
+    'pero','es que','fíjate','fijate','mira ','escucha','oye','hey',
+    'no me','no entiendo','no sé','no se ','porque ','sabes','crees',
+    'me puedes','podrías','podrias','quisiera','necesito que','ayúdame','ayudame'
   ];
 
   for (var i = 0; i < inicios.length; i++) {
     var pos = t.indexOf(inicios[i]);
-    // Solo cuenta si la palabra aparece en los primeros 3 chars (no -1 = no encontrado)
-    if (pos >= 0 && pos <= 3) {
+    if (pos >= 0 && pos <= 5) {
       if (!_pareceTrransaccion_(t)) return true;
     }
+  }
+
+  // 3) Heuristica de longitud + conjunciones -> es conversacion
+  // Una transaccion suele ser corta y directa. Si es larga y tiene conjunciones
+  // o muchas comas, probablemente esta describiendo algo, no registrando.
+  if (t.length > 60) {
+    var conjConv = [', por ejemplo',', es más',', es mas',', porque ',', y si',
+                    ', pero ',', sin embargo',', además',', ademas',
+                    ' es que ',' o sea ',' osea '];
+    for (var j = 0; j < conjConv.length; j++) {
+      if (t.indexOf(conjConv[j]) >= 0) return true;
+    }
+    // 3+ comas en mensajes largos = conversacional
+    var comas = (t.match(/,/g) || []).length;
+    if (comas >= 3 && !_pareceTrransaccion_(t)) return true;
   }
 
   return false;
 }
 
-// Heurística: si tiene verbo de gasto/ingreso + número → probablemente transacción
+// Heurística: si tiene verbo de gasto/ingreso EN ACCION + número -> probable transacción
+// Importante: 'tengo', 'llega', 'me dan' NO son verbos de transaccion (son hipoteticos/futuros)
 function _pareceTrransaccion_(t) {
   var verbos = ['gasté','gaste','pagué','pague','compré','compre',
                 'ingresé','ingrese','recibí','recibi','me llegó','me llego',
                 'transferí','transferi','consigné','consigne','saqué','saque',
-                'cobré','cobre','vendí','vendi','presté','preste'];
+                'cobré','cobre','vendí','vendi','presté','preste',
+                'me cobraron','me pagaron','acabo de'];
   for (var i = 0; i < verbos.length; i++) {
     if (t.indexOf(verbos[i]) >= 0) return true;
   }
-  // Tiene número grande → probable monto
-  return /\b\d{4,}\b/.test(t);
+  // Número con $ explicito o número grande SUELTO al inicio
+  if (/^\s*\$?\s*\d{3,}/.test(t)) return true;
+  // Numero >= 4 digitos PERO sin contexto conversacional largo
+  // (mensajes cortos con cifras grandes = probable tx)
+  return t.length < 50 && /\b\d{4,}\b/.test(t);
 }
 
 // ------------------------------------------------------------

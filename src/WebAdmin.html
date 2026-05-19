@@ -1232,13 +1232,16 @@ function renderConfig(){
         <span class="toggle">▾</span>
       </div>
       <div class="cfg-body">
-        ${general.map(g=>`
+        ${general.map(g=>{
+          const isNum = /^\d{4,}$/.test(String(g.valor).trim());
+          const hint = isNum ? ` <span style="color:var(--green);font-size:11px;font-weight:600;margin-left:6px">${fmt(g.valor)}</span>` : '';
+          return `
           <div class="cfg-row">
-            <div class="cfg-field"><label>${g.clave}</label><input id="cfg_${g.row}" value="${escapeHtml(g.valor)}"></div>
+            <div class="cfg-field"><label>${g.clave}${hint}</label><input id="cfg_${g.row}" value="${escapeHtml(g.valor)}" oninput="actualizarHintMoneda(this,'${g.row}','cfg')"></div>
             <div class="cfg-field"><label>Descripción</label><div style="font-size:12px;color:var(--muted);padding:9px 0;line-height:1.4">${escapeHtml(docs[g.clave]||g.desc||'Sin documentación')}</div></div>
             <div class="cfg-actions"><button class="btn-save" onclick="guardarCfg('${escapeAttr(g.clave)}', ${g.row})">Guardar</button></div>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     </div>
 
@@ -1325,16 +1328,18 @@ function renderConfig(){
         </div>
       </div>
       <div class="cfg-body">
-        ${cats.length ? cats.map(c=>`
+        ${cats.length ? cats.map(c=>{
+          const hint = c.presupuesto ? ` <span style="color:var(--green);font-size:11px;font-weight:600;margin-left:6px" id="pf_${c.row}">${fmt(c.presupuesto)}/mes</span>` : ` <span style="color:var(--dim);font-size:11px;margin-left:6px" id="pf_${c.row}"></span>`;
+          return `
           <div class="cfg-row with-budget">
             <div class="cfg-field"><label>${c.clave}</label><input id="cat_n_${c.row}" value="${escapeHtml(c.valor)}"></div>
-            <div class="cfg-field"><label>Presupuesto mensual (COP)</label><input id="cat_p_${c.row}" type="number" value="${c.presupuesto||''}" placeholder="Sin definir"></div>
+            <div class="cfg-field"><label>Presupuesto mensual (COP)${hint}</label><input id="cat_p_${c.row}" type="number" value="${c.presupuesto||''}" placeholder="Sin definir" oninput="document.getElementById('pf_${c.row}').textContent=this.value?fmt(this.value)+'/mes':''"></div>
             <div class="cfg-actions">
               <button class="btn-save" onclick="actualizarCat(${c.row})">Guardar</button>
               <button class="btn-del" onclick="confirmDel('${escapeAttr(c.clave)}', ${c.row})">🗑</button>
             </div>
           </div>
-        `).join('') : '<div class="empty" style="padding:20px">No hay categorías configuradas</div>'}
+        `;}).join('') : '<div class="empty" style="padding:20px">No hay categorías configuradas</div>'}
       </div>
     </div>
   `;
@@ -1348,6 +1353,26 @@ function renderConfig(){
 }
 
 function toggleSec(sec){ document.querySelector(`.cfg-section[data-sec="${sec}"]`).classList.toggle('open'); }
+
+// Actualiza el hint de moneda al lado del label de General config
+function actualizarHintMoneda(input, row, prefix){
+  const label = input.closest('.cfg-field').querySelector('label');
+  if (!label) return;
+  // Buscar/crear span hint
+  let hint = label.querySelector('span');
+  const val = input.value.trim();
+  const isNum = /^\d{4,}$/.test(val);
+  if (isNum){
+    if (!hint){
+      hint = document.createElement('span');
+      hint.style.cssText='color:var(--green);font-size:11px;font-weight:600;margin-left:6px';
+      label.appendChild(hint);
+    }
+    hint.textContent = fmt(val);
+  } else if (hint){
+    hint.remove();
+  }
+}
 
 // ════════════ ANÁLISIS PRESUPUESTOS ════════════
 function cargarAnalisisPresupuestos(){
