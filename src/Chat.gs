@@ -35,8 +35,9 @@ function _esPreguntaFinanciera_(texto) {
   ];
 
   for (var i = 0; i < inicios.length; i++) {
-    if (t.indexOf(inicios[i]) === 0 || t.indexOf(inicios[i]) <= 3) {
-      // Verificar que NO sea claramente una transacción
+    var pos = t.indexOf(inicios[i]);
+    // Solo cuenta si la palabra aparece en los primeros 3 chars (no -1 = no encontrado)
+    if (pos >= 0 && pos <= 3) {
       if (!_pareceTrransaccion_(t)) return true;
     }
   }

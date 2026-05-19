@@ -892,7 +892,32 @@ function getTriggersEstado() {
   try {
     var ts = ScriptApp.getProjectTriggers();
     var items = ts.map(function(t) {
-      return { handler: t.getHandlerFunction(), source: String(t.getTriggerSource()) };
+      var info = '';
+      try {
+        var src = String(t.getTriggerSource());
+        if (src === 'CLOCK') {
+          var ev = String(t.getEventType());
+          if (ev === 'CLOCK') {
+            // Best-effort: leemos el interno; getMinutesPerExecution puede no existir
+            try {
+              if (t.getMinutesPerExecution) {
+                var m = t.getMinutesPerExecution();
+                if (m) info = 'cada ' + m + ' min';
+              }
+            } catch(eMin) {}
+            // Para diarios/semanales no hay API directa; reflejamos schedule conocido
+            if (!info) {
+              var handler = t.getHandlerFunction();
+              if (handler === 'run_reporteSemanal') info = 'lunes 7am';
+              else if (handler === 'analizarFinanzas') info = 'diario 7am';
+              else if (handler === 'run_verificarPresupuestoMensual') info = 'diario 8am';
+              else if (handler === 'recordarPagosPendientes' || handler === 'recordarMetasSinAbono') info = 'diario 9am';
+              else info = 'programado';
+            }
+          }
+        }
+      } catch(eAny) {}
+      return { handler: t.getHandlerFunction(), source: String(t.getTriggerSource()), info: info };
     });
     return { ok: true, count: ts.length, items: items };
   } catch(err) { return { ok: false, error: err.message }; }
