@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinanceBot IA — Estado del Proyecto v2.84</title>
+  <title>FinanceBot IA — Estado del Proyecto v2.85</title>
   <style>
     :root{
       --bg:#0a0e1a; --bg2:#111827; --card:#1a2030; --card2:#232a3d;
@@ -142,7 +142,7 @@
       <h1>📊 FinanceBot IA</h1>
       <p class="subtitle">Estado completo del proyecto · Vista técnica y producto</p>
       <div class="badges">
-        <span class="header-badge">v2.84</span>
+        <span class="header-badge">v2.85</span>
         <span class="header-badge">Deploy estable</span>
         <span class="header-badge">Apps Script + Gemini 2.0</span>
         <span class="header-badge">Actualizado: 2026-05-18</span>
@@ -181,8 +181,8 @@
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Deploy actual</div>
-            <div class="kpi-value">@84</div>
-            <div class="kpi-sub">18/05/2026 · refactor TX_COL constantes</div>
+            <div class="kpi-value">@85</div>
+            <div class="kpi-sub">18/05/2026 · 🧠 Fase 1 IA chat conversacional</div>
           </div>
           <div class="kpi-card violet">
             <div class="kpi-label">Modelo IA</div>
@@ -557,7 +557,20 @@
         <p class="section-sub">Cambios destacados de las últimas iteraciones</p>
 
         <div class="card-block">
-          <h3>🔧 @84 — 2026-05-18 (Hoy)</h3>
+          <h3>🧠 @85 — 2026-05-18 (Hoy)</h3>
+          <p>Fase 1 Roadmap IA: chat conversacional activo en Telegram</p>
+          <ul style="padding-left:20px;font-size:13px;color:var(--text)">
+            <li>Detector intención (Chat.gs): preguntas vs transacciones vs comandos</li>
+            <li>Contexto financiero auto: tx del mes, presupuestos, metas, vs mes anterior</li>
+            <li>Wireado en procesarMensajesTelegram antes del parser de tx</li>
+            <li>Feature flag chat_financiero controla activación</li>
+            <li>Fix bug indexOf que daba false positives</li>
+            <li>getTriggersEstado ahora reporta intervalo real</li>
+          </ul>
+        </div>
+
+        <div class="card-block">
+          <h3>🔧 @84 — 2026-05-18</h3>
           <p>Refactor mecánico: magic numbers de Transactions → constantes TX_COL</p>
           <ul style="padding-left:20px;font-size:13px;color:var(--text)">
             <li>Nuevo objeto TX_COL al inicio de WebApp.gs (18 columnas mapeadas)</li>
@@ -667,7 +680,7 @@
     </div>
 
     <div class="footer">
-      <p><b>FinanceBot IA</b> · Estado @84 · Proyecto personal de Carlos Castaño</p>
+      <p><b>FinanceBot IA</b> · Estado @85 · Proyecto personal de Carlos Castaño</p>
       <p>Última actualización: 2026-05-18 · Próximo review: 2026-05-25</p>
       <p style="margin-top:8px;font-size:11px">Generado con Claude (Opus 4.7)</p>
     </div>
