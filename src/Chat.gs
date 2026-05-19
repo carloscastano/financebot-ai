@@ -197,15 +197,21 @@ function responderChat_(pregunta) {
   }
 
   var contexto = _contextoFinanciero_();
-
   var prompt = construirPromptChatFinanciero_(pregunta, contexto);
 
-  // Más temperatura = respuesta más natural / variada
+  // PRIMARIO: Groq (Llama 3.3 70B) — más natural y mejor con contexto hipotético
+  var rGroq = _llamarGroqTexto_(prompt, { temperature: 0.65, maxOutputTokens: 400 });
+  if (rGroq && rGroq.ok && rGroq.texto) {
+    var limpio = String(rGroq.texto).replace(/\*\*/g, '').replace(/\*/g, '').trim();
+    return '🤖 ' + limpio;
+  }
+
+  // FALLBACK: Gemini (si Groq no esta configurado o fallo)
+  logWarn_('CHAT', 'Groq fallo: ' + (rGroq && rGroq.error ? rGroq.error : 'desconocido') + ' — fallback a Gemini');
   var texto = _llamarGeminiTexto_(prompt, { temperature: 0.65, maxOutputTokens: 350 });
-  if (texto === null) return '❌ No pude consultar el asistente ahora. Intenta de nuevo.';
-  // No escapar para MarkdownV2 — el bot usa Markdown V1; texto plano sin asteriscos basta
-  var limpio = texto.replace(/\*\*/g, '').replace(/\*/g, '').trim();
-  return '🤖 ' + limpio;
+  if (texto === null) return '❌ No pude consultar el asistente (ni Groq ni Gemini). Intenta de nuevo.';
+  var limpio2 = String(texto).replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  return '🤖 ' + limpio2;
 }
 
 // ------------------------------------------------------------

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinanceBot IA — Estado del Proyecto v2.89</title>
+  <title>FinanceBot IA — Estado del Proyecto v2.90</title>
   <style>
     :root{
       --bg:#0a0e1a; --bg2:#111827; --card:#1a2030; --card2:#232a3d;
@@ -142,7 +142,7 @@
       <h1>📊 FinanceBot IA</h1>
       <p class="subtitle">Estado completo del proyecto · Vista técnica y producto</p>
       <div class="badges">
-        <span class="header-badge">v2.89</span>
+        <span class="header-badge">v2.90</span>
         <span class="header-badge">Deploy estable</span>
         <span class="header-badge">Apps Script + Gemini 2.0</span>
         <span class="header-badge">Actualizado: 2026-05-18</span>
@@ -181,8 +181,8 @@
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Deploy actual</div>
-            <div class="kpi-value">@89</div>
-            <div class="kpi-sub">18/05/2026 · Groq A/B test + multi-moneda backlog</div>
+            <div class="kpi-value">@90</div>
+            <div class="kpi-sub">18/05/2026 · Groq primario + fallback global</div>
           </div>
           <div class="kpi-card violet">
             <div class="kpi-label">Modelo IA</div>
@@ -559,7 +559,20 @@
         <p class="section-sub">Cambios destacados de las últimas iteraciones</p>
 
         <div class="card-block">
-          <h3>🦙 @89 — 2026-05-18 (Hoy)</h3>
+          <h3>🔁 @90 — 2026-05-18 (Hoy)</h3>
+          <p>Groq primario en chat + fallback Groq automático para TODA llamada IA</p>
+          <ul style="padding-left:20px;font-size:13px;color:var(--text)">
+            <li>Chat.gs responderChat_: Groq PRIMARIO, Gemini fallback (basado en A/B test)</li>
+            <li>Nuevo _llamarGroqJson_ con response_format json_object (Llama 3.3 70B)</li>
+            <li>_llamarGeminiTexto_: si falla (429/error/null), llama Groq automáticamente</li>
+            <li>_llamarGeminiJson_: si falla, intenta Groq antes de lanzar excepción</li>
+            <li>Impacto: extracción de tx, emails bancarios, reportes IA — todos resisten cuota Gemini</li>
+            <li>Cuota efectiva: ~1500/día Gemini + ~14.400/día Groq = 15.900/día</li>
+          </ul>
+        </div>
+
+        <div class="card-block">
+          <h3>🦙 @89 — 2026-05-18</h3>
           <p>Groq como segunda opinión IA + comando /comparar</p>
           <ul style="padding-left:20px;font-size:13px;color:var(--text)">
             <li>FinancialSkill.gs: nueva función _llamarGroqTexto_ (Llama 3.3 70B)</li>
@@ -733,7 +746,7 @@
     </div>
 
     <div class="footer">
-      <p><b>FinanceBot IA</b> · Estado @89 · Proyecto personal de Carlos Castaño</p>
+      <p><b>FinanceBot IA</b> · Estado @90 · Proyecto personal de Carlos Castaño</p>
       <p>Última actualización: 2026-05-18 · Próximo review: 2026-05-25</p>
       <p style="margin-top:8px;font-size:11px">Generado con Claude (Opus 4.7)</p>
     </div>

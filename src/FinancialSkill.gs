@@ -147,6 +147,22 @@ function construirPromptInsightSemanal_(resumenSemanal, nombreUsuario) {
 // ------------------------------------------------------------
 function _llamarGeminiJson_(prompt, opts) {
   opts = opts || {};
+  try {
+    return _llamarGeminiJsonInterno_(prompt, opts);
+  } catch (eGem) {
+    logWarn_('GEMINI_JSON', 'Gemini fallo: ' + eGem.message + ' — intentando fallback Groq');
+    var rG = _llamarGroqJson_(prompt, opts);
+    if (rG && rG.ok) {
+      logInfo_('AI_FALLBACK', 'Gemini JSON fallo → Groq respondio OK');
+      return rG.data;
+    }
+    logError_('AI_FALLBACK', 'Gemini y Groq JSON fallaron: ' + (rG && rG.error ? rG.error : 'sin info'));
+    throw eGem; // mantener compat: callers esperan excepcion si todo falla
+  }
+}
+
+function _llamarGeminiJsonInterno_(prompt, opts) {
+  opts = opts || {};
   var payload = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -266,6 +282,51 @@ function _llamarGroqTexto_(prompt, opts) {
   }
 }
 
+// ------------------------------------------------------------
+// GROQ JSON — respuesta estructurada (extraccion de tx, parseo de emails)
+// Usa response_format: json_object para forzar JSON valido
+// ------------------------------------------------------------
+function _llamarGroqJson_(prompt, opts) {
+  opts = opts || {};
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GROQ_API_KEY');
+  if (!apiKey) return { ok: false, error: 'No hay GROQ_API_KEY' };
+  // Asegurar que el prompt mencione JSON (requisito de Groq para json_object)
+  var promptJson = prompt;
+  if (promptJson.toLowerCase().indexOf('json') < 0) {
+    promptJson = promptJson + '\n\nResponde unicamente con un objeto JSON valido.';
+  }
+  var payload = {
+    model:           opts.model || 'llama-3.3-70b-versatile',
+    messages:        [{ role: 'user', content: promptJson }],
+    temperature:     opts.temperature !== undefined ? opts.temperature : 0.1,
+    max_tokens:      opts.maxOutputTokens !== undefined ? opts.maxOutputTokens : 1024,
+    response_format: { type: 'json_object' }
+  };
+  try {
+    var resp = UrlFetchApp.fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + apiKey },
+      payload: JSON.stringify(payload), muteHttpExceptions: true
+    });
+    var code = resp.getResponseCode();
+    if (code !== 200) {
+      logWarn_('GROQ_JSON', 'HTTP ' + code + ': ' + resp.getContentText().slice(0, 200));
+      return { ok: false, error: 'Groq JSON HTTP ' + code };
+    }
+    var json = JSON.parse(resp.getContentText());
+    var raw  = json.choices && json.choices[0] && json.choices[0].message ? json.choices[0].message.content : '';
+    var clean = String(raw).replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    try {
+      return { ok: true, data: JSON.parse(clean) };
+    } catch(eParse) {
+      return { ok: false, error: 'Groq JSON parse: ' + eParse.message };
+    }
+  } catch(e) {
+    logError_('GROQ_JSON', 'excepcion', e);
+    return { ok: false, error: e.message };
+  }
+}
+
 function _llamarGeminiTexto_(prompt, opts) {
   opts = opts || {};
   var payload = {
@@ -281,14 +342,24 @@ function _llamarGeminiTexto_(prompt, opts) {
       payload: JSON.stringify(payload), muteHttpExceptions: true
     });
     var code = resp.getResponseCode();
-    if (code === 429) { logWarn_('GEMINI_TEXT', '429 rate-limit'); return null; }
-    if (code !== 200) { logWarn_('GEMINI_TEXT', 'HTTP ' + code); return null; }
-    _trackGeminiCall_();
-    var json = JSON.parse(resp.getContentText());
-    if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) return null;
-    return json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
+    if (code === 200) {
+      _trackGeminiCall_();
+      var json = JSON.parse(resp.getContentText());
+      if (json.candidates && json.candidates[0] && json.candidates[0].content) {
+        return json.candidates[0].content.parts.map(function(p) { return p.text || ''; }).join('').trim();
+      }
+    } else {
+      logWarn_('GEMINI_TEXT', 'HTTP ' + code + ', intentando fallback Groq');
+    }
   } catch(e) {
-    logError_('GEMINI_TEXT', 'excepcion en llamada', e);
-    return null;
+    logError_('GEMINI_TEXT', 'excepcion, intentando fallback Groq', e);
   }
+  // Fallback automatico a Groq
+  var rG = _llamarGroqTexto_(prompt, opts);
+  if (rG && rG.ok) {
+    logInfo_('AI_FALLBACK', 'Gemini fallo → Groq respondio OK');
+    return rG.texto;
+  }
+  logWarn_('AI_FALLBACK', 'Gemini y Groq fallaron');
+  return null;
 }
