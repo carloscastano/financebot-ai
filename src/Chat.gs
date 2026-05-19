@@ -180,9 +180,12 @@ function responderChat_(pregunta) {
 
   var prompt = construirPromptChatFinanciero_(pregunta, contexto);
 
-  var texto = _llamarGeminiTexto_(prompt, { temperature: 0.2, maxOutputTokens: 350 });
+  // Más temperatura = respuesta más natural / variada
+  var texto = _llamarGeminiTexto_(prompt, { temperature: 0.65, maxOutputTokens: 350 });
   if (texto === null) return '❌ No pude consultar el asistente ahora. Intenta de nuevo.';
-  return '🤖 ' + mdEscape_(texto.replace(/\*\*/g, '').replace(/\*/g, '').trim());
+  // No escapar para MarkdownV2 — el bot usa Markdown V1; texto plano sin asteriscos basta
+  var limpio = texto.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  return '🤖 ' + limpio;
 }
 
 function run_testChat() {

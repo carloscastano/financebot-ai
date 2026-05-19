@@ -32,6 +32,12 @@ html[data-theme="light"]{
   --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --dim:#94a3b8;
   --shadow:0 4px 20px rgba(0,0,0,.08);
 }
+/* Tema claro: header y sidebar tambien claros */
+html[data-theme="light"] header{background:rgba(255,255,255,.92);border-bottom:1px solid var(--border)}
+html[data-theme="light"] .sidebar{background:#ffffff}
+html[data-theme="light"] .mobile-nav{background:rgba(255,255,255,.95);border-top:1px solid var(--border)}
+html[data-theme="light"] .icon-btn{background:#f1f5f9;border-color:#e2e8f0;color:#1e293b}
+html[data-theme="light"] .icon-btn:hover{background:#e2e8f0}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
 body{padding-bottom:80px}
@@ -524,7 +530,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
       </div>
 
       <!-- Funcionalidades: carga independiente, siempre visible -->
-      <div class="cfg-section open" data-sec="features" style="margin-top:12px">
+      <div class="cfg-section" data-sec="features" style="margin-top:12px">
         <div class="cfg-section-head" onclick="toggleSec('features')">
           <div class="cfg-section-title">🤖 Funcionalidades <span class="badge" id="featBadge">…</span></div>
           <div class="cfg-section-actions">
@@ -1216,7 +1222,7 @@ function renderConfig(){
   const cont = document.getElementById('cfgContent');
   cont.innerHTML = `
     <!-- GENERAL -->
-    <div class="cfg-section open" data-sec="general">
+    <div class="cfg-section open" data-sec="general"><!-- General queda abierto por defecto (info más usada) -->
       <div class="cfg-section-head" onclick="toggleSec('general')">
         <div class="cfg-section-title">⚙️ General <span class="badge">${general.length}</span></div>
         <span class="toggle">▾</span>
@@ -1233,7 +1239,7 @@ function renderConfig(){
     </div>
 
     <!-- PRIVACIDAD -->
-    <div class="cfg-section open" data-sec="privacidad">
+    <div class="cfg-section" data-sec="privacidad">
       <div class="cfg-section-head" onclick="toggleSec('privacidad')">
         <div class="cfg-section-title">🔒 Privacidad de datos <span class="badge">campos sensibles</span></div>
         <span class="toggle">▾</span>
@@ -1283,7 +1289,7 @@ function renderConfig(){
     </div>
 
     <!-- BANCOS -->
-    <div class="cfg-section open" data-sec="bancos">
+    <div class="cfg-section" data-sec="bancos">
       <div class="cfg-section-head" onclick="toggleSec('bancos')">
         <div class="cfg-section-title">🏦 Bancos / Remitentes <span class="badge">${bancos.length}</span></div>
         <div class="cfg-section-actions">
@@ -1306,7 +1312,7 @@ function renderConfig(){
     </div>
 
     <!-- CATEGORÍAS + PRESUPUESTO -->
-    <div class="cfg-section open" data-sec="categorias">
+    <div class="cfg-section" data-sec="categorias">
       <div class="cfg-section-head" onclick="toggleSec('categorias')">
         <div class="cfg-section-title">🏷️ Categorías y Presupuestos <span class="badge">${cats.length}</span></div>
         <div class="cfg-section-actions">
