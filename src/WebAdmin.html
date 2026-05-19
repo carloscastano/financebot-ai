@@ -832,8 +832,12 @@ header{position:sticky;top:0;z-index:50;background:rgba(10,14,26,.85);backdrop-f
 <script>
 // ════════════ CONSTANTES ════════════
 const SHEET_URL = '<?= spreadsheetUrl ?>';
-const FMT = new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0});
-const fmt = n => FMT.format(Math.round(Number(n)||0));
+// Formato moneda Colombia: $1.000.000 (sin espacio, sin decimales, puntos cada 3 dígitos)
+const fmt = n => {
+  const v = Math.round(Number(n) || 0);
+  const sign = v < 0 ? '-' : '';
+  return sign + '$' + Math.abs(v).toLocaleString('es-CO');
+};
 const COLORS = ['#818cf8','#c084fc','#f472b6','#34d399','#fbbf24','#60a5fa','#fb923c','#a78bfa','#22d3ee','#fb7185','#f59e0b','#10b981','#6366f1','#ec4899'];
 
 // ════════════ STATE ════════════
